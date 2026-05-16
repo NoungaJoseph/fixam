@@ -393,6 +393,18 @@ const DashboardScreen = ({ navigation }) => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
+        <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>Personal Profile</Text>
+          {user?.role === 'PROVIDER' && (
+            <TouchableOpacity 
+              style={[styles.headerIconBtn, { backgroundColor: colors.accent + '15', borderRadius: 21 }]}
+              onPress={switchToProvider}
+            >
+              <MaterialCommunityIcons name="account-convert" size={24} color={colors.accent} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.freelancerScroll}>
           <View style={[styles.identityBlock, { borderBottomColor: colors.border }]}>
             <View style={styles.profilePhotoWrap}>
@@ -410,14 +422,6 @@ const DashboardScreen = ({ navigation }) => {
             <View style={{ flex: 1 }}>
               <View style={styles.nameLine}>
                 <Text style={[styles.freelancerName, { color: colors.text }]}>{user?.fullName || 'Client'}</Text>
-                {user?.role === 'PROVIDER' && (
-                  <TouchableOpacity 
-                    onPress={switchToProvider}
-                    style={{ marginLeft: 8 }}
-                  >
-                    <MaterialCommunityIcons name="repeat" size={20} color={colors.accent} />
-                  </TouchableOpacity>
-                )}
               </View>
               <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.email || user?.phone || 'Contact not added'}</Text>
               <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>Personal account</Text>
