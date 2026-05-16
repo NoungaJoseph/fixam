@@ -703,8 +703,8 @@ const EmptyProfileBlock = ({ icon, title, action, colors, onActionPress }) => (
 const styles = StyleSheet.create({
   container: { flex: 1 },
   freelancerHeader: {
-    height: 76,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0,
+    minHeight: Platform.OS === 'ios' ? 100 : 76,
+    paddingTop: Platform.OS === 'ios' ? 48 : (StatusBar.currentHeight || 0),
     paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
