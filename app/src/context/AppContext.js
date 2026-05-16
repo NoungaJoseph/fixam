@@ -22,6 +22,7 @@ export const AppProvider = ({ children }) => {
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [isProviderOnline, setIsProviderOnline] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [transactions, setTransactions] = useState([]);
   const markingNotificationsRef = React.useRef(new Set());
 
   useEffect(() => {
@@ -151,16 +152,18 @@ export const AppProvider = ({ children }) => {
     try {
       // These routes require authentication
       const jobsEndpoint = user?.role === 'PROVIDER' ? '/jobs/available?limit=10&sortBy=newest' : '/jobs/client';
-      const [jobsRes, walletRes, chatRes] = await Promise.all([
+      const [jobsRes, walletRes, chatRes, transRes] = await Promise.all([
         api.get(jobsEndpoint).catch(() => ({ data: { data: [] } })),
-        api.get('/wallet/balance').catch(() => ({ data: { balance: 0 } })),
+        api.get('/wallet/balance').catch(() => ({ data: { data: { balance: 0 } } })),
         api.get('/chat/conversations').catch(() => ({ data: { data: [] } })),
+        api.get('/wallet/transactions').catch(() => ({ data: { data: [] } })),
         fetchProviders()
       ]);
 
       setJobs(jobsRes.data.data || []);
       setWalletBalance(walletRes.data.data?.balance || 0);
       setConversations(chatRes.data.data || []);
+      setTransactions(transRes.data.data || []);
     } catch (error) {
       console.log('[AppData Partial Error]:', error.message);
     } finally {
@@ -307,6 +310,7 @@ export const AppProvider = ({ children }) => {
       unreadCount,
       notificationCount,
       walletBalance, 
+      transactions,
       isProviderOnline,
       isLoading,
       fetchAppData,

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Set EXPO_PUBLIC_API_URL for device builds, e.g. http://192.168.1.185:5000/api
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.185:5000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://fixam-backend-production.up.railway.app/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

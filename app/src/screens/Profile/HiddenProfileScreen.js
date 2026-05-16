@@ -29,13 +29,16 @@ const HiddenProfileScreen = ({ navigation }) => {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Preview card */}
           <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: isHidden ? 0.4 : 1 }]}>
-            <Image
-              source={{ uri: user?.role === 'provider' ? 'https://i.pravatar.cc/150?u=marcus' : 'https://i.pravatar.cc/150?u=joe' }}
-              style={styles.avatar}
-            />
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.accent + '25', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ fontSize: 24, fontWeight: '900', color: colors.accent }}>{user?.fullName?.charAt(0) || 'U'}</Text>
+              </View>
+            )}
             <View style={{ flex: 1 }}>
-              <Text style={[styles.userName, { color: colors.text }]}>{user?.name || 'Your Name'}</Text>
-              <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.role === 'provider' ? 'Professional' : 'Client'}</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>{user?.fullName || 'Fixam User'}</Text>
+              <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.role?.toLowerCase() === 'provider' ? 'Professional' : 'Client'}</Text>
             </View>
             {isHidden ? (
               <View style={styles.hiddenBadge}>

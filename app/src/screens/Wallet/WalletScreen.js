@@ -7,11 +7,9 @@ import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 
-const TRANSACTIONS = [];
-
 const WalletScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
-  const { walletBalance } = useAppContext();
+  const { walletBalance, transactions } = useAppContext();
   
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -42,32 +40,48 @@ const WalletScreen = ({ navigation }) => {
         {/* Transaction History Header */}
         <View style={styles.historyHeaderRow}>
           <Text style={[styles.historyTitle, { color: colors.text }]}>Recent Transactions</Text>
-          <TouchableOpacity>
-            <Text style={[styles.seeAll, { color: colors.accent }]}>See All</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Transactions List */}
         <View style={styles.transactionsContainer}>
-          {TRANSACTIONS.map((item) => (
-            <View key={item.id} style={[styles.transactionCard, { borderBottomColor: colors.border }]}>
-              <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name={item.icon} size={22} color={colors.primary} />
-              </View>
-              
-              <View style={styles.transactionInfo}>
-                <Text style={[styles.transactionTitle, { color: colors.text }]}>{item.title}</Text>
-                <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>{item.date}</Text>
-              </View>
+          {transactions.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <MaterialCommunityIcons name="history" size={48} color={colors.textSecondary + '40'} />
+              <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '700' }}>No transactions yet</Text>
+            </View>
+          ) : (
+            transactions.map((item) => (
+              <View key={item.id} style={[styles.transactionCard, { borderBottomColor: colors.border }]}>
+                <View style={styles.iconWrap}>
+                  <MaterialCommunityIcons 
+                    name={item.type === 'DEPOSIT' ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline'} 
+                    size={22} 
+                    color={item.type === 'DEPOSIT' ? '#10B981' : '#EF4444'} 
+                  />
+                </View>
+                
+                <View style={styles.transactionInfo}>
+                  <Text style={[styles.transactionTitle, { color: colors.text }]}>
+                    {item.type === 'DEPOSIT' ? 'Coin Purchase' : 'Service Payment'}
+                  </Text>
+                  <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
 
-              <View style={styles.transactionRight}>
-                <Text style={[styles.transactionAmount, { color: item.amount.includes('+') ? '#10B981' : colors.text }]}>{item.amount}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.1)' : item.statusBg }]}>
-                  <Text style={[styles.statusText, { color: item.statusColor }]}>{item.status}</Text>
+                <View style={styles.transactionRight}>
+                  <Text style={[styles.transactionAmount, { color: item.type === 'DEPOSIT' ? '#10B981' : '#EF4444' }]}>
+                    {item.type === 'DEPOSIT' ? `+${item.amount}` : `-${item.amount}`}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: item.status === 'COMPLETED' ? '#10B98120' : '#F59E0B20' }]}>
+                    <Text style={[styles.statusText, { color: item.status === 'COMPLETED' ? '#10B981' : '#F59E0B' }]}>
+                      {item.status}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
 
         {/* Refer Card */}
