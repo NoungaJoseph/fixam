@@ -1,477 +1,776 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, Image, StatusBar, Dimensions, FlatList, Platform, Modal, RefreshControl
+  TextInput, Image, StatusBar, Dimensions, Platform, RefreshControl
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import FirstRunNotice from '../../components/Common/FirstRunNotice';
-import { LinearGradient } from 'expo-linear-gradient';
-import { CustomHeader } from '../../navigation/NavigationComponents';
+import { getMediaUrl } from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
-  { id: '1', name: 'Electrician', icon: 'lightning-bolt' },
-  { id: '2', name: 'Plumber', icon: 'pipe-wrench' },
-  { id: '3', name: 'Cleaning', icon: 'broom' },
-  { id: '4', name: 'Beauty', icon: 'content-cut' },
-  { id: '5', name: 'Babysitting', icon: 'baby-face-outline' },
-  { id: '6', name: 'Carpenter', icon: 'saw-blade' },
-  { id: '7', name: 'Painter', icon: 'format-paint' },
-  { id: '8', name: 'Landscaping', icon: 'flower-outline' },
+  { id: '1', name: 'Cleaning', icon: 'broom', color: '#0D9488' },
+  { id: '2', name: 'Plumbing', icon: 'pipe-wrench', color: '#0D9488' },
+  { id: '3', name: 'Electrical', icon: 'lightning-bolt', color: '#F59E0B' },
+  { id: '4', name: 'Carpentry', icon: 'saw-blade', color: '#0D9488' },
+  { id: '5', name: 'Painting', icon: 'format-paint', color: '#0D9488' },
+  { id: '6', name: 'Beauty', icon: 'content-cut', color: '#EC4899' },
+  { id: '7', name: 'Babysitting', icon: 'baby-face-outline', color: '#8B5CF6' },
+  { id: '8', name: 'Landscaping', icon: 'flower-outline', color: '#22C55E' },
+];
+
+const LEARN_CARDS = [
+  {
+    id: '1',
+    step: 'STEP 1',
+    title: 'Post your task\nin seconds',
+    desc: 'Describe what you need and set your budget',
+    image: require('../../../assets/onboarding/learn_step1.png'),
+    colors: ['#0D9488', '#14B8A6']
+  },
+  {
+    id: '2',
+    step: 'STEP 2',
+    title: 'Receive competitive\noffers',
+    desc: 'Expert providers will bid for your request',
+    image: require('../../../assets/onboarding/learn_step2.png'),
+    colors: ['#2563EB', '#3B82F6']
+  },
+  {
+    id: '3',
+    step: 'STEP 3',
+    title: 'Choose the best\nprofessional',
+    desc: 'Check reviews, portfolios, and confirm the hire',
+    image: require('../../../assets/onboarding/learn_step3.png'),
+    colors: ['#8B5CF6', '#A78BFA']
+  },
+  {
+    id: '4',
+    step: 'TIPS',
+    title: 'Release payment\nsafely',
+    desc: 'Funds are secure until the task is completed',
+    image: require('../../../assets/onboarding/learn_tips.png'),
+    colors: ['#F59E0B', '#FBBF24']
+  }
 ];
 
 const HomeScreen = ({ navigation }) => {
-  const { providers, fetchAppData } = useAppContext();
+  const { providers, walletBalance, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const [search, setSearch] = useState('');
-  const [activeCat, setActiveCat] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [filtersApplied, setFiltersApplied] = useState(false);
-  const carouselRef = useRef(null);
-  const carouselIndexRef = useRef(0);
-  const carouselImages = [
-    require('../../../assets/onboarding/direct_local_service.png'),
-    require('../../../assets/onboarding/verification.png'),
-    require('../../../assets/onboarding/p1.png'),
-    require('../../../assets/onboarding/c1.png'),
-    require('../../../assets/onboarding/c2.png'),
-  ];
-  const [filters, setFilters] = useState({
-    distance: 10,
-    rating: 4.0,
-    priceRange: 'all'
-  });
+  const [slideIndex, setSlideIndex] = useState(0);
+  const learnScrollRef = useRef(null);
+
+  useEffect(() => {
+    let timer;
+    if (LEARN_CARDS.length > 0) {
+      timer = setInterval(() => {
+        setSlideIndex(prevIndex => {
+          const nextIndex = (prevIndex + 1) % LEARN_CARDS.length;
+          learnScrollRef.current?.scrollTo({
+            x: nextIndex * (width - 70 + 12),
+            animated: true
+          });
+          return nextIndex;
+        });
+      }, 3500);
+    }
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleScroll = (event) => {
+    const slide = Math.round(event.nativeEvent.contentOffset.x / (width - 60));
+    if (slide !== slideIndex) {
+      setSlideIndex(slide);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchAppData(), fetchProviders()]);
+    await fetchAppData();
     setRefreshing(false);
   };
 
-  const getProviderDistance = (provider) => {
-    const rawDistance = provider.distanceKm ?? provider.distance ?? provider.distanceInKm;
-    const parsedDistance = Number(rawDistance);
-    return Number.isFinite(parsedDistance) ? parsedDistance : null;
-  };
+  const firstName = user?.fullName?.split(' ')[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
-  const filteredProviders = providers.filter(p => {
-    const searchLower = search.trim().toLowerCase();
+  // Real data counts
+  const activeTaskCount = jobs?.filter(j => j.status === 'OPEN' || j.status === 'IN_PROGRESS').length || 0;
+  const completedTaskCount = jobs?.filter(j => j.status === 'COMPLETED').length || 0;
+  const savedCount = favoriteProviderIds?.length || 0;
+  const txCount = transactions?.length || 0;
 
-    const name = (p.user?.fullName || '').toLowerCase();
-    const skills = (p.skills || []).join(' ').toLowerCase();
-    const area = (p.serviceArea || '').toLowerCase();
-    const combinedInfo = `${name} ${skills} ${area}`;
-
-    // Broad search: must contain the category if active
-    if (activeCat && !skills.includes(activeCat.toLowerCase())) return false;
-
-    // Search terms check (must contain every word from the search bar)
-    const searchTerms = searchLower.split(/\s+/).filter(t => t.length > 0);
-    const matchesSearch = searchTerms.every(term => combinedInfo.includes(term));
-    if (!matchesSearch) return false;
-
-    if (filtersApplied) {
-      const rating = Number(p.rating || 0);
-      if (rating < filters.rating) return false;
-
-      const distance = getProviderDistance(p);
-      if (distance !== null && distance > filters.distance) return false;
+  // Level thresholds grow by 5 more tasks each level: 5, 15, 30, 50...
+  const calculateLevel = (completedCount) => {
+    let level = 1;
+    while (level < 200 && completedCount >= getLevelThresholds(level).nextThreshold) {
+      level += 1;
     }
-
-    return true;
-  });
-
-  const clearSearchAndFilters = () => {
-    setActiveCat(null);
-    setSearch('');
-    setFiltersApplied(false);
-    setFilters({ distance: 10, rating: 4.0, priceRange: 'all' });
+    return level;
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      carouselIndexRef.current = (carouselIndexRef.current + 1) % carouselImages.length;
-      carouselRef.current?.scrollTo({ x: carouselIndexRef.current * (width - 28), animated: true });
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [carouselImages.length]);
+  const getLevelThresholds = (level) => {
+    const safeLevel = Math.min(Math.max(level, 1), 200);
+    const currentThreshold = 5 * ((safeLevel - 1) * safeLevel) / 2;
+    const nextThreshold = safeLevel >= 200 ? currentThreshold : 5 * (safeLevel * (safeLevel + 1)) / 2;
+    return { currentThreshold, nextThreshold };
+  };
+
+  const currentLevel = calculateLevel(completedTaskCount);
+  const { currentThreshold, nextThreshold } = getLevelThresholds(currentLevel);
+  const tasksInCurrentLevel = completedTaskCount - currentThreshold;
+  const tasksNeededForNextLevel = nextThreshold - currentThreshold;
+  const nextRewardCoins = Math.min(currentLevel, 200);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="Home" colors={colors} />
-      <FirstRunNotice role={user?.role} colors={colors} isDarkMode={isDarkMode} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.accent]} tintColor={colors.accent} />
-        }
+      {/* ═══ 1. HEADER with gradient ═══ */}
+      <LinearGradient
+        colors={isDarkMode ? ['#0F4C4A', '#1E3A5F'] : ['#0D9488', '#2563EB']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.openDrawer()} style={styles.menuBtn}>
+            <MaterialCommunityIcons name="menu" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.greetText}>{greeting} 👋</Text>
+            <Text style={styles.nameText}>{firstName}</Text>
+            <View style={styles.locationRow}>
+              <MaterialCommunityIcons name="map-marker" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.locationText}>Douala, Cameroon</Text>
+              <MaterialCommunityIcons name="chevron-down" size={16} color="rgba(255,255,255,0.8)" />
+            </View>
+          </View>
+          <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
+            <MaterialCommunityIcons name="bell-outline" size={22} color="#FFF" />
+            {notificationCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{notificationCount > 9 ? '9+' : notificationCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D9488']} tintColor="#0D9488" />}
       >
 
-        {/* ── Search Bar ─────────────────────── */}
-        <View style={styles.searchSection}>
-          <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="magnify" size={22} color={colors.placeholder} />
+        {/* ═══ 1.5. SEARCH BAR & FILTER ROW ═══ */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}>
+            <MaterialCommunityIcons name="magnify" size={22} color={isDarkMode ? '#94A3B8' : '#64748B'} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search services or professionals..."
-              placeholderTextColor={colors.placeholder}
+              placeholder="Search for professionals or services..."
+              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
               value={search}
               onChangeText={setSearch}
-              returnKeyType="search"
               onSubmitEditing={() => {
-                if (search.trim()) navigation.navigate('ProviderList', { search });
+                if (search.trim()) {
+                  navigation.navigate('ProviderList', { search: search.trim() });
+                  setSearch('');
+                }
               }}
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
-                <MaterialCommunityIcons name="close-circle" size={18} color={colors.placeholder} />
+                <MaterialCommunityIcons name="close-circle" size={18} color={isDarkMode ? '#64748B' : '#94A3B8'} />
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              { backgroundColor: colors.card, borderColor: colors.border }
-            ]}
-            onPress={() => setShowFilters(true)}
+          <TouchableOpacity 
+            style={[styles.filterBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+            onPress={() => {
+              navigation.navigate('ProviderList');
+            }}
           >
             <MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} />
-            {filtersApplied && <View style={[styles.filterDot, { backgroundColor: colors.accent }]} />}
           </TouchableOpacity>
         </View>
 
-        {/* Post Task CTA */}
+        {/* ═══ 2. WALLET BALANCE CARD ═══ */}
         <TouchableOpacity
-          style={[styles.postTaskCard, { backgroundColor: isDarkMode ? colors.surface : colors.primary }]}
-          onPress={() => navigation.navigate('Tasks', { screen: 'PostTask' })}
+          style={[styles.walletCard, { backgroundColor: isDarkMode ? '#134E4A' : '#0D9488' }]}
+          onPress={() => navigation.navigate('TopUp')}
+          activeOpacity={0.85}
         >
-          <View style={styles.postTaskContent}>
-            <Text style={styles.postTaskTitle}>What do you need done?</Text>
-            <Text style={[styles.postTaskSubtitle, { color: isDarkMode ? colors.textSecondary : 'rgba(255,255,255,0.7)' }]}>
-              Post a task and get offers within minutes
-            </Text>
-            <View style={[styles.postBtn, { backgroundColor: colors.accent }]}>
-              <Text style={styles.postBtnText}>Post a Task</Text>
-              <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
+          {/* Left Column: Wallet Balance & Top Up stacked */}
+          <View style={styles.walletLeftCol}>
+            <View style={styles.walletHeaderRow}>
+              <View style={styles.walletIconWrap}>
+                <MaterialCommunityIcons name="wallet" size={20} color="#FFF" />
+              </View>
+              <Text style={styles.walletLabel}>WALLET BALANCE</Text>
+            </View>
+            <Text style={styles.walletAmount} numberOfLines={1}>{(walletBalance || 0).toLocaleString()} Coins 🪙</Text>
+            
+            <TouchableOpacity
+              style={styles.topUpBtn}
+              onPress={() => navigation.navigate('TopUp')}
+            >
+              <Text style={styles.topUpText}>Top up</Text>
+              <MaterialCommunityIcons name="plus" size={14} color="#0D9488" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.walletDivider} />
+
+          {/* Right Column: Transactions */}
+          <View style={styles.walletRightCol}>
+            <Text style={styles.walletLabel}>TRANSACTIONS</Text>
+            <Text style={styles.walletTxCount} numberOfLines={1}>{txCount}</Text>
+            <Text style={styles.walletSub}>This Month</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* ═══ 3. PROGRESS CARD ═══ */}
+        <LinearGradient
+          colors={isDarkMode ? ['#1E293B', '#0F172A'] : ['#1E3A5F', '#0F172A']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.progressCard}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.progressTitle}>You're doing great! 🔥</Text>
+            <Text style={styles.progressCount}>{completedTaskCount} Tasks Completed</Text>
+            <Text style={styles.progressSub}>{Math.max(nextThreshold - completedTaskCount, 0)} more tasks to level up</Text>
+            <View style={styles.progressBar}>
+              {[1,2,3,4,5].map((i) => {
+                const stepValue = (tasksNeededForNextLevel > 0 ? (tasksInCurrentLevel / tasksNeededForNextLevel) : 1) * 5;
+                return (
+                  <View key={i} style={[styles.progressSegment, { backgroundColor: i <= stepValue ? '#0D9488' : 'rgba(255,255,255,0.15)' }]} />
+                );
+              })}
             </View>
           </View>
+          <View style={styles.progressRight}>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>Level {currentLevel} ↑</Text>
+            </View>
+            <Text style={styles.rewardLabel}>Next reward</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <MaterialCommunityIcons name="star-circle" size={16} color="#FBBF24" />
+              <Text style={styles.rewardAmount}>{nextRewardCoins} Coins</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* ═══ 4. CTA - "What do you need done?" ═══ */}
+        <TouchableOpacity
+          style={[styles.ctaCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+          onPress={() => navigation.navigate('Create Task', { screen: 'PostTask', params: { startOnPost: true } })}
+          activeOpacity={0.85}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.ctaTitle, { color: colors.text }]}>What do you need done?</Text>
+            <Text style={[styles.ctaSub, { color: colors.textSecondary }]}>Post a task and get offers within minutes</Text>
+            <LinearGradient colors={['#0D9488', '#14B8A6']} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <Text style={styles.ctaBtnText}>Post a Task</Text>
+              <MaterialCommunityIcons name="plus" size={16} color="#FFF" />
+            </LinearGradient>
+          </View>
           <Image
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png' }}
-            style={styles.postTaskImg}
+            source={require('../../../assets/done.png')}
+            style={styles.ctaImg}
+            resizeMode="contain"
           />
         </TouchableOpacity>
 
-        <View style={styles.carouselBlock}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Learn Fixam</Text>
-            <Text style={[styles.viewAll, { color: colors.textSecondary }]}>Swipe tips</Text>
-          </View>
-          <ScrollView ref={carouselRef} horizontal showsHorizontalScrollIndicator={false} snapToInterval={width - 28} decelerationRate="fast" contentContainerStyle={styles.carouselTrack}>
-            {carouselImages.map((image, index) => (
-              <View key={index} style={[styles.carouselSlide, { backgroundColor: isDarkMode ? '#171717' : '#F5F7FA' }]}>
-                <Image source={image} style={styles.carouselImage} resizeMode="cover" />
-                <View style={styles.carouselCopy}>
-                  <Text style={styles.carouselCopyTitle}>Tip {index + 1}</Text>
-                  <Text style={styles.carouselCopyText}>Post clear details, compare providers, chat safely, and track work from the task page.</Text>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-
-
-
-        {/* ── Recommended Provider ─────────── */}
-        {providers.length > 0 && !search && !activeCat && (() => {
-          const recommended = providers.find(p => p.user?.fullName?.includes('Emma')) || providers[0];
-          if (!recommended) return null;
-          return (
-            <View style={styles.recommendedSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Professional</Text>
-                <View style={[styles.promotedBadge, { backgroundColor: colors.accent }]}>
-                  <Text style={styles.promotedText}>PROMOTED</Text>
-                </View>
-              </View>
-              <TouchableOpacity 
-                style={[styles.recommendedCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('ProviderProfile', { provider: recommended })}
-              >
-                <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']} style={styles.recommendedGradient} />
-                <Image 
-                  source={recommended.user?.avatar ? { uri: recommended.user.avatar } : { uri: `https://ui-avatars.com/api/?name=${recommended.user?.fullName || 'User'}&background=random` }} 
-                  style={styles.recommendedImg} 
-                />
-                <View style={styles.recommendedInfo}>
-                  <Text style={styles.recommendedName}>{recommended.user?.fullName || 'Professional'}</Text>
-                  <View style={styles.recommendedMeta}>
-                    <View style={styles.recBadge}>
-                      <MaterialCommunityIcons name="star" size={14} color="#FBBF24" />
-                      <Text style={styles.recBadgeText}>{recommended.rating || '0.0'}</Text>
-                    </View>
-                    <View style={styles.recBadge}>
-                      <MaterialCommunityIcons name="briefcase-outline" size={14} color="#FFF" />
-                      <Text style={styles.recBadgeText}>{recommended.skills?.[0] || 'Expert'}</Text>
-                    </View>
-                    <View style={styles.recBadge}>
-                      <MaterialCommunityIcons name="map-marker-outline" size={14} color="#FFF" />
-                      <Text style={styles.recBadgeText}>{recommended.serviceArea || 'Nearby'}</Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          );
-        })()}
-
-        {/* ── Category Filter Chips ──────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Categories</Text>
-          <TouchableOpacity onPress={() => { clearSearchAndFilters(); navigation.navigate('ProviderList'); }}>
-            <Text style={[styles.viewAll, { color: colors.accent }]}>View All</Text>
+        {/* ═══ 4.5. LEARN FIXAM CAROUSEL ═══ */}
+        <View style={styles.learnHeader}>
+          <Text style={[styles.learnTitle, { color: colors.text }]}>Learn Fixam</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catChipsScroll}>
-          {CATEGORIES.map(cat => {
-            const isActive = activeCat === cat.name;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.catChip,
-                  {
-                    backgroundColor: isActive ? colors.accent : colors.card,
-                    borderColor: isActive ? colors.accent : colors.border,
-                  }
-                ]}
-                onPress={() => {
-                  setActiveCat(isActive ? null : cat.name);
-                }}
-              >
-                <View style={[styles.catChipIcon, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.background }]}>
-                  <MaterialCommunityIcons name={cat.icon} size={18} color={isActive ? '#FFF' : colors.accent} />
+        {/* Step cards list */}
+        <ScrollView
+          ref={learnScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.learnScroll}
+        >
+          {LEARN_CARDS.map((card) => (
+            <LinearGradient
+              key={card.id}
+              colors={card.colors}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.learnCard}
+            >
+              <View style={styles.learnLeft}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{card.step}</Text>
                 </View>
-                <Text style={[styles.catChipText, { color: isActive ? '#FFF' : colors.text }]}>{cat.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
+                <Text style={styles.learnCardTitle}>{card.title}</Text>
+                <Text style={styles.learnCardDesc}>{card.desc}</Text>
+              </View>
+              <Image source={card.image} style={styles.learnCardImage} resizeMode="contain" />
+            </LinearGradient>
+          ))}
         </ScrollView>
 
-        {/* ── Nearby Providers ──────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {activeCat ? `${activeCat} Pros` : search ? 'Search Results' : 'Nearby Professionals'}
-          </Text>
-          {(activeCat || search || filtersApplied) && (
-            <TouchableOpacity onPress={clearSearchAndFilters}>
-              <Text style={[styles.viewAll, { color: colors.accent }]}>Clear</Text>
-            </TouchableOpacity>
-          )}
+        {/* Pagination Dots */}
+        <View style={styles.dotsRow}>
+          {LEARN_CARDS.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.slideDot,
+                slideIndex === index && styles.slideDotActive
+              ]}
+            />
+          ))}
         </View>
 
-        {filteredProviders.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="account-search-outline" size={60} color={colors.placeholder} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No results found</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>Try a different search or category</Text>
-          </View>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.providersScroll}
-          >
-            {filteredProviders.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={[styles.providerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('ProviderProfile', { provider: p })}
-              >
-                <View style={{ position: 'relative' }}>
-                  <Image
-                    source={p.user?.avatar ? { uri: p.user.avatar } : { uri: `https://ui-avatars.com/api/?name=${p.user?.fullName || 'User'}&background=random` }}
-                    style={styles.providerImg}
-                  />
-                  {p.verification === 'VERIFIED' && (
-                    <View style={styles.verifiedBadgeCard}>
-                      <MaterialCommunityIcons name="check-decagram" size={16} color="#10B981" />
-                    </View>
-                  )}
+        {/* ═══ 5. QUICK ACTIONS ═══ */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('My Tasks')}>
+            <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#134E4A' : '#E6F7F5' }]}>
+              <MaterialCommunityIcons name="clipboard-check-outline" size={24} color="#0D9488" />
+              {activeTaskCount > 0 && (
+                <View style={[styles.quickBadge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.quickBadgeText}>{activeTaskCount}</Text>
                 </View>
-                <View style={[styles.ratingBadge, { backgroundColor: colors.card }]}>
-                  <MaterialCommunityIcons name="star" size={12} color="#FBBF24" />
-                  <Text style={[styles.ratingText, { color: colors.text }]}>{p.rating || '0.0'}</Text>
+              )}
+            </View>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>My Tasks</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{activeTaskCount} Active</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('Messages')}>
+            <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#134E4A' : '#E6F7F5' }]}>
+              <MaterialCommunityIcons name="chat-processing-outline" size={24} color="#0D9488" />
+              {unreadCount > 0 && (
+                <View style={[styles.quickBadge, { backgroundColor: '#EF4444' }]}>
+                  <Text style={styles.quickBadgeText}>{unreadCount}</Text>
                 </View>
-                <View style={styles.providerInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={[styles.providerName, { color: colors.text }]} numberOfLines={1}>{p.user?.fullName || 'No Name'}</Text>
-                  </View>
-                  <Text style={[styles.providerSkill, { color: colors.textSecondary }]}>
-                    {p.skills && p.skills.length > 0 ? p.skills[0] : 'Professional'}
-                  </Text>
-                  <View style={styles.distanceRow}>
-                    <MaterialCommunityIcons name="map-marker" size={12} color={colors.placeholder} />
-                    <Text style={[styles.distanceText, { color: colors.placeholder }]}>{p.serviceArea || 'Nearby'}</Text>
-                  </View>
-                </View>
+              )}
+            </View>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>Messages</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{unreadCount} Unread</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('FavoriteProviders')}>
+            <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#422006' : '#FFF7ED' }]}>
+              <MaterialCommunityIcons name="star" size={24} color="#F59E0B" />
+            </View>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>Favorites</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{savedCount} Saved</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('ProviderList', { verifiedOnly: true })}>
+            <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#052E16' : '#ECFDF5' }]}>
+              <MaterialCommunityIcons name="check-decagram" size={24} color="#22C55E" />
+            </View>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>Verified Pros</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>Top Rated</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ═══ 6. POPULAR CATEGORIES ═══ */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Popular Categories</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ProviderList')}>
+            <Text style={styles.viewAll}>View all</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+          {CATEGORIES.map(cat => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[styles.catPill, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+              onPress={() => navigation.navigate('ProviderList', { category: cat.name })}
+            >
+              <MaterialCommunityIcons name={cat.icon} size={16} color={cat.color} />
+              <Text style={[styles.catText, { color: colors.text }]}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* ═══ 7. RECOMMENDED PROFESSIONALS ═══ */}
+        {providers.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Professionals</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ProviderList')}>
+                <Text style={styles.viewAll}>View all</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.proScroll}>
+              {providers.slice(0, 10).map(p => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[styles.proCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+                  onPress={() => navigation.navigate('ProviderProfile', { provider: p })}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.proImgWrap}>
+                    <Image
+                      source={getMediaUrl(p.user?.avatar) ? { uri: getMediaUrl(p.user.avatar) } : { uri: `https://ui-avatars.com/api/?name=${p.user?.fullName || 'U'}&background=random&size=120` }}
+                      style={styles.proImg}
+                    />
+                    {p.verification === 'VERIFIED' && (
+                      <View style={styles.proVerified}>
+                        <MaterialCommunityIcons name="check-decagram" size={18} color="#22C55E" />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.proName, { color: colors.text }]} numberOfLines={1}>{p.user?.fullName || 'Professional'}</Text>
+                  <Text style={[styles.proSkill, { color: colors.textSecondary }]} numberOfLines={1}>{p.skills?.[0] || 'Expert'}</Text>
+                  <View style={styles.proRatingRow}>
+                    <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
+                    <Text style={[styles.proRating, { color: colors.text }]}>{p.rating || '0.0'}</Text>
+                    <Text style={[styles.proReviews, { color: colors.textSecondary }]}>({p.reviewCount || 0})</Text>
+                    <Text style={[styles.proDist, { color: colors.textSecondary }]}>{p.serviceArea ? `${p.serviceArea}` : '~ nearby'}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.viewProfileBtn, { borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => navigation.navigate('ProviderProfile', { provider: p })}
+                  >
+                    <Text style={styles.viewProfileText}>View Profile</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
         )}
 
-      </ScrollView>
-
-      {/* Filter Modal */}
-      <Modal visible={showFilters} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Search Filters</Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.filterLabel, { color: colors.text }]}>Max Distance: {filters.distance} km</Text>
-            <View style={styles.filterOptions}>
-              {[5, 10, 20, 50].map(d => (
-                <TouchableOpacity 
-                  key={d} 
-                  style={[styles.filterChip, { backgroundColor: filters.distance === d ? colors.accent : colors.background }]}
-                  onPress={() => setFilters({...filters, distance: d})}
-                >
-                  <Text style={{ color: filters.distance === d ? '#FFF' : colors.text }}>{d}km</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.filterLabel, { color: colors.text, marginTop: 20 }]}>Minimum Rating: {filters.rating}+</Text>
-            <View style={styles.filterOptions}>
-              {[3.5, 4.0, 4.5, 4.8].map(r => (
-                <TouchableOpacity 
-                  key={r} 
-                  style={[styles.filterChip, { backgroundColor: filters.rating === r ? colors.accent : colors.background }]}
-                  onPress={() => setFilters({...filters, rating: r})}
-                >
-                  <Text style={{ color: filters.rating === r ? '#FFF' : colors.text }}>{r}★</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.applyBtn, { backgroundColor: colors.accent }]}
-              onPress={() => {
-                setFiltersApplied(true);
-                setShowFilters(false);
-              }}
-            >
-              <Text style={styles.applyBtnText}>Apply Filters</Text>
-            </TouchableOpacity>
+        {/* ═══ 8. INVITE & EARN BANNER ═══ */}
+        <TouchableOpacity
+          style={[styles.inviteCard, { backgroundColor: isDarkMode ? '#134E4A' : '#ECFDF5', borderColor: isDarkMode ? '#0D9488' : '#A7F3D0' }]}
+          onPress={() => navigation.navigate('Invitation')}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="gift" size={36} color="#0D9488" />
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={[styles.inviteTitle, { color: colors.text }]}>Invite & Earn 🎉</Text>
+            <Text style={[styles.inviteSub, { color: colors.textSecondary }]}>Invite a friend and earn 1 coin</Text>
           </View>
-        </View>
-      </Modal>
+          <LinearGradient colors={['#0D9488', '#14B8A6']} style={styles.inviteBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={styles.inviteBtnText}>Invite Now</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
-  searchSection: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  scroll: { paddingBottom: 110 },
+
+  // 1. HEADER
+  header: {
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 54,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  menuBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  greetText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  nameText: { fontSize: 22, fontWeight: '900', color: '#FFF', marginTop: 1 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 2 },
+  locationText: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
+  bellBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  bellBadge: { position: 'absolute', top: -2, right: -2, backgroundColor: '#EF4444', minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#2563EB' },
+  bellBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+
+  // 1.5. SEARCH BAR & FILTER
+  searchRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
   searchBar: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 14, height: 50, borderRadius: 16, borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 50,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    borderWidth: 1,
   },
-  searchInput: { 
-    flex: 1, 
-    fontSize: 15, 
-    fontWeight: Platform.OS === 'ios' ? '500' : 'normal',
-    textAlignVertical: 'center',
-    paddingVertical: 0,
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
   },
-  filterBtn: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4 },
-  postTaskCard: {
-    margin: 20, borderRadius: 25, padding: 25,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
+  filterBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
-  postTaskContent: { flex: 1 },
-  postTaskTitle: { color: '#FFF', fontSize: 18, fontWeight: Platform.OS === 'ios' ? '800' : 'bold', marginBottom: 5 },
-  postTaskSubtitle: { fontSize: 12, marginBottom: 15 },
-  postBtn: { alignSelf: 'flex-start', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  postBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  postTaskImg: { width: 80, height: 80 },
-  carouselBlock: { marginBottom: 20 },
-  carouselTrack: { paddingHorizontal: 20, gap: 8 },
-  carouselSlide: { width: width - 36, height: 156, borderRadius: 8, overflow: 'hidden' },
-  carouselImage: { width: '100%', height: '100%', position: 'absolute' },
-  carouselCopy: { flex: 1, justifyContent: 'flex-end', padding: 16, backgroundColor: 'rgba(0,0,0,0.32)' },
-  carouselCopyTitle: { fontSize: 18, color: '#FFF', fontWeight: '900' },
-  carouselCopyText: { fontSize: 13, color: 'rgba(255,255,255,0.86)', lineHeight: 18, marginTop: 4 },
-  recommendedSection: { marginBottom: 25 },
-  recommendedCard: { marginHorizontal: 20, height: 180, borderRadius: 25, overflow: 'hidden', borderWidth: 1 },
-  recommendedImg: { width: '100%', height: '100%' },
-  recommendedGradient: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  recommendedInfo: { position: 'absolute', bottom: 20, left: 20, zIndex: 2 },
-  recommendedName: { color: '#FFF', fontSize: 20, fontWeight: '900' },
-  recommendedMeta: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  recBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-  recBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
-  promotedBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 10 },
-  promotedText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 10, marginBottom: 15 },
-  sectionTitle: { fontSize: 18, fontWeight: '800' },
-  viewAll: { fontSize: 14, fontWeight: '700' },
-  catChipsScroll: { paddingLeft: 20, paddingRight: 10, paddingBottom: 16, gap: 10 },
-  catChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 14,
-    borderRadius: 30, borderWidth: 1,
+
+  // 2. WALLET CARD
+  walletCard: {
+    marginHorizontal: 16, 
+    marginTop: 16, 
+    borderRadius: 24, 
+    paddingHorizontal: 20, 
+    paddingVertical: 22,
+    flexDirection: 'row', 
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 6 }, 
+    shadowOpacity: 0.08, 
+    shadowRadius: 12, 
+    elevation: 4,
   },
-  catChipIcon: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  catChipText: { 
-    fontSize: 13, 
-    fontWeight: Platform.OS === 'ios' ? '700' : 'bold',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+  walletLeftCol: { 
+    flex: 1.3,
+    alignItems: 'flex-start',
   },
-  providersScroll: { paddingLeft: 20, paddingRight: 10 },
-  providerCard: { width: 160, borderRadius: 20, marginRight: 15, padding: 10, borderWidth: 1 },
-  providerImg: { width: '100%', height: 110, borderRadius: 15, backgroundColor: '#F3F4F6' },
-  verifiedBadgeCard: { position: 'absolute', bottom: 6, right: 6, backgroundColor: '#FFF', borderRadius: 10, padding: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
-  ratingBadge: { position: 'absolute', top: 18, right: 18, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 3 },
-  ratingText: { fontSize: 11, fontWeight: '800' },
-  providerInfo: { marginTop: 10, paddingHorizontal: 5 },
-  providerName: { 
-    fontSize: 14, 
-    fontWeight: Platform.OS === 'ios' ? '800' : 'bold',
-    includeFontPadding: false,
+  walletHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
-  providerSkill: { fontSize: 11, marginTop: 2 },
-  distanceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  distanceText: { fontSize: 10, fontWeight: '500' },
-  emptyState: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 12 },
-  emptySubtitle: { fontSize: 14, marginTop: 6, textAlign: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  modalTitle: { fontSize: 20, fontWeight: '900' },
-  filterLabel: { fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  filterOptions: { flexDirection: 'row', gap: 10 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
-  applyBtn: { marginTop: 40, height: 56, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  applyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  walletIconWrap: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 10, 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  walletLabel: { 
+    fontSize: 10.5, 
+    color: 'rgba(255,255,255,0.75)', 
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  walletAmount: { 
+    fontSize: 22, 
+    fontWeight: '900', 
+    color: '#FFF', 
+    marginBottom: 12,
+  },
+  walletDivider: { 
+    width: 1, 
+    height: 70, 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
+    marginHorizontal: 16,
+    alignSelf: 'center',
+  },
+  walletRightCol: { 
+    flex: 0.9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletTxCount: { 
+    fontSize: 28, 
+    fontWeight: '900', 
+    color: '#FFF', 
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  walletSub: { 
+    fontSize: 10.5, 
+    color: 'rgba(255,255,255,0.65)', 
+    fontWeight: '700',
+  },
+  topUpBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4, 
+    backgroundColor: '#FFF', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 14, 
+  },
+  topUpText: { 
+    fontSize: 11.5, 
+    fontWeight: '900', 
+    color: '#0D9488' 
+  },
+
+  // 3. PROGRESS CARD
+  progressCard: {
+    marginHorizontal: 16, marginTop: 14, borderRadius: 24, paddingHorizontal: 22, paddingVertical: 26,
+    flexDirection: 'row', alignItems: 'center', overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+  },
+  progressTitle: { fontSize: 15, color: 'rgba(255,255,255,0.85)', fontWeight: '800' },
+  progressCount: { fontSize: 22, fontWeight: '900', color: '#FFF', marginTop: 4 },
+  progressSub: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 4, fontWeight: '600' },
+  progressBar: { flexDirection: 'row', gap: 4, marginTop: 12 },
+  progressSegment: { flex: 1, height: 6, borderRadius: 3 },
+  progressRight: { alignItems: 'flex-end', marginLeft: 16 },
+  levelBadge: { backgroundColor: '#0D9488', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },
+  levelText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
+  rewardLabel: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 10, fontWeight: '700' },
+  rewardAmount: { fontSize: 16, fontWeight: '900', color: '#22C55E' },
+
+  // 4. CTA CARD
+  ctaCard: {
+    marginHorizontal: 16, marginTop: 14, borderRadius: 24, paddingHorizontal: 24, paddingVertical: 28,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 4,
+  },
+  ctaTitle: { fontSize: 20, fontWeight: '900', marginBottom: 6 },
+  ctaSub: { fontSize: 13, lineHeight: 18, marginBottom: 14, fontWeight: '600' },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 14 },
+  ctaBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  ctaImg: { width: 110, height: 110 },
+
+  // 4.5. LEARN CAROUSEL
+  learnHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  learnTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  seeAllText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  learnScroll: {
+    paddingLeft: 20,
+    paddingRight: 10,
+    gap: 12,
+  },
+  learnCard: {
+    width: width - 70,
+    height: 160,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  learnLeft: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  stepBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  stepBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  learnCardTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  learnCardDesc: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  learnCardImage: {
+    width: 100,
+    height: 120,
+    alignSelf: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  slideDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
+  },
+  slideDotActive: {
+    width: 18,
+    backgroundColor: '#0D9488',
+  },
+
+  // 5. QUICK ACTIONS
+  quickActions: {
+    flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 12,
+    marginTop: 20, marginBottom: 8,
+  },
+  quickItem: { alignItems: 'center', width: (width - 48) / 4 },
+  quickIcon: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  quickBadge: { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  quickBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  quickLabel: { fontSize: 12, fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  quickSub: { fontSize: 10, textAlign: 'center' },
+
+  // SECTION HEADER
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginTop: 20, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '900' },
+  viewAll: { fontSize: 13, fontWeight: '700', color: '#0D9488' },
+
+  // 6. CATEGORIES
+  catScroll: { paddingLeft: 16, paddingRight: 8, gap: 8 },
+  catPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1 },
+  catText: { fontSize: 13, fontWeight: '600' },
+
+  // 7. PROFESSIONALS
+  proScroll: { paddingLeft: 16, paddingRight: 8 },
+  proCard: { width: 150, borderRadius: 16, padding: 14, marginRight: 12, borderWidth: 1, alignItems: 'center' },
+  proImgWrap: { position: 'relative', marginBottom: 10 },
+  proImg: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E2E8F0' },
+  proVerified: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#FFF', borderRadius: 10, padding: 1 },
+  proName: { fontSize: 13, fontWeight: '800', textAlign: 'center', marginBottom: 2 },
+  proSkill: { fontSize: 11, textAlign: 'center', marginBottom: 6 },
+  proRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 10, flexWrap: 'wrap', justifyContent: 'center' },
+  proRating: { fontSize: 12, fontWeight: '800' },
+  proReviews: { fontSize: 10 },
+  proDist: { fontSize: 10 },
+  viewProfileBtn: { width: '100%', paddingVertical: 8, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+  viewProfileText: { fontSize: 12, fontWeight: '700', color: '#0D9488' },
+
+  // 8. INVITE BANNER
+  inviteCard: {
+    marginHorizontal: 16, marginTop: 20, marginBottom: 10, borderRadius: 16, padding: 16,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1,
+  },
+  inviteTitle: { fontSize: 15, fontWeight: '800' },
+  inviteSub: { fontSize: 12, marginTop: 2, lineHeight: 16 },
+  inviteBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+  inviteBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
 });
 
 export default HomeScreen;

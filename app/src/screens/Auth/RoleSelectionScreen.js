@@ -4,7 +4,6 @@ import {
   StatusBar, ImageBackground, Dimensions, ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useLanguage } from '../../context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
@@ -43,21 +42,14 @@ const RoleSelectionScreen = ({ navigation }) => {
             onPress={() => handleSelectRole('client')}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.08)']}
-              style={styles.cardGradient}
-            >
-              <View style={styles.cardBorder}>
-                <View style={styles.cardContent}>
-                  <View style={styles.roleIcon}><MaterialCommunityIcons name="account-search-outline" size={26} color="#FFF" /></View>
-                  <View style={styles.textWrap}>
-                    <Text style={styles.cardTitle}>{t('roleSelection.hireTitle')}</Text>
-                    <Text style={styles.cardSubtitle}>{t('roleSelection.hireDesc')}</Text>
-                  </View>
-                  <MaterialCommunityIcons name="chevron-right" size={22} color="#FFF" />
-                </View>
+            <View style={[styles.cardContent, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+              <View style={styles.roleIcon}><MaterialCommunityIcons name="account-search-outline" size={26} color="#FFF" /></View>
+              <View style={styles.textWrap}>
+                <Text style={styles.cardTitle}>{t('roleSelection.hireTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('roleSelection.hireDesc')}</Text>
               </View>
-            </LinearGradient>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#FFF" />
+            </View>
           </TouchableOpacity>
 
           {/* Service Provider Option */}
@@ -66,21 +58,14 @@ const RoleSelectionScreen = ({ navigation }) => {
             onPress={() => handleSelectRole('provider')}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.08)']}
-              style={styles.cardGradient}
-            >
-              <View style={styles.cardBorder}>
-                <View style={styles.cardContent}>
-                  <View style={styles.roleIcon}><MaterialCommunityIcons name="toolbox-outline" size={26} color="#FFF" /></View>
-                  <View style={styles.textWrap}>
-                    <Text style={styles.cardTitle}>{t('roleSelection.workTitle')}</Text>
-                    <Text style={styles.cardSubtitle}>{t('roleSelection.workDesc')}</Text>
-                  </View>
-                  <MaterialCommunityIcons name="chevron-right" size={22} color="#FFF" />
-                </View>
+            <View style={[styles.cardContent, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
+              <View style={styles.roleIcon}><MaterialCommunityIcons name="toolbox-outline" size={26} color="#FFF" /></View>
+              <View style={styles.textWrap}>
+                <Text style={styles.cardTitle}>{t('roleSelection.workTitle')}</Text>
+                <Text style={styles.cardSubtitle}>{t('roleSelection.workDesc')}</Text>
               </View>
-            </LinearGradient>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#FFF" />
+            </View>
           </TouchableOpacity>
           </View>
 
@@ -111,9 +96,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.82)', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
   optionsContainer: { gap: 14 },
   optionCard: { overflow: 'hidden', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.22)' },
-  cardGradient: {},
-  cardBorder: {},
-  cardContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, backgroundColor: 'rgba(255,255,255,0.04)', gap: 12 },
+  cardContent: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, gap: 12 },
   roleIcon: { width: 46, height: 46, backgroundColor: 'rgba(30,103,209,0.72)', alignItems: 'center', justifyContent: 'center' },
   textWrap: { flex: 1 },
   cardTitle: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 5 },

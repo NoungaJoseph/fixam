@@ -4,7 +4,7 @@ import {
   StatusBar, SafeAreaView, Image, TextInput, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 
@@ -57,7 +57,7 @@ const TopUpPaymentScreen = ({ navigation, route }) => {
   };
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} style={styles.background}>
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Header */}
@@ -162,7 +162,7 @@ const TopUpPaymentScreen = ({ navigation, route }) => {
           </View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

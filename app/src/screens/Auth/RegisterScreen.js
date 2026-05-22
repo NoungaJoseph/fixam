@@ -4,7 +4,7 @@ import {
   StatusBar, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 
 const RegisterScreen = ({ navigation, route }) => {
@@ -30,6 +30,26 @@ const RegisterScreen = ({ navigation, route }) => {
     const normalizedPhone = formData.phone.replace(/\D/g, '');
     const userData = { ...formData, phone: normalizedPhone, fullName: `${formData.firstName} ${formData.lastName}`.trim() };
 
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      alert("First name and last name are required");
+      return;
+    }
+    if (!formData.email.trim() || !/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+      alert("A valid email address is required");
+      return;
+    }
+    if (!normalizedPhone || normalizedPhone.length < 9) {
+      alert("A valid phone number is required");
+      return;
+    }
+    if (!formData.location.trim()) {
+      alert("Your location is required");
+      return;
+    }
+    if (!formData.password || formData.password.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
     if (!agree) {
       alert("Please agree to the terms and conditions");
       return;
@@ -48,7 +68,7 @@ const RegisterScreen = ({ navigation, route }) => {
   const inputStyle = { backgroundColor: colors.card, borderColor: colors.border, color: colors.text };
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} style={styles.background}>
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.safe}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.safe}>
@@ -125,7 +145,7 @@ const RegisterScreen = ({ navigation, route }) => {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

@@ -6,7 +6,6 @@ import TabNavigator from './TabNavigator';
 import ProviderTabNavigator from './ProviderTabNavigator';
 import { useTheme } from '../context/ThemeContext';
 import { View, ActivityIndicator } from 'react-native';
-import { COLORS } from '../services/theme';
 
 const AppNavigator = () => {
   const { user, isLoading, isRestoring } = useAuth();

@@ -4,32 +4,18 @@ import {
   Image, StatusBar, SafeAreaView, Linking, Share, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
+import { useAppContext } from '../../context/AppContext';
+import api, { getMediaUrl } from '../../services/api';
 
 const ProviderProfileScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { favoriteProviderIds, toggleFavoriteProvider } = useAppContext();
   const provider = route.params?.provider || null;
   const [reviews, setReviews] = React.useState([]);
 
-  React.useLayoutEffect(() => {
-    const parent = navigation.getParent();
-    if (parent) {
-      parent.setOptions({ tabBarStyle: { display: 'none' } });
-    }
-    return () => {
-      if (parent) {
-        parent.setOptions({
-          tabBarStyle: {
-            display: 'flex',
-            height: 65, paddingBottom: 10, paddingTop: 10,
-            backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.border,
-          },
-        });
-      }
-    };
-  }, [navigation, colors.tabBar, colors.border]);
+
 
   React.useEffect(() => {
     const userId = provider?.user?.id;
@@ -44,315 +30,944 @@ const ProviderProfileScreen = ({ route, navigation }) => {
       <View style={[styles.container, { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }]}>
         <Text style={[styles.sectionTitle, { color: colors.text, textAlign: 'center' }]}>Provider profile unavailable</Text>
         <Text style={[styles.aboutText, { color: colors.textSecondary, textAlign: 'center', marginBottom: 18 }]}>This application is missing provider details. Please refresh the task and try again.</Text>
-        <TouchableOpacity style={[styles.hireBtn, { backgroundColor: colors.accent, flex: 0, paddingHorizontal: 20 }]} onPress={() => navigation.goBack()}>
-          <Text style={styles.hireBtnText}>Go Back</Text>
+        <TouchableOpacity style={[styles.bookButton, { backgroundColor: colors.accent, flex: 0, paddingHorizontal: 20 }]} onPress={() => navigation.goBack()}>
+          <Text style={styles.bookButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const skills = provider.skills || [];
-  const portfolio = provider.portfolio || [];
-  const certificates = provider.certificates || [];
+  // Pure dynamic data binding from DB
+  const fullName = provider.user?.fullName || 'Provider';
+  const avatarUri = getMediaUrl(provider.user?.avatar)
+    ? getMediaUrl(provider.user.avatar)
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=0D9488&color=fff&size=200`;
+
+  const ratingVal = provider.rating ? parseFloat(provider.rating).toFixed(1) : '0.0';
+  const reviewCountVal = provider.reviewCount || reviews.length || 0;
+  const jobsCompletedCount = provider.jobsCompleted || reviews.filter(r => r.rating >= 4).length || 0;
+  const experienceLevel = provider.experienceLevel || 'Standard';
+  const bio = provider.bio || 'No biography provided yet.';
+  const serviceArea = provider.serviceArea || 'Douala, Cameroon';
+  const isOnline = provider.user?.isOnline || false;
+  const isFavorite = favoriteProviderIds?.includes(provider.id);
+  
+  const ratePrice = provider.rate 
+    ? `${provider.rate.toLocaleString()} FCFA` 
+    : 'Contact for Price';
+
+  const skills = provider.skills && provider.skills.length > 0 
+    ? provider.skills 
+    : [];
+
   const socialLinks = provider.socialLinks || {};
+  const hasSocialLinks = Object.values(socialLinks).some(Boolean);
+
+  const joinedDate = provider.user?.createdAt 
+    ? new Date(provider.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : 'Recent';
+
+  const handleShare = async () => {
+    try {
+      const uid = provider?.user?.id;
+      const url = uid ? `https://fixam.app/profile/${uid}` : 'https://fixam.app/download';
+      await Share.share({
+        title: `${fullName} profile`,
+        message: `Book ${fullName} on Fixam: ${url}`,
+        ...(Platform.OS === 'ios' ? { url } : {}),
+      });
+    } catch (_) {}
+  };
+
+  // Expertise styling
+  const getSkillStyles = (skill) => {
+    const s = skill.toLowerCase();
+    if (s.includes('plumbing')) {
+      return { bg: '#ECFDF5', border: '#A7F3D0', text: '#065F46', icon: 'filter-variant' };
+    }
+    if (s.includes('pipe') || s.includes('install')) {
+      return { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', icon: 'hammer-wrench' };
+    }
+    if (s.includes('repair')) {
+      return { bg: '#F3E8FF', border: '#E9D5FF', text: '#5B21B6', icon: 'wrench' };
+    }
+    return { bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', icon: 'cog-outline' };
+  };
 
   return (
-    <LinearGradient 
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} 
-      style={styles.container}
-    >
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Provider Profile</Text>
-          <TouchableOpacity
-            style={[styles.shareBtn, { backgroundColor: colors.card }]}
-            onPress={async () => {
-              try {
-                const uid = provider?.user?.id;
-                const url = uid ? `https://fixam.app/profile/${uid}` : 'https://fixam.app/download';
-                await Share.share({
-                  title: `${provider?.user?.fullName || 'Fixam'} profile`,
-                  message: `Book ${provider?.user?.fullName || 'this provider'} on Fixam: ${url}`,
-                  ...(Platform.OS === 'ios' ? { url } : {}),
-                });
-              } catch (_) {}
-            }}
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#FAFAFA' }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        
+        {/* Curved Gradient Header */}
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#0E7490', '#0D9488']}
+            style={styles.curvedHeader}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <MaterialCommunityIcons name="share-variant-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+            <SafeAreaView style={styles.headerSafeArea}>
+              <View style={styles.headerActions}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+                  <MaterialCommunityIcons name="arrow-left" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Provider Profile</Text>
+                <TouchableOpacity onPress={handleShare} style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+                  <MaterialCommunityIcons name="share-variant-outline" size={20} color={isDarkMode ? '#FFF' : '#0F172A'} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => toggleFavoriteProvider?.(provider.id)} style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+                  <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={21} color={isFavorite ? '#EF4444' : (isDarkMode ? '#FFF' : '#0F172A')} />
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+          </LinearGradient>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150 }}>
-          
-          {/* Profile Hero */}
-          <View style={styles.profileHero}>
-            <View style={[styles.avatarContainer, { borderColor: colors.accent }]}>
-              <Image
-                source={provider.user?.avatar ? { uri: provider.user.avatar } : { uri: `https://ui-avatars.com/api/?name=${provider.user?.fullName || 'User'}&background=random` }}
-                style={styles.heroAvatar}
-              />
-              {provider.user?.isOnline && <View style={styles.onlineStatus} />}
-              {/* Verified badge overlay on avatar - like TikTok */}
+          {/* Hanging Avatar */}
+          <View style={styles.avatarWrapper}>
+            <View style={[styles.avatarBorderShadow, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+              <Image source={{ uri: avatarUri }} style={styles.heroAvatar} />
               {provider.verification === 'VERIFIED' && (
                 <View style={styles.verifiedOverlay}>
-                  <MaterialCommunityIcons name="check-decagram" size={22} color="#FFF" />
+                  <MaterialCommunityIcons name="check" size={16} color="#FFF" />
                 </View>
               )}
             </View>
-            <View style={styles.nameRow}>
-              <Text style={[styles.heroName, { color: colors.text }]}>{provider.user?.fullName || 'No Name'}</Text>
-              {provider.verification === 'VERIFIED' && (
-                <MaterialCommunityIcons name="check-decagram" size={24} color="#10B981" />
-              )}
-            </View>
+          </View>
+        </View>
+
+        {/* Profile Details */}
+        <View style={styles.profileDetailsSection}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.heroName, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{fullName}</Text>
             {provider.verification === 'VERIFIED' && (
-              <View style={styles.verifiedBanner}>
-                <MaterialCommunityIcons name="shield-check" size={14} color="#10B981" />
-                <Text style={styles.verifiedBannerText}>Verified Professional</Text>
-              </View>
-            )}
-            <View style={{ alignItems: 'center' }}>
-              <View style={styles.locationRow}>
-                 <MaterialCommunityIcons name="map-marker" size={14} color={colors.accent} />
-                 <Text style={[styles.locationText, { color: colors.textSecondary }]}>
-                   {provider.serviceArea || 'Nearby'} • Douala, Cameroon
-                 </Text>
-              </View>
-            </View>
-
-            {/* Social Links Row */}
-            {Object.values(socialLinks).some(link => !!link) && (
-              <View style={styles.socialIconsRow}>
-                {socialLinks.linkedin ? (
-                  <TouchableOpacity style={[styles.socialIconBtn, { backgroundColor: '#0077B5' }]} onPress={() => Linking.openURL(socialLinks.linkedin)}>
-                    <MaterialCommunityIcons name="linkedin" size={18} color="#FFF" />
-                  </TouchableOpacity>
-                ) : null}
-                {socialLinks.facebook ? (
-                  <TouchableOpacity style={[styles.socialIconBtn, { backgroundColor: '#1877F2' }]} onPress={() => Linking.openURL(socialLinks.facebook)}>
-                    <MaterialCommunityIcons name="facebook" size={18} color="#FFF" />
-                  </TouchableOpacity>
-                ) : null}
-                {socialLinks.instagram ? (
-                  <TouchableOpacity style={[styles.socialIconBtn, { backgroundColor: '#E4405F' }]} onPress={() => Linking.openURL(socialLinks.instagram)}>
-                    <MaterialCommunityIcons name="instagram" size={18} color="#FFF" />
-                  </TouchableOpacity>
-                ) : null}
-                {socialLinks.tiktok ? (
-                  <TouchableOpacity style={[styles.socialIconBtn, { backgroundColor: '#000000' }]} onPress={() => Linking.openURL(socialLinks.tiktok)}>
-                    <MaterialCommunityIcons name="tiktok" size={18} color="#FFF" />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <MaterialCommunityIcons name="check-decagram" size={22} color="#3B82F6" />
             )}
           </View>
 
-          {/* Stats Row */}
-          <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.text }]}>{provider.rating || '0.0'}</Text>
-              <View style={styles.statLabelRow}>
-                <MaterialCommunityIcons name="star" size={12} color="#F59E0B" />
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Rating</Text>
+          {/* Verified Professional Badge */}
+          {provider.verification === 'VERIFIED' && (
+            <View style={styles.badgeWrapper}>
+              <View style={[styles.verifiedProfessionalBadge, { backgroundColor: isDarkMode ? '#115E5920' : '#ECFDF5', borderColor: isDarkMode ? '#115E59' : '#A7F3D0' }]}>
+                <MaterialCommunityIcons name="shield-check" size={14} color="#0D9488" style={{ marginRight: 4 }} />
+                <Text style={styles.verifiedProfessionalText}>Verified Professional</Text>
               </View>
             </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.text }]}>{provider.reviewCount || '0'}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Reviews</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statVal, { color: colors.text }]}>{provider.experienceLevel || 'N/A'}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Level</Text>
-            </View>
+          )}
+
+          {/* Location */}
+          <View style={styles.locationRow}>
+            <MaterialCommunityIcons name="map-marker" size={16} color="#3B82F6" />
+            <Text style={[styles.locationText, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>Nearby • {serviceArea}</Text>
           </View>
 
-          {/* About */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>About Me</Text>
-            <Text style={[styles.aboutText, { color: colors.textSecondary }]}>
-              {provider.bio || 'No bio added yet.'}
+          {/* Availability */}
+          <View style={styles.availabilityRow}>
+            <View style={[styles.greenDot, { backgroundColor: isOnline ? '#22C55E' : '#94A3B8' }]} />
+            <Text style={[styles.availabilityText, { color: isOnline ? '#22C55E' : '#94A3B8' }]}>
+              {isOnline ? 'Available for work' : 'Offline'}
             </Text>
           </View>
+        </View>
 
-          {/* Skills */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Expertise</Text>
-            <View style={styles.skillsList}>
-              {skills.map((skill, i) => (
-                <View key={i} style={[styles.skillTag, { backgroundColor: colors.accent + '15' }]}>
-                  <MaterialCommunityIcons name="check-circle" size={14} color={colors.accent} />
-                  <Text style={[styles.skillTagText, { color: colors.accent }]}>{skill}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {portfolio.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Previous Work</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.portfolioRow}>
-                {portfolio.map((item, i) => (
-                  <View key={`${item.title}-${i}`} style={[styles.portfolioCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.portfolioImage} />}
-                    <Text style={[styles.portfolioTitle, { color: colors.text }]}>{item.title || 'Work sample'}</Text>
-                    <Text style={[styles.portfolioDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description || 'Completed project'}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {certificates.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Certificates</Text>
-              {certificates.map((cert, i) => (
-                <View key={`${cert.title}-${i}`} style={[styles.certificateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                  <MaterialCommunityIcons name="certificate-outline" size={24} color={colors.accent} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.certificateTitle, { color: colors.text }]}>{cert.title || 'Certificate'}</Text>
-                    <Text style={[styles.certificateMeta, { color: colors.textSecondary }]}>{cert.issuer || 'Issuer'}{cert.year ? ` • ${cert.year}` : ''}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {Object.values(socialLinks).some(Boolean) && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Linked Accounts</Text>
-              {[
-                ['linkedin', 'LinkedIn', 'linkedin'],
-                ['facebook', 'Facebook', 'facebook'],
-                ['instagram', 'Instagram', 'instagram'],
-                ['tiktok', 'TikTok', 'music-note']
-              ].filter(([key]) => socialLinks[key]).map(([key, label, icon]) => (
-                <TouchableOpacity key={key} style={[styles.socialLinkRow, { borderBottomColor: colors.border }]} onPress={() => Linking.openURL(socialLinks[key])}>
-                  <MaterialCommunityIcons name={icon} size={22} color={colors.accent} />
-                  <Text style={[styles.socialLinkText, { color: colors.text }]}>{label}</Text>
-                  <MaterialCommunityIcons name="open-in-new" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {/* Reviews */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Reviews ({provider.reviewCount || 0})</Text>
-            </View>
-
-            {reviews.length === 0 ? (
-              <Text style={[styles.aboutText, { color: colors.textSecondary }]}>No reviews yet.</Text>
-            ) : reviews.map((review) => (
-              <View key={review.id} style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.reviewTop}>
-                  <View style={[styles.revAvatar, { backgroundColor: colors.accent + '20', justifyContent: 'center', alignItems: 'center' }]}>
-                    <MaterialCommunityIcons name="account" size={20} color={colors.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.revUser, { color: colors.text }]}>{review.job?.title || 'Completed task'}</Text>
-                    <View style={styles.starsRow}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <MaterialCommunityIcons key={star} name={star <= review.rating ? 'star' : 'star-outline'} size={13} color="#F59E0B" />
-                      ))}
-                    </View>
-                  </View>
-                  <Text style={[styles.revDate, { color: colors.textSecondary }]}>{new Date(review.createdAt).toLocaleDateString()}</Text>
-                </View>
-                {review.comment ? <Text style={[styles.revComment, { color: colors.textSecondary }]}>{review.comment}</Text> : null}
+        {/* Stats Row Container Card */}
+        <View style={styles.statsCardContainer}>
+          <View style={[styles.statsCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+            {/* Rating */}
+            <View style={styles.statItem}>
+              <View style={styles.statIconValRow}>
+                <MaterialCommunityIcons name="star" size={16} color="#F59E0B" style={{ marginRight: 4 }} />
+                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{ratingVal}</Text>
               </View>
-            ))}
+              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>Rating</Text>
+              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>({reviewCountVal})</Text>
+            </View>
+
+            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]} />
+
+            {/* Reviews */}
+            <View style={styles.statItem}>
+              <View style={styles.statIconValRow}>
+                <MaterialCommunityIcons name="shield-check-outline" size={16} color="#3B82F6" style={{ marginRight: 4 }} />
+                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{reviewCountVal}</Text>
+              </View>
+              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>Reviews</Text>
+              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
+            </View>
+
+            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]} />
+
+            {/* Jobs Completed */}
+            <View style={styles.statItem}>
+              <View style={styles.statIconValRow}>
+                <MaterialCommunityIcons name="briefcase-outline" size={16} color="#10B981" style={{ marginRight: 4 }} />
+                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{jobsCompletedCount}</Text>
+              </View>
+              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>Jobs Completed</Text>
+              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
+            </View>
+
+            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]} />
+
+            {/* Level */}
+            <View style={styles.statItem}>
+              <View style={styles.statIconValRow}>
+                <MaterialCommunityIcons name="chart-bar" size={16} color="#8B5CF6" style={{ marginRight: 4 }} />
+                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{experienceLevel}</Text>
+              </View>
+              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>Level</Text>
+              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* About Me Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>About Me</Text>
+          <View style={styles.aboutRow}>
+            <Text style={[styles.aboutText, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>{bio}</Text>
+            
+            {/* Joined Card */}
+            <View style={[styles.joinedCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+              <MaterialCommunityIcons name="calendar-check-outline" size={24} color="#0D9488" />
+              <Text style={styles.joinedTitle}>Joined</Text>
+              <Text style={[styles.joinedSub, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{joinedDate}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Expertise Section */}
+        {skills.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Expertise</Text>
+            <View style={styles.skillsList}>
+              {skills.slice(0, 4).map((skill, i) => {
+                const itemStyles = getSkillStyles(skill);
+                return (
+                  <View 
+                    key={i} 
+                    style={[
+                      styles.skillTag, 
+                      { backgroundColor: isDarkMode ? '#1E293B' : itemStyles.bg, borderColor: isDarkMode ? '#334155' : itemStyles.border }
+                    ]}
+                  >
+                    <MaterialCommunityIcons name={itemStyles.icon} size={15} color={isDarkMode ? '#3B82F6' : itemStyles.text} style={{ marginRight: 5 }} />
+                    <Text style={[styles.skillTagText, { color: isDarkMode ? '#FFF' : itemStyles.text }]}>{skill}</Text>
+                  </View>
+                );
+              })}
+              {skills.length > 4 && (
+                <View style={[styles.skillTagMore, { backgroundColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+                  <Text style={[styles.skillTagMoreText, { color: isDarkMode ? '#FFF' : '#475569' }]}>+{skills.length - 4}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Highlights Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Highlights</Text>
+          <View style={styles.highlightsGrid}>
+            
+            {/* Highlight 1 - Verified Professional Status */}
+            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#115E5920' : '#ECFDF5' }]}>
+                <MaterialCommunityIcons name="shield-check" size={20} color="#10B981" />
+              </View>
+              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Background Verified</Text>
+              {provider.verification === 'VERIFIED' && (
+                <View style={styles.highlightCheckDot}>
+                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
+                </View>
+              )}
+            </View>
+
+            {/* Highlight 2 - Job Success (based on rating) */}
+            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#1E3A8A20' : '#EFF6FF' }]}>
+                <MaterialCommunityIcons name="trophy-outline" size={20} color="#3B82F6" />
+              </View>
+              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>100% Job Success</Text>
+              {parseFloat(ratingVal) >= 4.5 && (
+                <View style={styles.highlightCheckDot}>
+                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
+                </View>
+              )}
+            </View>
+
+            {/* Highlight 3 - On-time Completion */}
+            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#5B21B620' : '#F3E8FF' }]}>
+                <MaterialCommunityIcons name="clock-outline" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>On-time Completion</Text>
+              {parseFloat(ratingVal) >= 4.0 && (
+                <View style={styles.highlightCheckDot}>
+                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
+                </View>
+              )}
+            </View>
+
+            {/* Highlight 4 - Top Rated status */}
+            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#7C2D1220' : '#FFF7ED' }]}>
+                <MaterialCommunityIcons name="thumb-up-outline" size={20} color="#F97316" />
+              </View>
+              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Top Rated Provider</Text>
+              {parseFloat(ratingVal) >= 4.8 && (
+                <View style={styles.highlightCheckDot}>
+                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
+                </View>
+              )}
+            </View>
+
+          </View>
+        </View>
+
+        {/* Linked Accounts Section - Render dynamic accounts only */}
+        {hasSocialLinks && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Linked Accounts</Text>
+            {Object.keys(socialLinks).filter(key => socialLinks[key]).map((key) => {
+              const label = key === 'tiktok' ? 'TikTok' : key === 'linkedin' ? 'LinkedIn' : key === 'facebook' ? 'Facebook' : 'Instagram';
+              
+              // Branded Social Media Logo URLs
+              const logoUrls = {
+                tiktok: 'https://cdn-icons-png.flaticon.com/512/3046/3046124.png',
+                linkedin: 'https://cdn-icons-png.flaticon.com/512/174/174857.png',
+                facebook: 'https://cdn-icons-png.flaticon.com/512/124/124010.png',
+                instagram: 'https://cdn-icons-png.flaticon.com/512/174/174855.png'
+              };
+              
+              const cleanUrl = socialLinks[key];
+              
+              // Robust handle extractor
+              let handleText = cleanUrl;
+              if (cleanUrl.includes('/')) {
+                const parts = cleanUrl.replace(/\/$/, '').split('/');
+                handleText = parts[parts.length - 1] || cleanUrl;
+              }
+              handleText = handleText.replace(/^@/, '');
+
+              return (
+                <TouchableOpacity 
+                  key={key} 
+                  style={[styles.linkedAccountCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9', marginBottom: 8 }]}
+                  onPress={() => Linking.openURL(cleanUrl)}
+                >
+                  <Image source={{ uri: logoUrls[key] }} style={{ width: 22, height: 22, resizeMode: 'contain' }} />
+                  <Text style={[styles.linkedAccountLabel, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{label}</Text>
+                  <Text style={styles.linkedAccountUser} numberOfLines={1}>@{handleText}</Text>
+                  <MaterialCommunityIcons name="open-in-new" size={18} color="#94A3B8" style={{ marginLeft: 'auto' }} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Dynamic Reviews Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.reviewsHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Recent Reviews</Text>
+            {reviews.length > 0 && (
+              <TouchableOpacity onPress={() => navigation.navigate('HelpCenter' /* or proper reviews navigation */)}>
+                <Text style={styles.viewAllText}>View all</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-        </ScrollView>
+          {reviews.length === 0 ? (
+            <View style={[styles.reviewCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9', paddingVertical: 24, alignItems: 'center' }]}>
+              <MaterialCommunityIcons name="star-outline" size={32} color="#94A3B8" style={{ marginBottom: 8 }} />
+              <Text style={[styles.reviewComment, { color: colors.textSecondary, textAlign: 'center' }]}>
+                No reviews yet for this professional.
+              </Text>
+            </View>
+          ) : (
+            reviews.slice(0, 3).map((review, i) => {
+              const reviewerName = review.job?.client?.fullName || 'Verified Client';
+              const reviewerAvatarUri = getMediaUrl(review.job?.client?.avatar);
+              const reviewerAvatar = reviewerAvatarUri
+                ? { uri: reviewerAvatarUri } 
+                : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&background=0D9488&color=fff` };
+              const reviewDateText = review.createdAt 
+                ? new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Recent';
 
-        {/* Floating Action Button Bar */}
-        <View style={[styles.footerBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+              return (
+                <View 
+                  key={review.id || i} 
+                  style={[styles.reviewCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9', marginBottom: 12 }]}
+                >
+                  <View style={styles.reviewTopRow}>
+                    <Image source={reviewerAvatar} style={styles.reviewAvatar} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <View style={styles.reviewerNameRow}>
+                        <Text style={[styles.reviewerName, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{reviewerName}</Text>
+                        <View style={[styles.verifiedClientBadge, { backgroundColor: isDarkMode ? '#1E3A8A40' : '#EFF6FF' }]}>
+                          <Text style={styles.verifiedClientText}>Verified Client</Text>
+                        </View>
+                      </View>
+                      <View style={styles.reviewRatingRow}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <MaterialCommunityIcons 
+                            key={star} 
+                            name={star <= (review.rating || 5) ? "star" : "star-outline"} 
+                            size={14} 
+                            color="#F59E0B" 
+                            style={{ marginRight: 2 }} 
+                          />
+                        ))}
+                        <Text style={[styles.reviewRatingText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
+                          {(review.rating || 5).toFixed(1)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.reviewDate}>{reviewDateText}</Text>
+                  </View>
+                  <Text style={[styles.reviewComment, { color: isDarkMode ? '#CBD5E1' : '#475569' }]}>
+                    {review.comment || 'Successfully completed task with excellent feedback!'}
+                  </Text>
+                </View>
+              );
+            })
+          )}
+
+          {/* Dynamic Dots Indicator based on review list count */}
+          {reviews.length > 1 && (
+            <View style={styles.dotsContainer}>
+              {reviews.slice(0, 3).map((_, idx) => (
+                <View 
+                  key={idx} 
+                  style={[
+                    styles.dot, 
+                    idx === 0 ? styles.dotActive : null, 
+                    { backgroundColor: idx === 0 ? '#0D9488' : (isDarkMode ? '#475569' : '#CBD5E1') }
+                  ]} 
+                />
+              ))}
+            </View>
+          )}
+        </View>
+
+      </ScrollView>
+
+      {/* Dynamic Bottom Booking Bar */}
+      <View style={[styles.bookingBarContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderTopColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+        <View style={styles.bookingBar}>
           <TouchableOpacity 
-            style={[styles.chatBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
-            onPress={() => navigation.navigate('Chat', { receiverId: provider.user?.id, userName: provider.user?.fullName, avatar: provider.user?.avatar })}
+            style={[styles.chatButton, { backgroundColor: isDarkMode ? '#0F172A' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
+            onPress={() => navigation.navigate('Chat', { receiverId: provider.user?.id, userName: fullName, avatar: avatarUri })}
           >
-            <MaterialCommunityIcons name="message-text-outline" size={24} color={colors.primary} />
+            <MaterialCommunityIcons name="message-text-outline" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
+          
           <TouchableOpacity 
-            style={[styles.hireBtn, { backgroundColor: colors.accent }]}
-            onPress={() => navigation.navigate('Chat', { receiverId: provider.user?.id, userName: provider.user?.fullName, avatar: provider.user?.avatar })}
+            style={styles.bookButton}
+            onPress={() => navigation.navigate('Chat', { receiverId: provider.user?.id, userName: fullName, avatar: avatarUri })}
           >
-            <Text style={styles.hireBtnText}>Book Now • {provider.rate ? `${provider.rate} FCFA` : 'Contact for Price'}</Text>
+            <Text style={styles.bookButtonText}>Book Now • {ratePrice}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    paddingHorizontal: 20, paddingVertical: 15,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  
+  // Curved Header Styles
+  headerContainer: {
+    position: 'relative',
+    height: 190,
+    marginBottom: 65,
   },
-  backBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '900' },
-  shareBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  profileHero: { alignItems: 'center', marginVertical: 20 },
-  avatarContainer: { width: 110, height: 110, borderRadius: 35, borderWidth: 3, padding: 3, position: 'relative' },
-  heroAvatar: { width: '100%', height: '100%', borderRadius: 30 },
-  onlineStatus: { position: 'absolute', bottom: -5, right: -5, width: 22, height: 22, borderRadius: 11, backgroundColor: '#10B981', borderWidth: 4, borderColor: '#FFF' },
-  verifiedOverlay: { position: 'absolute', bottom: -4, right: -4, width: 32, height: 32, borderRadius: 16, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', borderWidth: 2.5, borderColor: '#FFF' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 15, marginBottom: 6 },
-  heroName: { fontSize: 24, fontWeight: '900' },
-  verifiedBanner: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginBottom: 8 },
-  verifiedBannerText: { fontSize: 12, fontWeight: '800', color: '#10B981' },
-  socialIconsRow: { flexDirection: 'row', gap: 12, marginTop: 15, justifyContent: 'center' },
-  socialIconBtn: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5, elevation: 2 },
-  heroBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  heroBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
-  locationText: { fontSize: 13, fontWeight: '600' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center', marginHorizontal: 20, paddingVertical: 20, borderRadius: 24, marginVertical: 15, borderWidth: 1 },
-  statItem: { alignItems: 'center' },
-  statVal: { fontSize: 19, fontWeight: '900' },
-  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  statLabel: { fontSize: 12, fontWeight: '700' },
-  statDivider: { width: 1, height: 35 },
-  section: { paddingHorizontal: 22, marginVertical: 15 },
-  sectionTitle: { fontSize: 18, fontWeight: '900', marginBottom: 12 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  seeAllText: { fontSize: 14, fontWeight: '700' },
-  aboutText: { fontSize: 14, lineHeight: 22, fontWeight: '500' },
-  skillsList: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  skillTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  skillTagText: { fontSize: 13, fontWeight: '700' },
-  portfolioRow: { gap: 12, paddingRight: 22 },
-  portfolioCard: { width: 180, borderRadius: 18, borderWidth: 1, padding: 12 },
-  portfolioImage: { width: '100%', height: 110, borderRadius: 14, marginBottom: 10 },
-  portfolioTitle: { fontSize: 14, fontWeight: '900' },
-  portfolioDesc: { fontSize: 12, fontWeight: '600', marginTop: 4 },
-  certificateCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 10 },
-  certificateTitle: { fontSize: 14, fontWeight: '900' },
-  certificateMeta: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  socialLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1 },
-  socialLinkText: { flex: 1, fontSize: 15, fontWeight: '900' },
-  reviewCard: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1 },
-  reviewTop: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  revAvatar: { width: 40, height: 40, borderRadius: 12 },
-  revUser: { fontSize: 15, fontWeight: '800' },
-  starsRow: { flexDirection: 'row', gap: 2, marginTop: 2 },
-  revDate: { fontSize: 12, fontWeight: '600' },
-  revComment: { fontSize: 13, lineHeight: 19, fontWeight: '500' },
-  footerBar: { position: 'absolute', bottom: 0, width: '100%', padding: 20, paddingBottom: 35, borderTopWidth: 1, flexDirection: 'row', gap: 15 },
-  chatBtn: { width: 60, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  hireBtn: { flex: 1, height: 60, borderRadius: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  hireBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  curvedHeader: {
+    height: 140,
+    borderBottomLeftRadius: 160,
+    borderBottomRightRadius: 160,
+    transform: [{ scaleX: 1.15 }],
+    overflow: 'hidden',
+  },
+  headerSafeArea: {
+    flex: 1,
+    transform: [{ scaleX: 0.87 }], // Counteract scaleX stretch for layout items
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 10 : 35,
+    gap: 10,
+  },
+  headerBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800',
+    flex: 1,
+    textAlign: 'center',
+  },
+  
+  // Hanging Avatar Styles
+  avatarWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    marginLeft: -55,
+    zIndex: 10,
+  },
+  avatarBorderShadow: {
+    position: 'relative',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    padding: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  heroAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 55,
+  },
+  verifiedOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#22C55E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+
+  // Profile Details Styles
+  profileDetailsSection: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 18,
+    marginBottom: 16,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  heroName: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  badgeWrapper: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  verifiedProfessionalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  verifiedProfessionalText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D9488',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  availabilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  greenDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  availabilityText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Stats Card Styles
+  statsCardContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statIconValRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 4,
+  },
+  statVal: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statSubLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+  },
+
+  // Section Standard Container
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+
+  // About Me Section Styles
+  aboutRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  aboutText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  joinedCard: {
+    width: 96,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  joinedTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  joinedSub: {
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  // Expertise Section Styles
+  skillsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  skillTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  skillTagText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  skillTagMore: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skillTagMoreText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  // Highlights Section Styles
+  highlightsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  highlightCard: {
+    width: '48%',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.01,
+    shadowRadius: 3,
+    elevation: 1,
+    marginBottom: 12,
+  },
+  highlightIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  highlightText: {
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  highlightCheckDot: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Linked Accounts Styles
+  linkedAccountCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.01,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  linkedAccountLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginLeft: 10,
+  },
+  linkedAccountUser: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginLeft: 12,
+    flex: 1,
+  },
+
+  // Recent Reviews Styles
+  reviewsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0D9488',
+  },
+  reviewCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  reviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+  },
+  reviewerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  reviewerName: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  verifiedClientBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  verifiedClientText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#3B82F6',
+  },
+  reviewRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reviewRatingText: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 4,
+  },
+  reviewDate: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  reviewComment: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 14,
+  },
+
+  // Booking Bar Styles
+  bookingBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  bookingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  chatButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  bookButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#0D9488',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  bookButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
 });
 
 export default ProviderProfileScreen;

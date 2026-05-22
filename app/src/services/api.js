@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Set EXPO_PUBLIC_API_URL for device builds, e.g. http://192.168.1.185:5000/api
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://fixam-backend-production.up.railway.app/api';
+export const API_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -23,7 +24,15 @@ api.interceptors.response.use(response => {
   return Promise.reject(error);
 });
 
-export const SOCKET_URL = BASE_URL.replace(/\/api\/?$/, '');
+export const SOCKET_URL = API_ORIGIN;
+
+export const getMediaUrl = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:') || value.startsWith('file:')) {
+    return value;
+  }
+  return `${API_ORIGIN}${value.startsWith('/') ? '' : '/'}${value}`;
+};
 
 export const setAuthToken = (token) => {
   if (token) {

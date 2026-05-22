@@ -434,7 +434,9 @@ const DashboardScreen = ({ navigation }) => {
             </Text>
           </Section>
 
-          <ProfileModeDropdown colors={colors} user={user} isProviderMode={isProviderMode} switchToClient={switchToClient} switchToProvider={switchToProvider} navigation={navigation} defaultMode="PERSONAL" />
+          {user?.role === 'PROVIDER' && (
+            <ProfileModeDropdown colors={colors} user={user} isProviderMode={isProviderMode} switchToClient={switchToClient} switchToProvider={switchToProvider} navigation={navigation} defaultMode="PERSONAL" />
+          )}
 
           <Section colors={colors} title="Trust and verification">
             <View style={styles.profileLineItem}>

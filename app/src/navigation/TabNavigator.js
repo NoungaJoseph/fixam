@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -13,6 +13,7 @@ import { CustomDrawerContent } from './NavigationComponents';
 import HomeScreen from '../screens/Home/HomeScreen';
 import ProviderListScreen from '../screens/Providers/ProviderListScreen';
 import ProviderProfileScreen from '../screens/Providers/ProviderProfileScreen';
+import FavoriteProvidersScreen from '../screens/Providers/FavoriteProvidersScreen';
 import PostTaskScreen from '../screens/Tasks/PostTaskScreen';
 import TaskSuccessScreen from '../screens/Tasks/TaskSuccessScreen';
 import JobStatusScreen from '../screens/Tasks/JobStatusScreen';
@@ -54,9 +55,17 @@ const HomeStack = () => (
     <Stack.Screen name="HomeMain" component={HomeScreen} />
     <Stack.Screen name="ProviderList" component={ProviderListScreen} />
     <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
+    <Stack.Screen name="FavoriteProviders" component={FavoriteProvidersScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="Rating" component={RatingScreen} />
+    <Stack.Screen name="TopUp" component={TopUpScreen} />
+    <Stack.Screen name="TopUpAmount" component={TopUpAmountScreen} />
+    <Stack.Screen name="TopUpPayment" component={TopUpPaymentScreen} />
+    <Stack.Screen name="TopUpSuccess" component={TopUpSuccessScreen} />
+    <Stack.Screen name="CoinPaymentForm" component={CoinPaymentFormScreen} />
+    <Stack.Screen name="CoinPaymentSuccess" component={CoinPaymentSuccessScreen} />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
 );
 
@@ -83,13 +92,14 @@ const ProfileStack = () => (
 
 const WalletStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="WalletMain" component={WalletScreen} />
+    <Stack.Screen name="WalletMain" component={TopUpScreen} />
     <Stack.Screen name="TopUp" component={TopUpScreen} />
     <Stack.Screen name="TopUpAmount" component={TopUpAmountScreen} />
     <Stack.Screen name="TopUpPayment" component={TopUpPaymentScreen} />
     <Stack.Screen name="TopUpSuccess" component={TopUpSuccessScreen} />
     <Stack.Screen name="CoinPaymentForm" component={CoinPaymentFormScreen} />
     <Stack.Screen name="CoinPaymentSuccess" component={CoinPaymentSuccessScreen} />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
 );
 
@@ -116,7 +126,7 @@ const MessagesStack = () => (
 );
 
 const BottomTabNavigator = () => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
   const { unreadCount } = useAppContext();
 
@@ -124,59 +134,150 @@ const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => {
         const routeName = getFocusedRouteNameFromRoute(route) ?? route.name;
-        const hideTabBar = ['Chat', 'ProviderList', 'ProviderProfile', 'DocUpload', 'Selfie', 'VerificationSuccess', 'TopUpAmount', 'TopUpPayment', 'TopUpSuccess', 'CoinPaymentSuccess'].includes(routeName);
+        const hideTabBar = [
+          'Chat', 
+          'DocUpload', 
+          'Selfie', 
+          'VerificationSuccess', 
+          'ProviderList', 
+          'ProviderProfile',
+          'TaskDetails'
+        ].includes(routeName);
         return {
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.placeholder,
-        tabBarStyle: {
-          display: hideTabBar ? 'none' : 'flex',
-          height: 68, paddingBottom: 9, paddingTop: 8,
-          backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.border,
-        },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
-      }}}
+          headerShown: false,
+          tabBarActiveTintColor: '#0D9488',
+          tabBarInactiveTintColor: isDarkMode ? '#64748B' : '#94A3B8',
+          tabBarStyle: {
+            display: hideTabBar ? 'none' : 'flex',
+            height: Platform.OS === 'ios' ? 90 : 76,
+            paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+            paddingTop: 8,
+            backgroundColor: colors.tabBar,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderWidth: 0,
+            borderTopWidth: 0,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            elevation: 16,
+          },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '800', marginTop: 2 },
+        };
+      }}
     >
-      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "home" : "home-outline"} size={25} color={color} />, title: t('tabs.home') }} />
-      <Tab.Screen name="My Tasks" component={TaskStack} options={{ title: 'Tasks', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "list-circle" : "list-circle-outline"} size={26} color={color} /> }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeStack}
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
+          )
+        }}
+      />
+      <Tab.Screen
+        name="My Tasks"
+        component={TaskStack}
+        options={{
+          title: 'Tasks',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "list-circle" : "list-circle-outline"} size={22} color={color} />
+          )
+        }}
+      />
       <Tab.Screen
         name="Create Task"
         component={TaskStack}
         initialParams={{ screen: 'PostTask', params: { startOnPost: true } }}
+        options={{
+          title: 'Create Task',
+          tabBarIcon: ({ focused }) => (
+            <View style={{
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: '#0D9488',
+              borderWidth: 3,
+              borderColor: isDarkMode ? '#0F172A' : '#FFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: -22,
+              shadowColor: '#0D9488',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
+              elevation: 8,
+              transform: [{ scale: focused ? 1.05 : 1 }],
+            }}>
+              <Ionicons name="add" size={24} color="#FFF" />
+            </View>
+          ),
+        }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            navigation.navigate('Create Task', { screen: 'PostTask', params: { startOnPost: true } });
+            navigation.navigate('Create Task', {
+              screen: 'PostTask',
+              params: { startOnPost: true, resetKey: Date.now() },
+            });
           },
         })}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStack}
         options={{
-          title: '',
-          tabBarIcon: ({ focused }) => (
-            <View style={[styles.createTabButton, { backgroundColor: colors.accent, borderColor: colors.tabBar, transform: [{ scale: focused ? 1.04 : 1 }] }]}>
-              <Ionicons name="add" size={34} color="#FFF" />
-            </View>
-          ),
-          tabBarLabel: () => null,
+          title: 'Messages',
+          tabBarBadge: unreadCount > 0 ? unreadCount : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
+          )
         }}
       />
-      <Tab.Screen name="Messages" component={MessagesStack} options={{ title: t('tabs.messages'), tabBarBadge: unreadCount > 0 ? unreadCount : null, tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={25} color={color} /> }} />
-      <Tab.Screen name="Settings" component={ProfileStack} options={{ title: t('tabs.settings'), tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "menu" : "menu-outline"} size={26} color={color} /> }} />
+      <Tab.Screen
+        name="Settings"
+        component={ProfileStack}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
+          )
+        }}
+      />
     </Tab.Navigator>
   );
 };
 
 const TabNavigator = () => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerActiveBackgroundColor: colors.accent + '15',
-        drawerActiveTintColor: colors.accent,
-        drawerInactiveTintColor: colors.textSecondary,
-        drawerLabelStyle: { fontSize: 15, fontWeight: '700', marginLeft: -10 },
-        drawerStyle: { width: '75%' },
+        drawerActiveBackgroundColor: isDarkMode ? '#134E4A' : '#ECFDF5',
+        drawerActiveTintColor: '#0D9488',
+        drawerInactiveTintColor: colors.text,
+        drawerLabelStyle: { fontSize: 15, fontWeight: '700', marginLeft: -6 },
+        drawerItemStyle: { borderRadius: 14, marginHorizontal: 8, paddingVertical: 2 },
+        drawerStyle: { 
+          width: '78%', 
+          backgroundColor: 'transparent',
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 4, height: 0 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+        },
+        drawerContentStyle: { backgroundColor: 'transparent' },
+        overlayColor: 'rgba(15, 23, 42, 0.42)',
+        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0F172A' : '#FFF' },
       }}
     >
       <Drawer.Screen
@@ -184,7 +285,11 @@ const TabNavigator = () => {
         component={BottomTabNavigator}
         options={{
           drawerLabel: 'Home',
-          drawerIcon: ({ color }) => <MaterialCommunityIcons name="home-outline" size={24} color={color} />
+          drawerIcon: ({ color }) => (
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="home-outline" size={22} color={color} />
+            </View>
+          ),
         }}
       />
       <Drawer.Screen
@@ -192,15 +297,11 @@ const TabNavigator = () => {
         component={WalletStack}
         options={{
           drawerLabel: 'My Wallet',
-          drawerIcon: ({ color }) => <MaterialCommunityIcons name="wallet-outline" size={24} color={color} />,
-        }}
-      />
-      <Drawer.Screen
-        name="Tasks"
-        component={TaskStack}
-        options={{
-          drawerLabel: 'My Tasks',
-          drawerIcon: ({ color }) => <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={color} />,
+          drawerIcon: ({ color }) => (
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="wallet-outline" size={22} color={color} />
+            </View>
+          ),
         }}
       />
       <Drawer.Screen
@@ -208,7 +309,11 @@ const TabNavigator = () => {
         component={InvitationScreen}
         options={{
           drawerLabel: 'Invite Friends',
-          drawerIcon: ({ color }) => <MaterialCommunityIcons name="gift-outline" size={24} color={color} />,
+          drawerIcon: ({ color }) => (
+            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialCommunityIcons name="gift-outline" size={22} color={color} />
+            </View>
+          ),
         }}
       />
     </Drawer.Navigator>
@@ -216,19 +321,3 @@ const TabNavigator = () => {
 };
 
 export default TabNavigator;
-
-const styles = {
-  createTabButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-};

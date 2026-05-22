@@ -4,9 +4,8 @@ import {
   FlatList, Dimensions, SafeAreaView, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
-import { COLORS } from '../../services/theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
@@ -70,6 +69,7 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
   const slides = getSlides(role);
   const { loginDirect } = useAuth();
   const { t } = useLanguage();
+  const { isDarkMode, colors } = useTheme();
   const [index, setIndex] = useState(0);
   const listRef = useRef(null);
 
@@ -100,13 +100,15 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
   };
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#F4F8FF', '#EAF2FF']} style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <View style={{ width: 42 }} />
           <TouchableOpacity onPress={finish}>
-            <Text style={styles.skip}>{t('common.skip')}</Text>
+            <Text style={[styles.skip, { color: colors.textSecondary }]}>{t('common.skip')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -123,14 +125,14 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
           }}
           renderItem={({ item }) => (
             <View style={styles.slide}>
-              <View style={styles.imageFrame}>
+              <View style={[styles.imageFrame, { backgroundColor: isDarkMode ? '#1E293B' : '#DDEBFF' }]}>
                 <Image source={item.image} style={styles.image} resizeMode="cover" />
-                <View style={styles.iconBadge}>
+                <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
                   <MaterialCommunityIcons name={item.icon} size={24} color="#FFF" />
                 </View>
               </View>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.text}>{item.text}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+              <Text style={[styles.text, { color: colors.textSecondary }]}>{item.text}</Text>
             </View>
           )}
         />
@@ -138,10 +140,10 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
         <View style={styles.footer}>
           <View style={styles.dots}>
             {slides.map((slide, i) => (
-              <View key={slide.key} style={[styles.dot, i === index && styles.dotActive]} />
+              <View key={slide.key} style={[styles.dot, i === index && [styles.dotActive, { backgroundColor: colors.accent }]]} />
             ))}
           </View>
-          <TouchableOpacity style={styles.nextBtn} onPress={next} disabled={loading}>
+          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.accent }]} onPress={next} disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
@@ -153,7 +155,7 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -161,19 +163,18 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: { flex: 1 },
   header: { height: 66, paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerBtn: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  skip: { fontSize: 14, fontWeight: '800', color: COLORS.textSecondary },
+  skip: { fontSize: 14, fontWeight: '800' },
   slide: { width, paddingHorizontal: 24, alignItems: 'center' },
-  imageFrame: { width: '100%', height: 340, borderRadius: 8, overflow: 'hidden', backgroundColor: '#DDEBFF' },
+  imageFrame: { width: '100%', height: 340, borderRadius: 8, overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
-  iconBadge: { position: 'absolute', right: 18, bottom: 18, width: 54, height: 54, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accent },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: '900', color: COLORS.primary, textAlign: 'center', marginTop: 34 },
-  text: { fontSize: 15, lineHeight: 24, color: COLORS.textSecondary, textAlign: 'center', marginTop: 14 },
+  iconBadge: { position: 'absolute', right: 18, bottom: 18, width: 54, height: 54, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: '900', textAlign: 'center', marginTop: 34 },
+  text: { fontSize: 15, lineHeight: 24, textAlign: 'center', marginTop: 14 },
   footer: { paddingHorizontal: 24, paddingBottom: 34, alignItems: 'center' },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#C7D2FE' },
-  dotActive: { width: 26, backgroundColor: COLORS.accent },
-  nextBtn: { width: '100%', height: 58, borderRadius: 8, backgroundColor: COLORS.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  dotActive: { width: 26 },
+  nextBtn: { width: '100%', height: 58, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   nextText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
 });
 

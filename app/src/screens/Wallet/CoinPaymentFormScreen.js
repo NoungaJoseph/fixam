@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
   StatusBar, SafeAreaView, TextInput, ActivityIndicator,
-  Image, Alert
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
-const ADMIN_PAYMENT_PHONE = '682803006';
-const ADMIN_PAYMENT_NAME = 'NOUNGA JOSEPH YOUMI';
+const PAYMENT_METHODS = [
+  { id: 'MTN', label: 'MTN MoMo', color: '#FFCC00', textColor: '#111827', icon: 'cellphone-wireless' },
+  { id: 'ORANGE', label: 'Orange Money', color: '#F16E00', textColor: '#FFFFFF', icon: 'cellphone-check' },
+];
 
 const CoinPaymentFormScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
@@ -19,12 +20,12 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
   const { package: pkg } = route.params || {};
 
   const [paymentId, setPaymentId] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState('MTN');
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     phone: user?.phone || '',
     email: user?.email || ''
   });
-  const [receiptImage, setReceiptImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,22 +37,6 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
     const random = Math.floor(Math.random() * 10000);
     const id = `PAY-${timestamp}-${random}`;
     setPaymentId(id);
-  };
-
-  const pickReceiptImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-      });
-
-      if (!result.canceled) {
-        setReceiptImage(result.assets[0]);
-      }
-    } catch (error) {
-      console.log('Image picker error:', error);
-    }
   };
 
   const handleSubmitPayment = async () => {
@@ -68,39 +53,25 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Please enter your email address');
       return;
     }
-    if (!receiptImage) {
-      Alert.alert('Error', 'Please upload a payment receipt or screenshot');
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Upload receipt
-      const receiptName = receiptImage.fileName || receiptImage.uri?.split('/').pop() || `receipt-${paymentId}.jpg`;
-      const receiptType = receiptImage.mimeType || (receiptName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg');
-      const formDataToSend = new FormData();
-      formDataToSend.append('amount', pkg.coins || 0);
-      formDataToSend.append('bonus', pkg.bonus || 0);
-      formDataToSend.append('price', pkg.price);
-      formDataToSend.append('paymentId', paymentId);
-      formDataToSend.append('fullName', formData.fullName);
-      formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('receipt', {
-        uri: receiptImage.uri,
-        type: receiptType,
-        name: receiptName
-      });
-
-      const response = await api.post('/transactions/request-coins', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await api.post('/wallet/mobile-money/initiate', {
+        coins: pkg.coins || 0,
+        bonus: pkg.bonus || 0,
+        price: pkg.price,
+        paymentId,
+        provider: selectedMethod,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
       });
 
       // Navigate to success screen
       navigation.replace('CoinPaymentSuccess', {
         transaction: response.data.data,
-        package: pkg
+        package: pkg,
+        message: response.data.message,
       });
     } catch (error) {
       console.log('Payment submission error:', error);
@@ -198,59 +169,44 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             </View>
           </View>
 
+          {/* Payment Method */}
+          <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PAYMENT METHOD</Text>
+            <View style={styles.methodRow}>
+              {PAYMENT_METHODS.map((method) => {
+                const active = selectedMethod === method.id;
+                return (
+                  <TouchableOpacity
+                    key={method.id}
+                    onPress={() => setSelectedMethod(method.id)}
+                    style={[
+                      styles.methodCard,
+                      {
+                        borderColor: active ? colors.accent : colors.border,
+                        backgroundColor: active ? colors.accentSoft : colors.card,
+                      }
+                    ]}
+                  >
+                    <View style={[styles.methodLogo, { backgroundColor: method.color }]}>
+                      <MaterialCommunityIcons name={method.icon} size={20} color={method.textColor} />
+                    </View>
+                    <Text style={[styles.methodText, { color: colors.text }]}>{method.label}</Text>
+                    {active ? <MaterialCommunityIcons name="check-circle" size={18} color={colors.accent} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           {/* Payment Instructions */}
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
             <View style={styles.instructionHeader}>
               <MaterialCommunityIcons name="information" size={24} color={colors.accent} />
-              <Text style={[styles.instructionTitle, { color: colors.accent }]}>Payment Instructions</Text>
+              <Text style={[styles.instructionTitle, { color: colors.accent }]}>How payment works</Text>
             </View>
             <Text style={[styles.instructionText, { color: colors.accent }]}>
-              Send {pkg.price} to the payment account below, then upload the payment receipt or screenshot. Keep your transaction ID visible.
+              Enter your mobile money number and continue. You will receive a confirmation prompt on your phone for {pkg.price}.
             </Text>
-            <View style={[styles.phoneNumber, { marginBottom: 10, borderBottomColor: colors.border }]}>
-              <MaterialCommunityIcons name="account" size={20} color={colors.accent} />
-              <Text style={[styles.phoneText, { color: colors.text }]}>{ADMIN_PAYMENT_NAME}</Text>
-            </View>
-            <View style={[styles.phoneNumber, { borderBottomColor: colors.border }]}>
-              <MaterialCommunityIcons name="phone" size={20} color={colors.accent} />
-              <Text style={[styles.phoneText, { color: colors.text }]}>{ADMIN_PAYMENT_PHONE}</Text>
-            </View>
-          </View>
-
-          {/* Receipt Upload Section */}
-          <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PAYMENT RECEIPT</Text>
-
-            <TouchableOpacity
-              onPress={pickReceiptImage}
-              style={[
-                styles.uploadBox,
-                { borderColor: colors.border }
-              ]}
-            >
-              {receiptImage ? (
-                <View style={styles.receiptPreview}>
-                  <Image
-                    source={{ uri: receiptImage.uri }}
-                    style={styles.receiptImage}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setReceiptImage(null)}
-                    style={[styles.removeBtn, { backgroundColor: '#10B981' }]}
-                  >
-                    <MaterialCommunityIcons name="check" size={20} color="#FFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.uploadContent}>
-                  <MaterialCommunityIcons name="cloud-upload" size={40} color={colors.accent} />
-                  <Text style={[styles.uploadTitle, { color: colors.text }]}>Upload Receipt</Text>
-                  <Text style={[styles.uploadSubtitle, { color: colors.textSecondary }]}>
-                    Click to select receipt image or screenshot
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
           </View>
 
           {/* Coin Calculation */}
@@ -290,7 +246,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             ) : (
               <>
                 <MaterialCommunityIcons name="check-circle" size={20} color="#FFF" />
-                <Text style={styles.submitText}>Submit Payment Request</Text>
+                <Text style={styles.submitText}>Pay with {selectedMethod === 'MTN' ? 'MTN MoMo' : 'Orange Money'}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -439,6 +395,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'monospace'
+  },
+  methodRow: {
+    gap: 12,
+  },
+  methodCard: {
+    minHeight: 64,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  methodLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  methodText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '800',
   },
   uploadBox: {
     borderWidth: 2,

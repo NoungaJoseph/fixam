@@ -1,181 +1,236 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, Switch, Alert, Platform
+  StatusBar, SafeAreaView, Switch, Alert, Platform, Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
-const SettingsScreen = ({ navigation }) => {
+const SettingsScreen = ({ navigation, route }) => {
   const { isDarkMode, colors, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
   const [location, setLocation] = useState(true);
+  const isProviderMode = user?.providerProfile?.profileMode === 'WORK';
 
   useEffect(() => {
     if (user?.role?.toUpperCase() === 'PROVIDER' && user?.providerProfile?.verification !== 'VERIFIED') {
       Alert.alert(
-        'Verification required',
-        'Please verify your account so clients can trust your profile and admin can approve your documents.',
+        'Verification Required',
+        'Verify your account so clients can trust your profile.',
         [
           { text: 'Later', style: 'cancel' },
-          { text: 'Verify now', onPress: () => navigation.navigate('Verification') },
+          { text: 'Verify Now', onPress: () => navigation.navigate('Verification') },
         ]
       );
     }
   }, [navigation, user?.providerProfile?.verification, user?.role]);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out of your account?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: () => logout() },
-      ]
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: () => logout() },
+    ]);
+  };
+
+  const verStatus = user?.providerProfile?.verification;
+  const verColor = verStatus === 'VERIFIED' ? '#22C55E' : verStatus === 'PENDING' ? '#F59E0B' : '#EF4444';
+  const verBg = verStatus === 'VERIFIED' ? '#F0FDF4' : verStatus === 'PENDING' ? '#FFFBEB' : '#FEF2F2';
+  const verLabel = verStatus || 'UNVERIFIED';
+
+  // Icon config: [iconName, bgColor]
+  const ICON_COLORS = {
+    'account-circle-outline': ['#0D9488', '#F0FDFA'],
+    'lock-outline':            ['#8B5CF6', '#F5F3FF'],
+    'check-decagram-outline':  ['#F59E0B', '#FFFBEB'],
+    'translate':               ['#2563EB', '#EFF6FF'],
+    'weather-night':           ['#6366F1', '#EEF2FF'],
+    'map-marker-outline':      ['#0D9488', '#F0FDFA'],
+    'eye-off-outline':         ['#64748B', '#F1F5F9'],
+    'shield-check-outline':    ['#0D9488', '#F0FDFA'],
+    'bell-outline':            ['#EF4444', '#FEF2F2'],
+    'help-circle-outline':     ['#0D9488', '#F0FDFA'],
+    'message-draw':            ['#8B5CF6', '#F5F3FF'],
+    'logout':                  ['#EF4444', '#FEF2F2'],
+  };
+
+  const SettingItem = ({ icon, title, desc, onPress, right, danger }) => {
+    const [iconColor, iconBg] = ICON_COLORS[icon] || [colors.accent, colors.accentSoft];
+    return (
+      <TouchableOpacity
+        style={[styles.settingRow, { borderBottomColor: colors.divider }]}
+        onPress={onPress}
+        disabled={!onPress}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
+          <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
+        </View>
+        <View style={styles.settingBody}>
+          <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
+          {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
+        </View>
+        {right || (onPress && (
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.placeholder} />
+        ))}
+      </TouchableOpacity>
     );
   };
 
-  const SettingItem = ({ icon, title, desc, onPress, right, danger }) => (
-    <TouchableOpacity
-      style={[styles.settingItem, { borderBottomColor: colors.border }]}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <View style={styles.settingInfo}>
-        <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name={icon} size={22} color={danger ? '#EF4444' : colors.primary} />
-        </View>
-        <View style={styles.settingTexts}>
-          <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
-          {desc && <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text>}
-        </View>
-      </View>
-      {right || (onPress && <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />)}
-    </TouchableOpacity>
+  const SectionHeader = ({ icon, label }) => (
+    <View style={styles.sectionHeader}>
+      <MaterialCommunityIcons name={icon} size={15} color={colors.placeholder} />
+      <Text style={[styles.sectionLabel, { color: colors.placeholder }]}>{label}</Text>
+    </View>
+  );
+
+  const SectionCard = ({ children }) => (
+    <View style={[styles.sectionCard, {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+      shadowColor: isDarkMode ? 'transparent' : '#000',
+    }]}>
+      {children}
+    </View>
   );
 
   return (
-    <View style={[styles.background, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-          <View style={styles.standaloneHeader}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings.title')}</Text>
+          {/* Page Title */}
+          <View style={styles.pageHeader}>
+            <View style={styles.headerTopRow}>
+              <Text style={[styles.pageTitle, { color: colors.text }]}>Settings</Text>
+              <TouchableOpacity style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('Notifications')}>
+                <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.pageSub, { color: colors.textSecondary }]}>Manage your account and preferences</Text>
           </View>
 
-          {/* Account Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('settings.account')}</Text>
+          {/* Hero Profile Card */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('UserProfile')}
+            activeOpacity={0.9}
+            style={styles.heroWrapper}
+          >
+            <LinearGradient
+              colors={['#0D9488', '#2563EB']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              {/* Decorative gear */}
+              <View style={styles.gearDecor}>
+                <MaterialCommunityIcons name="cog" size={100} color="rgba(255,255,255,0.08)" />
+              </View>
 
-            <SettingItem
-              icon="account-circle-outline"
-              title={t('settings.profile')}
-              desc={t('settings.profileDesc')}
-              onPress={() => navigation.navigate('UserProfile')}
-            />
-
-            <SettingItem
-              icon="lock-outline"
-              title={t('settings.changePassword')}
-              desc={t('settings.changePasswordDesc')}
-              onPress={() => navigation.navigate('ChangePassword')}
-            />
-
-            <SettingItem
-              icon="check-decagram-outline"
-              title={t('settings.verification')}
-              desc={user?.providerProfile?.verification === 'VERIFIED' ? 'Verified account' : user?.providerProfile?.verification === 'PENDING' ? 'Verification pending review' : 'Not verified yet'}
-              onPress={() => navigation.navigate('Verification')}
-              right={
-                <View style={[styles.statusPill, { backgroundColor: user?.providerProfile?.verification === 'VERIFIED' ? '#DCFCE7' : user?.providerProfile?.verification === 'PENDING' ? '#DBEAFE' : '#FEF2F2' }]}>
-                  <Text style={[styles.statusText, { color: user?.providerProfile?.verification === 'VERIFIED' ? '#166534' : user?.providerProfile?.verification === 'PENDING' ? '#1E40AF' : '#B91C1C' }]}>
-                    {user?.providerProfile?.verification || 'UNVERIFIED'}
-                  </Text>
+              <View style={styles.heroLeft}>
+                <View style={styles.heroAvatarWrap}>
+                  {user?.avatar ? (
+                    <Image source={{ uri: user.avatar }} style={styles.heroAvatar} />
+                  ) : (
+                    <View style={[styles.heroAvatarFallback, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+                      <Text style={styles.heroInitial}>{(user?.fullName || 'U').charAt(0)}</Text>
+                    </View>
+                  )}
+                  <View style={[styles.editDot, { backgroundColor: colors.accent }]}>
+                    <MaterialCommunityIcons name="pencil" size={10} color="#FFF" />
+                  </View>
                 </View>
-              }
-            />
-          </View>
+                <View>
+                  <Text style={styles.heroName}>{user?.fullName || 'Your Name'}</Text>
+                  <Text style={styles.heroRole}>{isProviderMode ? 'Provider Account' : 'Client Account'}</Text>
+                  <View style={[styles.verBadge, { backgroundColor: verBg }]}>
+                    <MaterialCommunityIcons name="shield-check" size={12} color={verColor} />
+                    <Text style={[styles.verText, { color: verColor }]}>{verLabel}</Text>
+                  </View>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
 
-          {/* Preferences Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('settings.preferences')}</Text>
+          {/* ACCOUNT */}
+          <SectionHeader icon="account-outline" label="ACCOUNT" />
+          <SectionCard>
+            <SettingItem icon="account-circle-outline" title="Profile" desc="View and edit your public profile" onPress={() => navigation.navigate('UserProfile')} />
+            <SettingItem icon="lock-outline" title="Change Password" desc="Update your security credentials" onPress={() => navigation.navigate('ChangePassword')} />
+            {user?.role === 'PROVIDER' && (
+              <SettingItem
+                icon="check-decagram-outline"
+                title="Verification"
+                desc="Verify your identity to build trust"
+                onPress={() => navigation.navigate('Verification')}
+                right={
+                  <View style={[styles.statusPill, { backgroundColor: verBg }]}>
+                    <Text style={[styles.statusPillText, { color: verColor }]}>{verLabel}</Text>
+                  </View>
+                }
+              />
+            )}
+          </SectionCard>
 
-            <SettingItem
-              icon="translate"
-              title={t('settings.language')}
-              desc={t('settings.languageDesc')}
-              onPress={() => navigation.navigate('LanguageSelection')}
-            />
-
+          {/* PREFERENCES */}
+          <SectionHeader icon="tune" label="PREFERENCES" />
+          <SectionCard>
+            <SettingItem icon="translate" title="Language" desc="English / French" onPress={() => navigation.navigate('LanguageSelection')} />
             <SettingItem
               icon="weather-night"
-              title={t('settings.darkMode')}
-              desc={t('settings.darkModeDesc')}
-              right={<Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ true: colors.accent }} />}
+              title="Dark Mode"
+              desc="Switch the app appearance"
+              right={
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={toggleTheme}
+                  trackColor={{ true: '#0D9488', false: '#CBD5E1' }}
+                  thumbColor="#FFF"
+                />
+              }
             />
-
             <SettingItem
               icon="map-marker-outline"
-              title={t('settings.location')}
-              desc={t('settings.locationDesc')}
-              right={<Switch value={location} onValueChange={setLocation} trackColor={{ true: colors.accent }} />}
+              title="Location Services"
+              desc="For nearby task discovery"
+              right={
+                <Switch
+                  value={location}
+                  onValueChange={setLocation}
+                  trackColor={{ true: '#0D9488', false: '#CBD5E1' }}
+                  thumbColor="#FFF"
+                />
+              }
             />
+             <SettingItem icon="shield-check-outline" title="Privacy & Security" desc="Manage your privacy and security" onPress={() => navigation.navigate('PrivacySecurity')} />
+          </SectionCard>
 
-            <SettingItem
-              icon="eye-off-outline"
-              title={t('settings.hiddenProfile')}
-              desc={t('settings.hiddenProfileDesc')}
-              onPress={() => navigation.navigate('HiddenProfile')}
-            />
+          {/* NOTIFICATIONS */}
+          <SectionHeader icon="bell-outline" label="NOTIFICATION PREFERENCES" />
+          <SectionCard>
+            <SettingItem icon="bell-outline" title="Push Notifications" desc="Manage push notification settings" onPress={() => navigation.navigate('Notifications')} />
+          </SectionCard>
 
-            <SettingItem
-              icon="shield-check-outline"
-              title={t('settings.privacy')}
-              onPress={() => navigation.navigate('PrivacySecurity')}
-            />
-          </View>
+          {/* SUPPORT */}
+          <SectionHeader icon="help-circle-outline" label="SUPPORT" />
+          <SectionCard>
+            <SettingItem icon="help-circle-outline" title="Help Center" desc="Get help and support" onPress={() => navigation.navigate('HelpCenter')} />
+            <SettingItem icon="message-draw" title="Send Feedback" desc="Share your feedback with us" onPress={() => navigation.navigate('Feedback')} />
+          </SectionCard>
 
-          {/* Notifications Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('settings.notifications')}</Text>
-            <SettingItem icon="bell-outline" title={t('settings.push')} onPress={() => navigation.navigate('Notifications')} />
-          </View>
+          {/* ACTIONS */}
+          <SectionHeader icon="power" label="ACTIONS" />
+          <SectionCard>
+            <SettingItem icon="logout" title="Log Out" desc="Sign out from your account" onPress={handleLogout} danger />
+          </SectionCard>
 
-          {/* Support Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('settings.support')}</Text>
-
-            <SettingItem
-              icon="help-circle-outline"
-              title={t('settings.help')}
-              onPress={() => navigation.navigate('HelpCenter')}
-            />
-
-            <SettingItem
-              icon="message-draw"
-              title={t('settings.feedback')}
-              onPress={() => navigation.navigate('Feedback')}
-            />
-          </View>
-
-          {/* Actions Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('settings.actions')}</Text>
-
-            <SettingItem
-              icon="logout"
-              title={t('settings.logout')}
-              onPress={handleLogout}
-              danger
-            />
-
-          </View>
-
-          <Text style={[styles.versionText, { color: colors.textSecondary }]}>Fixam Version 1.0.4 (Stable)</Text>
+          <Text style={[styles.version, { color: colors.placeholder }]}>Fixam v1.0.4 · Production</Text>
+          <View style={{ height: 100 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -183,28 +238,58 @@ const SettingsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { 
-    flex: 1, 
-    paddingTop: Platform.OS === 'android' ? 10 : 0 
+  container: { flex: 1 },
+  scroll: { paddingBottom: 20 },
+
+  pageHeader: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 16 : 8,
+    paddingBottom: 12,
   },
-  scrollContent: { paddingHorizontal: 22, paddingTop: 10 },
-  standaloneHeader: { marginBottom: 24, paddingTop: 10 },
-  headerTitle: { fontSize: 34, fontWeight: '900' },
-  section: { marginBottom: 30 },
-  sectionLabel: { fontSize: 13, fontWeight: '900', letterSpacing: 0.4, marginBottom: 8, textTransform: 'uppercase' },
-  settingItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 17, borderBottomWidth: 1,
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 4,
   },
-  settingInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconWrap: { width: 34, height: 34, justifyContent: 'center', alignItems: 'flex-start', marginRight: 12 },
-  settingTexts: { flex: 1 },
-  settingTitle: { fontSize: 17, fontWeight: '800' },
-  settingDesc: { fontSize: 13, marginTop: 4, opacity: 0.7 },
-  statusPill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
-  statusText: { fontSize: 10, fontWeight: '900' },
-  versionText: { textAlign: 'center', fontSize: 11, marginTop: 10, marginBottom: 30, fontWeight: '600' },
+  pageTitle: { fontSize: 28, fontWeight: '900' },
+  pageSub: { fontSize: 13 },
+  bellBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+
+  // Hero card
+  heroWrapper: { marginHorizontal: 16, marginBottom: 24, borderRadius: 20, overflow: 'hidden' },
+  heroCard: { flexDirection: 'row', alignItems: 'center', padding: 20, position: 'relative', overflow: 'hidden' },
+  gearDecor: { position: 'absolute', right: 40, top: -20 },
+  heroLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroAvatarWrap: { position: 'relative' },
+  heroAvatar: { width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
+  heroAvatarFallback: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+  heroInitial: { fontSize: 26, fontWeight: '900', color: '#FFF' },
+  editDot: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+  heroName: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+  heroRole: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  verBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  verText: { fontSize: 11, fontWeight: '800' },
+
+  // Section
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  sectionCard: {
+    marginHorizontal: 16, marginBottom: 20, borderRadius: 18, borderWidth: 1,
+    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, overflow: 'hidden',
+  },
+
+  // Row
+  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, gap: 12 },
+  iconBox: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  settingBody: { flex: 1 },
+  settingTitle: { fontSize: 15, fontWeight: '700' },
+  settingDesc: { fontSize: 12, marginTop: 2 },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusPillText: { fontSize: 10, fontWeight: '900' },
+
+  version: { textAlign: 'center', fontSize: 12, fontWeight: '600', marginTop: 10 },
 });
 
 export default SettingsScreen;

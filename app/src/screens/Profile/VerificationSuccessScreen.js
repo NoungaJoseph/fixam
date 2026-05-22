@@ -4,7 +4,7 @@ import {
   SafeAreaView, Animated, ScrollView, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 
 const VerificationSuccessScreen = ({ navigation }) => {
@@ -26,9 +26,8 @@ const VerificationSuccessScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.background}
+    <View 
+      style={[styles.background, { backgroundColor: colors.background }]}
     >
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
@@ -101,7 +100,7 @@ const VerificationSuccessScreen = ({ navigation }) => {
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

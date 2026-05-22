@@ -80,13 +80,6 @@ const PrivacySecurityScreen = ({ navigation }) => {
             <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Privacy Control</Text>
             
             <SecurityItem 
-              icon="eye-off-outline" 
-              title="Hidden Profile" 
-              desc="Hide your profile from search" 
-              onPress={() => {}}
-            />
-
-            <SecurityItem 
               icon="file-document-outline" 
               title="Data Usage" 
               desc="Manage how your data is used" 

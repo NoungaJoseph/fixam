@@ -1,124 +1,240 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, StatusBar, FlatList, Platform, Modal, Image, Dimensions
+  TextInput, StatusBar, Platform, Image, Dimensions, Switch
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import FirstRunNotice from '../../components/Common/FirstRunNotice';
-import { CustomHeader } from '../../navigation/NavigationComponents';
+
+const { width } = Dimensions.get('window');
+
+const CATEGORIES = [
+  { id: 'all', label: 'All', icon: 'view-grid' },
+  { id: 'plumbing', label: 'Plumbing', icon: 'water-pump' },
+  { id: 'electrical', label: 'Electrical', icon: 'lightning-bolt' },
+  { id: 'cleaning', label: 'Cleaning', icon: 'broom' },
+  { id: 'delivery', label: 'Delivery', icon: 'bike' },
+];
+
+const LEARN_CARDS = [
+  {
+    id: '1',
+    step: 'STEP 1',
+    title: 'Complete\nyour profile',
+    desc: 'Get verified and get\nmore jobs',
+    image: require('../../../assets/onboarding/learn_step1.png'),
+    colors: ['#0D9488', '#14B8A6']
+  },
+  {
+    id: '2',
+    step: 'STEP 2',
+    title: 'Find and accept\njobs',
+    desc: 'Choose jobs that\nmatch your skills',
+    image: require('../../../assets/onboarding/learn_step2.png'),
+    colors: ['#2563EB', '#3B82F6']
+  },
+  {
+    id: '3',
+    step: 'STEP 3',
+    title: 'Complete jobs\nand get paid',
+    desc: 'Get paid fast and\nbuild your reputation',
+    image: require('../../../assets/onboarding/learn_step3.png'),
+    colors: ['#8B5CF6', '#A78BFA']
+  },
+  {
+    id: '4',
+    step: 'TIPS',
+    title: 'Deliver great\nservice',
+    desc: 'Good reviews bring\nyou more jobs',
+    image: require('../../../assets/onboarding/learn_tips.png'),
+    colors: ['#F59E0B', '#FBBF24']
+  }
+];
 
 const ProviderHomeScreen = ({ navigation }) => {
   const {
-    isProviderOnline,
-    updateProviderStatus,
-    walletBalance,
-    visibleJobs,
-    favoriteJobs,
-    favoriteJobIds,
-    hideJob,
-    toggleFavoriteJob
+    isProviderOnline, updateProviderStatus,
+    walletBalance, visibleJobs, notificationCount, unreadCount,
   } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
-  const [search, setSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [filters, setFilters] = useState({ distance: 10, sortBy: 'newest' });
-  const carouselRef = useRef(null);
-  const carouselIndexRef = useRef(0);
-  const carouselImages = [
-    require('../../../assets/onboarding/direct_local_service.png'),
-    require('../../../assets/onboarding/verification.png'),
-    require('../../../assets/onboarding/p1.png'),
-    require('../../../assets/onboarding/c1.png'),
-    require('../../../assets/onboarding/c2.png'),
-  ];
 
-  const sourceJobs = showFavorites ? favoriteJobs : visibleJobs;
-  const filteredJobs = sourceJobs.filter(job =>
-    job.title?.toLowerCase().includes(search.toLowerCase()) ||
-    job.category?.toLowerCase().includes(search.toLowerCase()) ||
-    job.location?.toLowerCase().includes(search.toLowerCase())
-  );
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [now, setNow] = useState(Date.now());
+  const [slideIndex, setSlideIndex] = useState(0);
+  const learnScrollRef = useRef(null);
+
+  const [favorites, setFavorites] = useState([]);
+  const [dismissed, setDismissed] = useState([]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      carouselIndexRef.current = (carouselIndexRef.current + 1) % carouselImages.length;
-      carouselRef.current?.scrollTo({ x: carouselIndexRef.current * (slideWidth + 12), animated: true });
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [carouselImages.length]);
+    const loadPreferences = async () => {
+      try {
+        const favs = await AsyncStorage.getItem('@job_favorites');
+        const dism = await AsyncStorage.getItem('@job_dismissed');
+        if (favs) setFavorites(JSON.parse(favs));
+        if (dism) setDismissed(JSON.parse(dism));
+      } catch (e) {
+        console.log('Failed to load preferences', e);
+      }
+    };
+    loadPreferences();
+  }, []);
 
-  const getPostedAgo = (dateValue) => {
-    const created = new Date(dateValue);
-    if (!dateValue || Number.isNaN(created.getTime())) return 'Posted recently';
-    const hours = Math.max(1, Math.floor((Date.now() - created.getTime()) / 3600000));
-    if (hours < 24) return `Posted ${hours} hour${hours === 1 ? '' : 's'} ago`;
-    const days = Math.floor(hours / 24);
-    return `Posted ${days} day${days === 1 ? '' : 's'} ago`;
+  const toggleFavorite = async (jobId) => {
+    try {
+      let newFavs;
+      if (favorites.includes(jobId)) {
+        newFavs = favorites.filter(id => id !== jobId);
+      } else {
+        newFavs = [...favorites, jobId];
+      }
+      setFavorites(newFavs);
+      await AsyncStorage.setItem('@job_favorites', JSON.stringify(newFavs));
+    } catch (e) {
+      console.log('Failed to save favorite', e);
+    }
   };
 
-  const renderJobItem = ({ item }) => {
-    const proposalCount = item.assignments?.length || 0;
-    const tags = [item.category, ...(item.description || '').split(' ').filter(word => word.length > 5)].filter(Boolean).slice(0, 3);
-    const isFavorite = favoriteJobIds.includes(item.id);
+  const dismissJob = async (jobId) => {
+    try {
+      const newDism = [...dismissed, jobId];
+      setDismissed(newDism);
+      await AsyncStorage.setItem('@job_dismissed', JSON.stringify(newDism));
+    } catch (e) {
+      console.log('Failed to dismiss job', e);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let timer;
+    if (LEARN_CARDS.length > 0) {
+      timer = setInterval(() => {
+        setSlideIndex(prevIndex => {
+          const nextIndex = (prevIndex + 1) % LEARN_CARDS.length;
+          learnScrollRef.current?.scrollTo({
+            x: nextIndex * (width - 70 + 12),
+            animated: true
+          });
+          return nextIndex;
+        });
+      }, 3500);
+    }
+    return () => clearInterval(timer);
+  }, []);
+
+  const getPostedAgo = (dateValue) => {
+    if (!dateValue) return '10 min ago';
+    const created = new Date(dateValue.endsWith('Z') ? dateValue : dateValue + 'Z');
+    if (Number.isNaN(created.getTime())) return '10 min ago';
+    const diffMs = Math.max(0, now - created.getTime());
+    const mins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(mins / 60);
+    const days = Math.floor(hours / 24);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  };
+
+  const filteredJobs = visibleJobs.filter(job => {
+    if (dismissed.includes(job.id)) return false;
+    const q = search.toLowerCase();
+    const matchSearch = !q || job.title?.toLowerCase().includes(q)
+      || job.category?.toLowerCase().includes(q)
+      || job.location?.toLowerCase().includes(q);
+    const matchCat = activeCategory === 'all'
+      || job.category?.toLowerCase().includes(activeCategory);
+    return matchSearch && matchCat;
+  });
+
+  const firstName = user?.fullName?.split(' ')[0] || 'Enako';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const completedJobsCount = user?.providerProfile?.jobsCompleted || user?.jobsCompleted || 0;
+
+  const handleScroll = (event) => {
+    const slide = Math.round(event.nativeEvent.contentOffset.x / (width - 60));
+    if (slide !== slideIndex) {
+      setSlideIndex(slide);
+    }
+  };
+
+  const JobCard = ({ item: job }) => {
+    const isFav = favorites.includes(job.id);
+
+    const getTags = (j) => {
+      const tags = [];
+      if (j.category) tags.push(j.category.toUpperCase());
+      tags.push('experienced');
+      const titleWords = j.title?.split(' ') || [];
+      if (titleWords.length > 0) tags.push(titleWords[0].toLowerCase());
+      return tags.slice(0, 3);
+    };
 
     return (
       <TouchableOpacity
-        style={[styles.taskRow, { borderBottomColor: colors.border }]}
-        onPress={() => navigation.navigate('TaskDetails', { task: item })}
-        activeOpacity={0.86}
+        style={[styles.jobCard, { backgroundColor: colors.background, borderBottomColor: colors.border }]}
+        onPress={() => navigation.navigate('TaskDetails', { task: job, taskId: job.id })}
+        activeOpacity={0.84}
       >
-        <View style={styles.metaLine}>
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>{getPostedAgo(item.createdAt)}</Text>
-          <Text style={[styles.metaDot, { color: colors.textSecondary }]}>.</Text>
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>Proposals: {proposalCount}</Text>
-        </View>
 
-        <View style={styles.titleLine}>
-          <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
-          <View style={styles.iconActions}>
-            <TouchableOpacity onPress={(event) => { event.stopPropagation?.(); hideJob(item.id); }}>
-              <MaterialCommunityIcons name="thumb-down-outline" size={24} color={colors.text} />
+        {/* Title Row with Actions */}
+        <View style={styles.jobTopRow}>
+          <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{job.title || 'Task Opportunity'}</Text>
+          <View style={styles.actionIcons}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => dismissJob(job.id)}>
+              <MaterialCommunityIcons name="thumb-down-outline" size={26} color={colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={(event) => { event.stopPropagation?.(); toggleFavoriteJob(item.id); }}>
-              <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={25} color={isFavorite ? colors.accent : colors.text} />
+            <TouchableOpacity style={styles.actionBtn} onPress={() => toggleFavorite(job.id)}>
+              <MaterialCommunityIcons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? "#EF4444" : colors.text} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={[styles.terms, { color: colors.textSecondary }]}>
-          Fixed-price - {item.category || 'General'} - Est. Budget: {Number(item.budget || 0).toLocaleString()} FCFA
+        {/* Subtitle */}
+        <Text style={[styles.jobSubtitle, { color: colors.textSecondary }]}>
+          Fixed-price - {(job.category || 'WORK').toUpperCase()} - Est. Budget: {job.budget ? job.budget.toLocaleString() : '25,000'} FCFA
         </Text>
 
-        <Text style={[styles.description, { color: colors.text }]} numberOfLines={3}>
-          {item.description || 'No description provided yet.'}
+        {/* Description */}
+        <Text style={[styles.jobDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+          {job.description || 'Looking for an experienced professional to handle this task with care and expertise.'}
+          <Text style={styles.moreText}> more</Text>
         </Text>
-        <Text style={[styles.moreLink, { color: colors.accent }]}>more</Text>
 
-        <View style={styles.tags}>
-          {tags.map((tag, index) => (
-            <View key={`${tag}-${index}`} style={[styles.tag, { backgroundColor: isDarkMode ? '#303030' : '#EEF2F7' }]}>
-              <Text style={[styles.tagText, { color: colors.textSecondary }]} numberOfLines={1}>{tag}</Text>
+        {/* Tags */}
+        <View style={styles.tagsRow}>
+          {getTags(job).map((tag, idx) => (
+            <View key={idx} style={[styles.tagChip, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
+              <Text style={[styles.tagText, { color: colors.textSecondary }]}>{tag}</Text>
             </View>
           ))}
         </View>
 
-        <View style={styles.trustRow}>
-          <Text style={[styles.smallText, { color: colors.textSecondary }]}>0 reviews</Text>
-          <Text style={[styles.smallText, { color: colors.textSecondary }]}>0 spent</Text>
-        </View>
+        {/* Stats Row */}
+        <Text style={[styles.statsText, { color: colors.textSecondary }]}>
+          0 reviews   0 spent
+        </Text>
 
-        <View style={styles.locationRow}>
-          <View style={styles.trustItem}>
-            <MaterialCommunityIcons name="map-marker-outline" size={17} color={colors.textSecondary} />
-            <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>{item.location || 'On-site'}</Text>
+        {/* Bottom Row */}
+        <View style={styles.jobBottomRow}>
+          <View style={styles.locationRow}>
+            <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.textSecondary} />
+            <Text style={[styles.locationText, { color: colors.textSecondary }]}>{job.location || '4.1070, 9.7619'}</Text>
           </View>
-          <TouchableOpacity style={[styles.applyButton, { backgroundColor: colors.accent }]} onPress={() => navigation.navigate('TaskDetails', { task: item })}>
-            <Text style={styles.applyText}>Apply</Text>
+          <TouchableOpacity style={styles.applyBtn} onPress={() => navigation.navigate('TaskDetails', { taskId: job.id })}>
+            <Text style={styles.applyBtnText}>Apply</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -127,213 +243,919 @@ const ProviderHomeScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="Dashboard" colors={colors} />
-      <FirstRunNotice role={user?.role} colors={colors} isDarkMode={isDarkMode} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
-      <ScrollView stickyHeaderIndices={[3]} showsVerticalScrollIndicator={false}>
-        <View style={styles.topSection}>
-          <View style={[styles.statusStrip, { backgroundColor: isDarkMode ? '#151515' : '#F7F9FB' }]}>
-            <View>
-              <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>SERVICE STATUS</Text>
-              <Text style={[styles.statusValue, { color: isProviderOnline ? '#12A800' : '#EF4444' }]}>
-                {isProviderOnline ? 'Online and available' : 'Currently offline'}
+      {/* Scrollable Dashboard */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { backgroundColor: colors.background }]}>
+
+        {/* ── 1. PREMIUM HEADER SECTION ──────────────── */}
+        <View style={styles.headerTop}>
+          {/* Hamburger circular menu */}
+          <TouchableOpacity style={[styles.menuBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.openDrawer()}>
+            <MaterialCommunityIcons name="menu" size={22} color={colors.text} />
+          </TouchableOpacity>
+
+          {/* Profile & Greeting Section */}
+          <View style={styles.profileSection}>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{greeting} 👋</Text>
+              <View style={styles.nameRow}>
+                <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{firstName}</Text>
+                <View style={styles.levelBadge}>
+                  <MaterialCommunityIcons name="star-circle" size={12} color="#0D9488" />
+                  <Text style={styles.levelText}>Lvl {user?.providerProfile?.level || user?.level || 3}</Text>
+                </View>
+              </View>
+              <Text style={[styles.jobsNearText, { color: colors.textSecondary }]} numberOfLines={1}>
+                <Text style={{ color: '#22C55E' }}>●</Text> {filteredJobs.length} new jobs available nearby
               </Text>
             </View>
+          </View>
+
+          {/* Bell Icon with badge */}
+          <TouchableOpacity style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
+            <MaterialCommunityIcons name="bell-outline" size={20} color={colors.text} />
+            {notificationCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{notificationCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* ── 2. SUB-HEADER PILLS ROW ─────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subHeaderScroll}
+          style={{ flexGrow: 0, marginBottom: 16 }}
+        >
+          <TouchableOpacity style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.subPillText, { color: colors.text }]}>📍 Douala, Cameroon</Text>
+            <MaterialCommunityIcons name="chevron-down" size={14} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.subPillText, { color: colors.text }]}>🔥 {user?.providerProfile?.streak || user?.streak || 5} day streak</Text>
+          </View>
+
+          <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <MaterialCommunityIcons name="star" size={16} color="#22C55E" />
+            <View style={styles.subPillCol}>
+              <Text style={[styles.subPillVal, { color: colors.text }]}>{user?.providerProfile?.rating || user?.rating || '4.9'}</Text>
+              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>Trust Score</Text>
+            </View>
+          </View>
+
+          <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <MaterialCommunityIcons name="shield-check" size={16} color="#0D9488" />
+            <View style={styles.subPillCol}>
+              <Text style={[styles.subPillVal, { color: colors.text }]}>
+                {user?.providerProfile?.experienceLevel || user?.experienceLevel || 'Skilled'}
+              </Text>
+              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>Rank</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* ── 3. PREMIUM BALANCE STATS CARD ───────────── */}
+        <LinearGradient
+          colors={['#1D4ED8', '#0D9488']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.statsCard}
+        >
+          {/* Column 1: Coins Balance */}
+          <View style={styles.cardCol}>
+            <Text style={styles.cardLabel}>YOUR BALANCE</Text>
+            <Text style={styles.cardValue}>{walletBalance} Coins 🪙</Text>
             <TouchableOpacity
-              style={[styles.toggleBase, isProviderOnline ? styles.toggleOn : styles.toggleOff]}
-              onPress={() => updateProviderStatus(!isProviderOnline)}
+              style={styles.topUpBtn}
+              onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}
             >
-              <View style={[styles.toggleCircle, isProviderOnline ? styles.circleRight : styles.circleLeft]} />
+              <Text style={styles.topUpText}>Top up</Text>
+              <MaterialCommunityIcons name="plus" size={14} color="#0D9488" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.colDivider} />
+
+          {/* Column 2: Jobs Completed */}
+          <View style={[styles.cardCol, styles.jobsCompletedCol]}>
+            <Text style={styles.cardLabel}>JOBS COMPLETED</Text>
+            <Text style={styles.cardValue}>{completedJobsCount} Total</Text>
+
+            {/* Vertical mini bars */}
+            <View style={styles.miniBarRow}>
+              {[18, 28, 16, 38, 26, 44, 32].map((height, index) => (
+                <View key={index} style={[styles.miniBar, { height, backgroundColor: index === 5 ? '#FFF' : 'rgba(255, 255, 255, 0.45)' }]} />
+              ))}
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* ── 4. UNIFIED AVAILABILITY & QUICK NAV CARD ─────────── */}
+        <View style={[styles.unifiedNavCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Top Section: Availability */}
+          <View style={[styles.availSection, { borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
+            <View style={styles.availTextCol}>
+              <Text style={[styles.availTitle, { color: colors.text }]}>Available for Work</Text>
+              <Text style={[styles.availSubText, { color: colors.textSecondary }]}>You are {isProviderOnline ? 'online and visible' : 'offline'}</Text>
+              <View style={styles.onlinePillRow}>
+                <View style={[styles.onlinePill, { borderColor: isProviderOnline ? '#10B981' : colors.border, backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+                  <Text style={[styles.onlinePillText, { color: isProviderOnline ? '#10B981' : colors.textSecondary }]}>
+                    {isProviderOnline ? 'Online' : 'Offline'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <Switch
+              value={isProviderOnline}
+              onValueChange={updateProviderStatus}
+              trackColor={{ true: '#10B981', false: '#CBD5E1' }}
+              thumbColor="#FFF"
+            />
+          </View>
+
+          {/* Bottom Section: Quick Nav Grid */}
+          <View style={styles.quickNavGridContainer}>
+            {/* Find Jobs */}
+            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.navigate('FindJobs')}>
+              <View style={[styles.quickNavIconWrap, { backgroundColor: '#E6FDF3' }]}>
+                <MaterialCommunityIcons name="briefcase" size={24} color="#0D9488" />
+              </View>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Find Jobs</Text>
+            </TouchableOpacity>
+
+            {/* Messages */}
+            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.navigate('Messages')}>
+              <View style={[styles.quickNavIconWrap, { backgroundColor: '#F3E8FF' }]}>
+                <MaterialCommunityIcons name="message-text" size={24} color="#7C3AED" />
+                {unreadCount > 0 && (
+                  <View style={styles.quickNavBadge}>
+                    <Text style={styles.quickNavBadgeText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Messages</Text>
+            </TouchableOpacity>
+
+            {/* Wallet */}
+            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}>
+              <View style={[styles.quickNavIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                <MaterialCommunityIcons name="wallet" size={24} color="#D97706" />
+              </View>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Wallet</Text>
+            </TouchableOpacity>
+
+            {/* My Stats */}
+            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.navigate('Stats')}>
+              <View style={[styles.quickNavIconWrap, { backgroundColor: '#DBEAFE' }]}>
+                <MaterialCommunityIcons name="chart-bar" size={24} color="#2563EB" />
+              </View>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>My Stats</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.walletPanel}>
-          <View>
-            <Text style={[styles.walletLabel, { color: colors.textSecondary }]}>Coin balance</Text>
-            <Text style={[styles.walletText, { color: colors.text }]}>{walletBalance} Coins</Text>
-          </View>
-          <TouchableOpacity style={[styles.walletAction, { backgroundColor: colors.accent }]} onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}>
-            <Text style={styles.walletActionText}>Top up</Text>
+        {/* ── 5. "LEARN FIXAM" SLIDER SECTION ─────────── */}
+        <View style={styles.learnHeader}>
+          <Text style={[styles.learnTitle, { color: colors.text }]}>Learn Fixam</Text>
+          <TouchableOpacity>
+            <Text style={styles.seeAllText}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.carouselBlock}>
-          <View style={styles.carouselHeader}>
-            <Text style={[styles.carouselTitle, { color: colors.text }]}>Learn Fixam</Text>
-            <Text style={[styles.carouselHint, { color: colors.textSecondary }]}>Swipe tips</Text>
-          </View>
-          <ScrollView ref={carouselRef} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carouselTrack} snapToInterval={slideWidth + 12} decelerationRate="fast">
-            {carouselImages.map((image, index) => (
-              <View key={index} style={[styles.carouselSlide, { backgroundColor: isDarkMode ? '#171717' : '#F5F7FA' }]}>
-                <Image source={image} style={styles.carouselImage} resizeMode="cover" />
-                <View style={styles.carouselCopy}>
-                  <Text style={[styles.carouselCopyTitle, { color: colors.text }]}>Tip {index + 1}</Text>
-                  <Text style={[styles.carouselCopyText, { color: colors.textSecondary }]}>Use clear task details, chat safely, and keep enough coins before applying.</Text>
+        {/* Step cards list */}
+        <ScrollView
+          ref={learnScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.learnScroll}
+        >
+          {LEARN_CARDS.map((card) => (
+            <LinearGradient
+              key={card.id}
+              colors={card.colors}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.learnCard}
+            >
+              <View style={styles.learnLeft}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{card.step}</Text>
                 </View>
+                <Text style={styles.learnCardTitle}>{card.title}</Text>
+                <Text style={styles.learnCardDesc}>{card.desc}</Text>
               </View>
-            ))}
-          </ScrollView>
+              <Image source={card.image} style={styles.learnCardImage} resizeMode="contain" />
+            </LinearGradient>
+          ))}
+        </ScrollView>
+
+        {/* Pagination Dots */}
+        <View style={styles.dotsRow}>
+          {LEARN_CARDS.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.slideDot,
+                slideIndex === index && styles.slideDotActive
+              ]}
+            />
+          ))}
         </View>
 
-        <View style={[styles.searchSection, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#171717' : '#F5F5F5' }]}>
+        {/* ── 6. SEARCH BAR & CATEGORIES ──────────────── */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <MaterialCommunityIcons name="magnify" size={22} color={colors.placeholder} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search jobs"
+              placeholder="Search for jobs..."
               placeholderTextColor={colors.placeholder}
               value={search}
               onChangeText={setSearch}
             />
           </View>
-          <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilters(true)}>
-            <MaterialCommunityIcons name="tune-variant" size={24} color={colors.accent} />
+          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[styles.favoriteStrip, { borderBottomColor: colors.border }]}
-          onPress={() => setShowFavorites((value) => !value)}
-        >
-          <View style={styles.trustItem}>
-            <MaterialCommunityIcons name={showFavorites ? 'heart' : 'heart-outline'} size={22} color={colors.accent} />
-            <Text style={[styles.favoriteText, { color: colors.text }]}>{showFavorites ? 'Showing favorite jobs' : 'Favorite jobs'}</Text>
-          </View>
-          <Text style={[styles.favoriteCount, { color: colors.textSecondary }]}>{favoriteJobs.length}</Text>
-        </TouchableOpacity>
-
-        <FlatList
-          data={filteredJobs}
-          renderItem={renderJobItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="clipboard-text-outline" size={60} color={colors.border} />
-              <Text style={[styles.emptyText, { color: colors.placeholder }]}>{showFavorites ? 'No favorite jobs yet' : 'No jobs available nearby'}</Text>
-            </View>
-          }
-        />
-      </ScrollView>
-
-      <Modal visible={showFilters} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Job filters</Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+        {/* Categories Horizontal scrolling pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+          {CATEGORIES.map(cat => {
+            const active = activeCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.catChip, {
+                  backgroundColor: active ? '#0D9488' : colors.card,
+                  borderColor: active ? '#0D9488' : colors.border,
+                }]}
+                onPress={() => setActiveCategory(cat.id)}
+              >
+                <MaterialCommunityIcons name={cat.icon} size={16} color={active ? '#FFF' : colors.textSecondary} />
+                <Text style={[styles.catText, { color: active ? '#FFF' : colors.text }]}>{cat.label}</Text>
               </TouchableOpacity>
-            </View>
+            );
+          })}
+        </ScrollView>
 
-            <Text style={[styles.filterLabel, { color: colors.text }]}>Max distance: {filters.distance} km</Text>
-            <View style={styles.filterOptions}>
-              {[2, 5, 10, 25].map(d => (
-                <TouchableOpacity
-                  key={d}
-                  style={[styles.filterChip, { backgroundColor: filters.distance === d ? colors.accent : colors.background }]}
-                  onPress={() => setFilters({ ...filters, distance: d })}
-                >
-                  <Text style={{ color: filters.distance === d ? '#FFF' : colors.text }}>{d}km</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={[styles.filterLabel, { color: colors.text, marginTop: 20 }]}>Sort by</Text>
-            <View style={styles.filterOptions}>
-              {['newest', 'closest', 'highest budget'].map(s => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.filterChip, { backgroundColor: filters.sortBy === s ? colors.accent : colors.background }]}
-                  onPress={() => setFilters({ ...filters, sortBy: s })}
-                >
-                  <Text style={{ color: filters.sortBy === s ? '#FFF' : colors.text }}>{s.charAt(0).toUpperCase() + s.slice(1)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity style={[styles.applyFilters, { backgroundColor: colors.accent }]} onPress={() => setShowFilters(false)}>
-              <Text style={styles.applyFiltersText}>Apply filters</Text>
-            </TouchableOpacity>
+        {/* ── 7. "LIVE JOBS NEAR YOU" SECTION ─────────── */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <View style={[styles.liveDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Jobs Near You</Text>
+            <Text style={styles.liveCountText}>🟢 {filteredJobs.length} jobs available</Text>
           </View>
+          <TouchableOpacity onPress={() => navigation.navigate('FindJobs')}>
+            <Text style={styles.viewAllText}>View all</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        {/* Jobs List */}
+        {filteredJobs.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="briefcase-search-outline" size={60} color={colors.border} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No jobs available</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>New jobs appear here in real-time</Text>
+          </View>
+        ) : (
+          filteredJobs.slice(0, 3).map(item => <JobCard key={item.id} item={item} />)
+        )}
+
+        {/* Space at the bottom to avoid tabbar overlap */}
+        <View style={{ height: 120 }} />
+      </ScrollView>
     </View>
   );
 };
 
-const slideWidth = Dimensions.get('window').width - 64;
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topSection: { paddingHorizontal: 22, paddingVertical: 10 },
-  statusStrip: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 10 },
-  statusLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  statusValue: { fontSize: 15, fontWeight: '800', marginTop: 3 },
-  toggleBase: { width: 48, height: 26, borderRadius: 13, padding: 3 },
-  toggleOn: { backgroundColor: '#12A800' },
-  toggleOff: { backgroundColor: '#CBD5E1' },
-  toggleCircle: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF' },
-  circleLeft: { alignSelf: 'flex-start' },
-  circleRight: { alignSelf: 'flex-end' },
-  walletPanel: { marginHorizontal: 22, marginBottom: 18, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(148, 163, 184, 0.24)' },
-  walletLabel: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
-  walletText: { fontSize: 21, fontWeight: '900', marginTop: 2 },
-  walletAction: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },
-  walletActionText: { color: '#FFF', fontSize: 14, fontWeight: '900' },
-  carouselBlock: { marginBottom: 18 },
-  carouselHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 22, marginBottom: 10 },
-  carouselTitle: { fontSize: 18, fontWeight: '900' },
-  carouselHint: { fontSize: 12, fontWeight: '800' },
-  carouselTrack: { paddingHorizontal: 22, gap: 12 },
-  carouselSlide: { width: slideWidth, height: 160, borderRadius: 10, overflow: 'hidden' },
-  carouselImage: { width: '100%', height: '100%', position: 'absolute' },
-  carouselCopy: { flex: 1, justifyContent: 'flex-end', padding: 16, backgroundColor: 'rgba(0,0,0,0.32)' },
-  carouselCopyTitle: { fontSize: 18, fontWeight: '900', color: '#FFF' },
-  carouselCopyText: { fontSize: 13, lineHeight: 18, marginTop: 4, color: 'rgba(255,255,255,0.86)' },
-  searchSection: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 22, paddingVertical: 12, borderBottomWidth: 1 },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, paddingHorizontal: 14, height: 48 },
-  searchInput: { flex: 1, fontSize: 15, fontWeight: Platform.OS === 'ios' ? '600' : 'normal' },
-  filterButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  favoriteStrip: { paddingHorizontal: 22, paddingVertical: 14, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  favoriteText: { fontSize: 16, fontWeight: '900' },
-  favoriteCount: { fontSize: 14, fontWeight: '900' },
-  listContent: { paddingHorizontal: 22, paddingBottom: 100 },
-  taskRow: { paddingVertical: 20, borderBottomWidth: 1 },
-  metaLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
-  metaText: { fontSize: 13, fontWeight: '700' },
-  metaDot: { fontSize: 18, lineHeight: 18, fontWeight: '900' },
-  titleLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  jobTitle: { flex: 1, fontSize: 22, fontWeight: '800', lineHeight: 27, marginBottom: 12 },
-  iconActions: { flexDirection: 'row', gap: 18, paddingTop: 3 },
-  terms: { fontSize: 14, lineHeight: 21, fontWeight: '600', marginBottom: 18 },
-  description: { fontSize: 16, lineHeight: 24 },
-  moreLink: { fontSize: 16, fontWeight: '800', textDecorationLine: 'underline', marginBottom: 18 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
-  tag: { maxWidth: 170, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999 },
-  tagText: { fontSize: 13, fontWeight: '800' },
-  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 18, flexWrap: 'wrap', marginBottom: 16 },
-  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  smallText: { fontSize: 13, fontWeight: '700' },
-  locationRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  locationText: { maxWidth: 210, fontSize: 14, fontWeight: '700' },
-  applyButton: { paddingHorizontal: 20, paddingVertical: 11, borderRadius: 999 },
-  applyText: { color: '#FFF', fontSize: 14, fontWeight: '900' },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
-  emptyText: { marginTop: 15, fontSize: 15, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 25, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  modalTitle: { fontSize: 20, fontWeight: '900' },
-  filterLabel: { fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  filterOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
-  applyFilters: { marginTop: 40, height: 56, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  applyFiltersText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+  scroll: { flexGrow: 1, backgroundColor: '#FAFAFA' },
+
+  // 1. Premium Header Top Style
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 50,
+    paddingBottom: 16,
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  profileSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 16,
+  },
+  profileInfo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  greetingText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  levelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6FDF3',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  levelText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#0D9488',
+    marginLeft: 2,
+  },
+  jobsNearText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    marginTop: 2,
+  },
+  bellBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#EF4444',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+
+  // 2. Sub Header Pills Row
+  subHeaderScroll: {
+    paddingLeft: 20,
+    paddingRight: 10,
+    gap: 8,
+  },
+  subPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1.5,
+  },
+  subPillCol: {
+    marginLeft: 2,
+    justifyContent: 'center',
+  },
+  subPillVal: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    lineHeight: 14,
+  },
+  subPillSub: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    lineHeight: 10,
+  },
+  subPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // 3. Premium Stats Dashboard Card
+  statsCard: {
+    marginHorizontal: 8,
+    borderRadius: 24,
+    paddingVertical: 22,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    marginBottom: 16,
+  },
+  cardCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  jobsCompletedCol: {
+    flex: 1.45,
+  },
+  cardLabel: {
+    fontSize: 9.5,
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  cardValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  topUpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginTop: 12,
+    minWidth: 96,
+  },
+  topUpText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0D9488',
+  },
+  colDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginHorizontal: 14,
+    height: '90%',
+    alignSelf: 'center',
+  },
+  sparklineContainer: {
+    marginTop: 8,
+    width: '100%',
+  },
+  mockSparkline: {
+    width: 60,
+    height: 30,
+    position: 'relative',
+  },
+  sparkPoint: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  sparkPointActive: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
+  },
+  sparkLineSegment: {
+    position: 'absolute',
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  greenPercentage: {
+    color: '#4ADE80',
+    fontSize: 9,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  miniBarRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 7,
+    height: 50,
+    marginTop: 14,
+    width: '100%',
+  },
+  miniBar: {
+    width: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+
+  // 4. Unified Availability & Quick Nav Container
+  unifiedNavCard: {
+    marginHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 24,
+  },
+  availSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    marginBottom: 20,
+  },
+  availTextCol: {
+    flex: 1,
+  },
+  availTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  availSubText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
+    marginBottom: 8,
+  },
+  onlinePillRow: {
+    flexDirection: 'row',
+  },
+  onlinePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  onlinePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  quickNavGridContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickNavCard: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  quickNavIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  quickNavCardLabel: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  quickNavBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#EF4444',
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickNavBadgeText: {
+    color: '#FFF',
+    fontSize: 8.5,
+    fontWeight: '900',
+  },
+
+  // 5. Learn Fixam step slider
+  learnHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  learnTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  seeAllText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  learnScroll: {
+    paddingLeft: 20,
+    paddingRight: 10,
+    gap: 12,
+  },
+  learnCard: {
+    width: width - 70,
+    height: 160,
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  learnLeft: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  stepBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  stepBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  learnCardTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  learnCardDesc: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  arrowCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  learnCardImage: {
+    width: 100,
+    height: 120,
+    alignSelf: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  slideDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
+  },
+  slideDotActive: {
+    width: 18,
+    backgroundColor: '#0D9488',
+  },
+
+  // 6. Search Bar & Categories
+  searchRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 50,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+  filterBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  catScroll: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    gap: 8,
+    marginBottom: 16,
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  catText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // 7. Live Jobs Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  liveCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0D9488',
+    marginLeft: 8,
+  },
+  viewAllText: {
+    color: '#0D9488',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Job Cards list item
+  jobCard: {
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  jobTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  jobTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    flex: 1,
+    marginRight: 10,
+    lineHeight: 28,
+  },
+  actionIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 2,
+  },
+  actionBtn: {
+    padding: 2,
+  },
+  jobSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 16,
+  },
+  jobDesc: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '500',
+    marginBottom: 16,
+  },
+  moreText: {
+    color: '#2563EB',
+    fontWeight: '800',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tagChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statsText: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 20,
+  },
+  jobBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  locationText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  applyBtn: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  applyBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  emptySub: {
+    fontSize: 13,
+  },
 });
 
 export default ProviderHomeScreen;

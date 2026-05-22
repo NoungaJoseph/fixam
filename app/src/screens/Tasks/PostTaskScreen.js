@@ -2,22 +2,62 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
-  ScrollView, StatusBar, Modal, Alert
+  ScrollView, StatusBar, Modal, Alert, Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { COLORS } from '../../services/theme';
+import * as ImagePicker from 'expo-image-picker';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
+
+const tasksHeroImage = require('../../../assets/tasks_hero.png');
 
 const TASK_CATS = [
   { id: '1', name: 'PLUMBING', icon: 'pipe-wrench' },
   { id: '2', name: 'ELECTRICAL', icon: 'lightning-bolt-circle' },
-  { id: '3', name: 'REPAIR', icon: 'wrench' },
-  { id: '4', name: 'OTHER', icon: 'dots-horizontal-circle' },
+  { id: '3', name: 'CLEANING', icon: 'broom' },
+  { id: '4', name: 'PAINTING', icon: 'format-paint' },
+  { id: '5', name: 'CARPENTRY', icon: 'hammer' },
+  { id: '6', name: 'GARDENING', icon: 'flower' },
+  { id: '7', name: 'MOVING', icon: 'truck-outline' },
+  { id: '8', name: 'APPLIANCE', icon: 'fridge-outline' },
+  { id: '9', name: 'REPAIR', icon: 'wrench' },
+  { id: '10', name: 'OTHER', icon: 'dots-horizontal-circle' },
 ];
+
+const PREFERENCES = [
+  { id: 'verified', label: 'Verified Professionals', icon: 'shield-check-outline' },
+  { id: 'fast', label: 'Fast Response', icon: 'lightning-bolt-outline' },
+  { id: 'rated', label: 'Highly Rated', icon: 'star-outline' },
+  { id: 'today', label: 'Available Today', icon: 'clock-outline' },
+];
+
+const FILTERS = [
+  { label: 'All Tasks', value: 'ALL', color: '#0D9488' },
+  { label: 'Pending', value: 'PENDING', color: '#F59E0B' },
+  { label: 'In Progress', value: 'IN_PROGRESS', color: '#2563EB' },
+  { label: 'Completed', value: 'COMPLETED', color: '#16A34A' },
+  { label: 'Cancelled', value: 'CANCELLED', color: '#EF4444' },
+];
+
+const CATEGORY_COLORS = {
+  PLUMBING: { text: '#0D9488', bg: '#DFFAF5' },
+  ELECTRICAL: { text: '#1473E6', bg: '#EAF2FF' },
+  CLEANING: { text: '#8B5CF6', bg: '#F0E8FF' },
+  REPAIR: { text: '#F97316', bg: '#FFF1E7' },
+  OTHER: { text: '#64748B', bg: '#F1F5F9' },
+};
+
+const STATUS_STYLES = {
+  PENDING: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
+  PENDING_APPROVAL: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
+  IN_PROGRESS: { label: 'IN PROGRESS', icon: 'sync', text: '#1473E6', bg: '#EAF2FF' },
+  COMPLETED: { label: 'COMPLETED', icon: 'check-circle-outline', text: '#0D9488', bg: '#E2F8F4' },
+  CANCELLED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
+  REJECTED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
+};
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
@@ -27,6 +67,19 @@ const formatDateInput = (date) => {
 
 const formatTimeInput = (date) => {
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+};
+
+const normalizeTaskStatus = (job) => {
+  if (job.approvalStatus === 'REJECTED') return 'CANCELLED';
+  if (job.approvalStatus === 'PENDING_APPROVAL') return 'PENDING';
+  return String(job.status || 'PENDING').toUpperCase();
+};
+
+const formatCardDate = (job) => {
+  const value = job.scheduledTime || job.createdAt;
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return '16/05/2026';
+  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}`;
 };
 
 const PostTaskScreen = ({ route, navigation }) => {
@@ -42,6 +95,17 @@ const PostTaskScreen = ({ route, navigation }) => {
   const [location, setLocation] = useState('');
   const [budget, setBudget] = useState('50000');
   const [loading, setLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [budgetMode, setBudgetMode] = useState('fixed');
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [whatNeedsDone, setWhatNeedsDone] = useState('');
+  const [importantDetails, setImportantDetails] = useState('');
+  const [taskScope, setTaskScope] = useState('');
+  const [materialsProvider, setMaterialsProvider] = useState('professional');
+  const [selectedPreferences, setSelectedPreferences] = useState(['verified', 'fast', 'rated', 'today']);
+  const [detailEditor, setDetailEditor] = useState(null);
   
   const [scheduledDate, setScheduledDate] = useState(new Date());
   const [scheduledTime, setScheduledTime] = useState(new Date());
@@ -57,7 +121,7 @@ const PostTaskScreen = ({ route, navigation }) => {
       setTaskMode('tasks');
       setStep('details');
     }
-  }, [route?.params?.startOnPost]);
+  }, [route?.params?.startOnPost, route?.params?.resetKey]);
 
   const resetForm = () => {
     setEditingJob(null);
@@ -66,6 +130,16 @@ const PostTaskScreen = ({ route, navigation }) => {
     setDescription('');
     setLocation('');
     setBudget('50000');
+    setBudgetMode('fixed');
+    setSelectedPhotos([]);
+    setCategorySearch('');
+    setShowCategoryPicker(false);
+    setWhatNeedsDone('');
+    setImportantDetails('');
+    setTaskScope('');
+    setMaterialsProvider('professional');
+    setSelectedPreferences(['verified', 'fast', 'rated', 'today']);
+    setDetailEditor(null);
     setScheduledDate(new Date());
     setScheduledTime(new Date());
   };
@@ -76,6 +150,13 @@ const PostTaskScreen = ({ route, navigation }) => {
     setStep('details');
   };
 
+  const navigateToCreateTask = () => {
+    navigation.navigate('Create Task', {
+      screen: 'PostTask',
+      params: { startOnPost: true, resetKey: Date.now() },
+    });
+  };
+
   const startEditTask = (job) => {
     const scheduled = job.scheduledTime ? new Date(job.scheduledTime) : new Date();
     setEditingJob(job);
@@ -84,10 +165,29 @@ const PostTaskScreen = ({ route, navigation }) => {
     setDescription(job.description || '');
     setLocation(job.location || '');
     setBudget(String(job.budget || '50000'));
+    setBudgetMode('fixed');
+    setSelectedPhotos([]);
+    setCategorySearch(job.category || '');
+    setWhatNeedsDone(job.whatNeedsDone || '');
+    setImportantDetails(job.importantDetails || '');
+    setTaskScope(job.taskScope || '');
+    setMaterialsProvider(job.materialsProvider || 'professional');
+    setSelectedPreferences(job.preferences || ['verified', 'fast', 'rated', 'today']);
+    setDetailEditor(null);
     setScheduledDate(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setScheduledTime(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setTaskMode('post');
     setStep('details');
+  };
+
+  const openDrawer = () => {
+    const stackParent = navigation.getParent?.();
+    const tabParent = stackParent?.getParent?.();
+    const drawerParent = tabParent?.getParent?.();
+
+    if (drawerParent?.openDrawer) drawerParent.openDrawer();
+    else if (tabParent?.openDrawer) tabParent.openDrawer();
+    else stackParent?.openDrawer?.();
   };
 
   const openDatePicker = () => {
@@ -106,7 +206,6 @@ const PostTaskScreen = ({ route, navigation }) => {
       Alert.alert('Invalid Date', 'Please enter the date as YYYY-MM-DD.');
       return;
     }
-
     const nextDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -114,7 +213,6 @@ const PostTaskScreen = ({ route, navigation }) => {
       Alert.alert('Invalid Date', 'Please choose today or a future date.');
       return;
     }
-
     setScheduledDate(nextDate);
     setShowDatePicker(false);
   };
@@ -125,14 +223,12 @@ const PostTaskScreen = ({ route, navigation }) => {
       Alert.alert('Invalid Time', 'Please enter the time as HH:MM.');
       return;
     }
-
     const hours = Number(match[1]);
     const minutes = Number(match[2]);
     if (hours > 23 || minutes > 59) {
       Alert.alert('Invalid Time', 'Please enter a valid 24-hour time.');
       return;
     }
-
     const nextTime = new Date(scheduledTime);
     nextTime.setHours(hours, minutes, 0, 0);
     setScheduledTime(nextTime);
@@ -146,11 +242,7 @@ const PostTaskScreen = ({ route, navigation }) => {
         Alert.alert('Permission Denied', 'We need location permission to get your current location.');
         return;
       }
-
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude, longitude } = loc.coords;
       setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
     } catch (error) {
@@ -160,7 +252,6 @@ const PostTaskScreen = ({ route, navigation }) => {
 
   const validateForm = () => {
     if (!title.trim()) return 'Task title is required';
-    if (!description.trim()) return 'Description is required';
     if (!location.trim()) return 'Location is required';
     if (!budget || parseInt(budget) <= 0) return 'Budget must be greater than 0';
     return null;
@@ -172,7 +263,64 @@ const PostTaskScreen = ({ route, navigation }) => {
       Alert.alert('Validation Error', error);
       return;
     }
+    setStep('description');
+  };
+
+  const handleDescriptionNext = () => {
+    if (!description.trim()) {
+      Alert.alert('Validation Error', 'Description is required');
+      return;
+    }
     setStep('review');
+  };
+
+  const pickTaskPhoto = async () => {
+    if (selectedPhotos.length >= 5) return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please allow photo access to upload task images.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setSelectedPhotos((prev) => [...prev, result.assets[0].uri].slice(0, 5));
+      }
+    } catch (error) {
+      Alert.alert('Upload failed', 'Could not add this photo. Please try again.');
+    }
+  };
+
+  const removeTaskPhoto = (uri) => {
+    setSelectedPhotos((prev) => prev.filter((item) => item !== uri));
+  };
+
+  const togglePreference = (id) => {
+    setSelectedPreferences((prev) => (
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    ));
+  };
+
+  const selectCategory = (cat) => {
+    setSelectedCat(cat.name);
+    setCategorySearch(cat.name);
+    setShowCategoryPicker(false);
+  };
+
+  const filteredCategories = TASK_CATS.filter((cat) => (
+    cat.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
+  ));
+
+  const openDetailEditor = (type) => {
+    setDetailEditor(type);
+  };
+
+  const closeDetailEditor = () => {
+    setDetailEditor(null);
   };
 
   const handlePublish = async () => {
@@ -185,24 +333,23 @@ const PostTaskScreen = ({ route, navigation }) => {
         scheduledTime.getHours(),
         scheduledTime.getMinutes()
       );
-
       const payload = {
-        title,
-        description,
-        location,
+        title, description, location,
         budget: parseInt(budget),
         category: selectedCat,
         scheduledTime: scheduledDateTime.toISOString(),
+        whatNeedsDone,
+        importantDetails,
+        taskScope,
+        materialsProvider,
+        preferences: selectedPreferences,
       };
-
       if (editingJob) {
         await api.put(`/jobs/${editingJob.id}`, payload);
       } else {
         await api.post('/jobs', payload);
       }
-
       await fetchAppData?.();
-
       setStep('success');
     } catch (error) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to publish task. Please try again.');
@@ -223,107 +370,199 @@ const PostTaskScreen = ({ route, navigation }) => {
 
   const renderTaskCard = (job) => {
     const canEdit = job.status !== 'COMPLETED' && job.status !== 'CANCELLED';
-    const statusLabel = job.approvalStatus === 'PENDING_APPROVAL'
-      ? 'Awaiting admin approval'
-      : job.approvalStatus === 'REJECTED'
-        ? 'Rejected'
-        : job.status;
+    const normalizedStatus = normalizeTaskStatus(job);
+    const statusStyle = STATUS_STYLES[normalizedStatus] || STATUS_STYLES.PENDING;
+    const category = String(job.category || 'TASK').toUpperCase();
+    const categoryStyle = CATEGORY_COLORS[category] || CATEGORY_COLORS.OTHER;
+    const isComplete = normalizedStatus === 'COMPLETED';
+    const isInProgress = normalizedStatus === 'IN_PROGRESS';
+    const description = job.description || 'No description provided yet.';
+    const locationText = job.location || '4.1070, 9.7619';
+    const titleText = job.title || 'Untitled task';
 
     return (
-      <View key={job.id} style={styles.taskCard}>
+      <View key={job.id} style={[styles.taskCard, { backgroundColor: colors.card }]}>
         <View style={styles.taskCardHeader}>
-          <View style={styles.catBadge}>
-            <Text style={styles.catBadgeText}>{job.category || 'TASK'}</Text>
+          <View style={[styles.catBadge, { backgroundColor: categoryStyle.bg }]}>
+            <Text style={[styles.catBadgeText, { color: categoryStyle.text }]}>{category}</Text>
           </View>
-          <Text style={styles.taskStatus}>{statusLabel}</Text>
+          <View style={styles.cardRightMeta}>
+            <MaterialCommunityIcons name="calendar-blank-outline" size={20} color="#64748B" />
+            <Text style={styles.cardDate}>{formatCardDate(job)}</Text>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <MaterialCommunityIcons name="dots-vertical" size={24} color="#071936" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.reviewTitle}>{job.title}</Text>
-        <Text style={styles.reviewDescription}>{job.description}</Text>
-        <View style={styles.taskMetaRow}>
-          <MaterialCommunityIcons name="map-marker-outline" size={16} color="#6B7280" />
-          <Text style={styles.taskMetaText}>{job.location}</Text>
+        
+        <View style={styles.taskBodyRow}>
+          <View style={styles.taskCopy}>
+            <Text style={styles.taskTitle}>{titleText}</Text>
+            <Text style={styles.taskDescriptionText} numberOfLines={2}>{description}</Text>
+          </View>
+          <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
+            <MaterialCommunityIcons name={statusStyle.icon} size={18} color={statusStyle.text} />
+            <Text style={[styles.statusPillText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+          </View>
         </View>
-        <View style={styles.taskMetaRow}>
-          <MaterialCommunityIcons name="calendar-clock" size={16} color="#6B7280" />
-          <Text style={styles.taskMetaText}>
-            {job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'Not scheduled'}
-          </Text>
+        
+        <View style={styles.taskMetaGrid}>
+          <View style={styles.taskMetaItem}>
+            <MaterialCommunityIcons name="map-marker" size={22} color="#0D9488" />
+            <Text style={styles.taskMetaValue}>{locationText}</Text>
+          </View>
+          <View style={styles.metaDivider} />
+          <View style={styles.taskMetaItem}>
+            <MaterialCommunityIcons name="currency-usd" size={18} color="#06B85F" />
+            <Text style={styles.budgetValue}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
+          </View>
         </View>
-        <Text style={styles.taskBudget}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
 
         {job.rejectionReason ? (
           <View style={styles.rejectionBox}>
-            <Text style={styles.rejectionText}>Reason: {job.rejectionReason}</Text>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.error} />
+            <Text style={[styles.rejectionText, { color: colors.error }]}>Reason: {job.rejectionReason}</Text>
           </View>
         ) : null}
 
-        <View style={styles.taskActions}>
-          <TouchableOpacity style={styles.taskOutlineBtn} onPress={() => navigation.navigate('JobStatus', { job })}>
-            <MaterialCommunityIcons name="eye-outline" size={16} color={COLORS.primary} />
-            <Text style={styles.taskOutlineText}>Details</Text>
+        <View style={styles.taskActionGroup}>
+          <TouchableOpacity 
+            style={styles.secondaryActionBtn}
+            onPress={() => navigation.navigate('JobStatus', { job })}
+          >
+            <MaterialCommunityIcons name="eye" size={22} color="#071936" />
+            <Text style={styles.secondaryActionText}>Details</Text>
           </TouchableOpacity>
-          {canEdit ? (
-            <TouchableOpacity style={styles.taskOutlineBtn} onPress={() => startEditTask(job)}>
-              <MaterialCommunityIcons name="pencil-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.taskOutlineText}>Edit</Text>
+          
+          {canEdit && (
+            <TouchableOpacity 
+              style={styles.secondaryActionBtn}
+              onPress={() => startEditTask(job)}
+            >
+              <MaterialCommunityIcons name="pencil-outline" size={22} color="#071936" />
+              <Text style={styles.secondaryActionText}>Edit</Text>
             </TouchableOpacity>
-          ) : null}
-          {job.status !== 'COMPLETED' ? (
+          )}
+
+          {isComplete ? (
+            <TouchableOpacity style={[styles.secondaryActionBtn, styles.bookAgainBtn]} onPress={navigateToCreateTask}>
+              <MaterialCommunityIcons name="sync" size={22} color="#071936" />
+              <Text style={styles.secondaryActionText}>Book Again</Text>
+            </TouchableOpacity>
+          ) : (
             <TouchableOpacity
-              style={styles.taskSolidBtn}
+              style={[styles.primaryActionBtn, isInProgress && styles.blueActionBtn]}
               onPress={() => Alert.alert('Complete Task', 'Mark this task as complete?', [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Complete', onPress: () => updateTaskStatus(job, 'COMPLETED') }
               ])}
             >
-              <MaterialCommunityIcons name="check" size={16} color="#FFF" />
-              <Text style={styles.taskSolidText}>Complete</Text>
+              <MaterialCommunityIcons name="check-circle-outline" size={22} color="#FFF" />
+              <Text style={styles.primaryActionText}>{isInProgress ? 'Mark Completed' : 'Done'}</Text>
             </TouchableOpacity>
-          ) : null}
+          )}
         </View>
       </View>
     );
   };
 
+  const visibleJobs = (jobs || []).filter((job) => {
+    const normalizedStatus = normalizeTaskStatus(job);
+    return activeFilter === 'ALL' || normalizedStatus === activeFilter;
+  });
+
+  const detailEditorConfig = detailEditor === 'what'
+    ? {
+      title: 'What needs to be done?',
+      subtitle: 'Describe the specific outcome you expect from the professional.',
+      value: whatNeedsDone,
+      setter: setWhatNeedsDone,
+      placeholder: 'e.g. Detect the leaking pipe, fix or replace the damaged part, and ensure no more leaks.',
+    }
+    : detailEditor === 'important'
+      ? {
+        title: 'Important details',
+        subtitle: 'Add constraints, access notes, urgency, measurements, or special instructions.',
+        value: importantDetails,
+        setter: setImportantDetails,
+        placeholder: 'e.g. The leak is under the kitchen sink. Please bring tools and call before arriving.',
+      }
+      : detailEditor === 'scope'
+        ? {
+          title: 'Task Scope',
+          subtitle: 'Explain how large the job is so providers can quote correctly.',
+          value: taskScope,
+          setter: setTaskScope,
+          placeholder: 'e.g. Small repair, one kitchen sink only, should take less than two hours.',
+        }
+        : null;
+
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.container}
-    >
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       {taskMode === 'tasks' && (
         <>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.primary} />
+          <View style={styles.tasksHeader}>
+            <TouchableOpacity onPress={openDrawer} style={styles.menuBtn}>
+              <MaterialCommunityIcons name="menu" size={32} color="#071936" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>My Tasks</Text>
-            <TouchableOpacity onPress={startNewTask} style={styles.backBtn}>
-              <MaterialCommunityIcons name="plus" size={24} color={COLORS.primary} />
+            <Text style={styles.tasksHeaderTitle}>My Tasks</Text>
+            <TouchableOpacity onPress={navigateToCreateTask} style={styles.addTaskBtn}>
+              <MaterialCommunityIcons name="plus" size={34} color="#FFF" />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.myTasksHero}>
-              <Text style={styles.mainTitle}>Your posted tasks</Text>
-              <Text style={styles.successSubtitle}>View approval progress, edit pending work, and mark jobs complete.</Text>
+            <LinearGradient
+              colors={['#0D9488', '#2180F3']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.tasksHero}
+            >
+              <View style={styles.tasksHeroText}>
+                <Text style={styles.tasksHeroTitle}>Your posted tasks</Text>
+                <Text style={styles.tasksHeroSubtitle}>Track approval, edit pending work, and manage your service requests.</Text>
+              </View>
+              <Image source={tasksHeroImage} style={styles.tasksHeroImage} resizeMode="contain" />
+            </LinearGradient>
+
+            <View style={styles.filterBar}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 8 }}
+                style={{ flex: 1 }}
+              >
+                {FILTERS.map((filter) => {
+                  const active = activeFilter === filter.value;
+                  return (
+                    <TouchableOpacity key={filter.value} style={styles.filterItem} onPress={() => setActiveFilter(filter.value)}>
+                      <View style={styles.filterLabelRow}>
+                        <Text style={[styles.filterText, active && { color: filter.color }]}>
+                          {filter.label}
+                        </Text>
+                        {filter.value !== 'ALL' && <View style={[styles.filterDot, { backgroundColor: filter.color }]} />}
+                      </View>
+                      <View style={[styles.filterUnderline, active && { backgroundColor: filter.color }]} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={startNewTask}>
-              <Text style={styles.submitBtnText}>Post New Task</Text>
-              <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
-            </TouchableOpacity>
-
             <View style={styles.taskList}>
-              {(jobs || []).length === 0 ? (
+              {visibleJobs.length === 0 ? (
                 <View style={styles.emptyTasks}>
-                  <MaterialCommunityIcons name="clipboard-text-outline" size={56} color="#CBD5E1" />
-                  <Text style={styles.emptyTasksTitle}>No tasks yet</Text>
-                  <Text style={styles.emptyTasksText}>Post your first task and it will appear here for tracking.</Text>
+                  <MaterialCommunityIcons name="clipboard-text-outline" size={64} color={colors.border} />
+                  <Text style={[styles.emptyTasksTitle, { color: colors.text }]}>No tasks here</Text>
+                  <Text style={[styles.emptyTasksText, { color: colors.textSecondary }]}>Post your first task and it will appear here for tracking.</Text>
+                  <TouchableOpacity style={[styles.submitBtn, { marginTop: 20, width: '100%', backgroundColor: colors.accent }]} onPress={navigateToCreateTask}>
+                    <Text style={styles.submitBtnText}>Post First Task</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
-                (jobs || []).map(renderTaskCard)
+                visibleJobs.map(renderTaskCard)
               )}
             </View>
           </ScrollView>
@@ -332,246 +571,452 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'post' && step === 'details' && (
         <>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.primary} />
+          <View style={styles.createHeader}>
+            <TouchableOpacity onPress={openDrawer} style={styles.createBackBtn}>
+              <MaterialCommunityIcons name="menu" size={32} color="#071936" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{editingJob ? 'Edit Task' : 'Post a Task'}</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.createHeaderTitle}>{editingJob ? 'Edit Task' : 'Create Task'}</Text>
+            <View style={{ width: 52 }} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            {/* Step Indicator */}
-            <View style={styles.stepRow}>
-              <View style={[styles.stepItem, styles.stepActive]}>
-                <Text style={styles.stepNum}>1</Text>
-              </View>
-              <View style={styles.stepLine} />
-              <View style={styles.stepItem}>
-                <Text style={styles.stepNumInactive}>2</Text>
-              </View>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
+            <View style={styles.createStepper}>
+              {['Task Details', 'Description', 'Review'].map((label, index) => {
+                const active = index === 0;
+                return (
+                  <React.Fragment key={label}>
+                    <View style={styles.createStepUnit}>
+                      <View style={[styles.createStepCircle, active && styles.createStepCircleActive]}>
+                        <Text style={[styles.createStepNum, active && styles.createStepNumActive]}>{index + 1}</Text>
+                      </View>
+                      <Text style={[styles.createStepLabel, active && styles.createStepLabelActive]}>{label}</Text>
+                    </View>
+                    {index < 2 && <View style={styles.createStepConnector} />}
+                  </React.Fragment>
+                );
+              })}
             </View>
 
-            <Text style={styles.mainTitle}>{editingJob ? 'Update task details' : 'What needs fixing?'}</Text>
+            <LinearGradient
+              colors={['#0D9488', '#2180F3']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.createHero}
+            >
+              <View style={styles.createHeroTextWrap}>
+                <Text style={styles.createHeroTitle}>Let's get started!</Text>
+                <Text style={styles.createHeroSub}>Tell us what you need done and we'll help you find the right professional.</Text>
+              </View>
+              <Image source={tasksHeroImage} style={styles.createHeroImage} resizeMode="contain" />
+            </LinearGradient>
 
-            {/* Category Grid */}
-            <View style={styles.catGrid}>
-              {TASK_CATS.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.catCard, selectedCat === cat.name && styles.catCardActive]}
-                  onPress={() => setSelectedCat(cat.name)}
-                >
-                  <View style={[styles.catIconWrap, selectedCat === cat.name && styles.catIconWrapActive]}>
-                    <MaterialCommunityIcons
-                      name={cat.icon}
-                      size={24}
-                      color={selectedCat === cat.name ? '#FFF' : COLORS.primary}
-                    />
-                  </View>
-                  <Text style={[styles.catName, selectedCat === cat.name && styles.catNameActive]}>
-                    {cat.name}
-                  </Text>
+            <View style={styles.createFormCard}>
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.createSectionLabel}>Category</Text>
+                <TouchableOpacity onPress={() => setShowCategoryPicker((value) => !value)}>
+                  <Text style={styles.viewAllText}>View all</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Inputs */}
-            <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>TASK TITLE</Text>
+              </View>
+              <View style={styles.categorySearchWrap}>
+                <MaterialCommunityIcons name="shape-outline" size={21} color="#0D9488" />
                 <TextInput
-                  style={styles.input}
-                  placeholder="e.g., Fix my kitchen light"
-                  placeholderTextColor="#6B7280"
+                  style={styles.categorySearchInput}
+                  placeholder="Select a category"
+                  placeholderTextColor="#94A3B8"
+                  value={showCategoryPicker ? categorySearch : selectedCat}
+                  onFocus={() => {
+                    setCategorySearch('');
+                    setShowCategoryPicker(true);
+                  }}
+                  onChangeText={(value) => {
+                    setCategorySearch(value);
+                    setShowCategoryPicker(true);
+                  }}
+                />
+                <MaterialCommunityIcons name={showCategoryPicker ? 'chevron-up' : 'chevron-right'} size={24} color="#64748B" />
+              </View>
+              {showCategoryPicker && (
+                <View style={styles.categoryResults}>
+                  {(filteredCategories.length ? filteredCategories : TASK_CATS).map((cat) => {
+                    const active = selectedCat === cat.name;
+                    return (
+                      <TouchableOpacity key={cat.id} style={styles.categoryResultItem} onPress={() => selectCategory(cat)}>
+                        <View style={[styles.categoryResultIcon, active && styles.categoryResultIconActive]}>
+                          <MaterialCommunityIcons name={cat.icon} size={18} color={active ? '#FFF' : '#0D9488'} />
+                        </View>
+                        <Text style={styles.categoryResultText}>{cat.name}</Text>
+                        {active && <MaterialCommunityIcons name="check-circle" size={20} color="#0D9488" />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              <View style={styles.createFieldGroup}>
+                <Text style={styles.createSectionLabel}>Task Title</Text>
+                <TextInput
+                  style={styles.createInput}
+                  placeholder="e.g. Fix leaking pipe in kitchen"
+                  placeholderTextColor="#94A3B8"
                   value={title}
                   onChangeText={setTitle}
+                  maxLength={80}
                 />
+                <Text style={styles.inputCounter}>{title.length}/80</Text>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>DESCRIPTION</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Detail what needs to be done..."
-                  placeholderTextColor="#6B7280"
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline={true}
-                  numberOfLines={4}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>LOCATION</Text>
-                <View style={styles.locationInputWrap}>
-                  <MaterialCommunityIcons name="map-marker-outline" size={20} color={COLORS.primary} />
+              <View style={styles.createFieldGroup}>
+                <Text style={styles.createSectionLabel}>Location</Text>
+                <View style={styles.createLocationInput}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={21} color="#0D9488" />
                   <TextInput
-                    style={styles.locationInput}
-                    placeholder="Enter street address"
-                    placeholderTextColor="#6B7280"
+                    style={styles.createLocationTextInput}
+                    placeholder="Douala, Cameroon"
+                    placeholderTextColor="#071936"
                     value={location}
                     onChangeText={setLocation}
                   />
                   <TouchableOpacity onPress={getCurrentLocation}>
-                    <MaterialCommunityIcons name="crosshairs-gps" size={20} color={COLORS.accent} />
+                    <MaterialCommunityIcons name="crosshairs-gps" size={22} color="#0D9488" />
                   </TouchableOpacity>
                 </View>
+                <Text style={styles.fieldHint}>This helps us show nearby professionals</Text>
               </View>
 
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>BUDGET</Text>
-                  <View style={styles.budgetInputWrap}>
-                    <Text style={styles.currency}>XAF</Text>
-                    <TextInput
-                      style={styles.budgetInput}
-                      value={budget}
-                      onChangeText={setBudget}
-                      keyboardType="numeric"
-                      placeholder="50000"
-                    />
+              <View style={styles.createFieldGroup}>
+                <Text style={styles.createSectionLabel}>Budget</Text>
+                <View style={styles.budgetModeRow}>
+                  <TouchableOpacity style={[styles.budgetModeBtn, budgetMode === 'fixed' && styles.budgetModeBtnActive]} onPress={() => setBudgetMode('fixed')}>
+                    <Text style={[styles.budgetModeTitle, budgetMode === 'fixed' && styles.budgetModeTitleActive]}>Fixed Price</Text>
+                    <Text style={styles.budgetModeSub}>Set your budget</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.budgetModeBtn, budgetMode === 'range' && styles.budgetModeBtnActive]} onPress={() => setBudgetMode('range')}>
+                    <Text style={[styles.budgetModeTitle, budgetMode === 'range' && styles.budgetModeTitleActive]}>Price Range</Text>
+                    <Text style={styles.budgetModeSub}>Set min - max budget</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.budgetAmountRow}>
+                  <View style={styles.currencyBox}>
+                    <Text style={styles.currencyBoxText}>FCFA</Text>
                   </View>
+                  <TextInput
+                    style={styles.budgetAmountInput}
+                    value={budget}
+                    onChangeText={setBudget}
+                    keyboardType="numeric"
+                    placeholder="Enter your budget"
+                    placeholderTextColor="#94A3B8"
+                  />
                 </View>
+                <Text style={styles.fieldHint}>Enter the amount you are willing to pay</Text>
               </View>
 
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>DATE</Text>
-                  <TouchableOpacity style={styles.datePickerBtn} onPress={openDatePicker}>
-                    <Text style={styles.dateText}>{scheduledDate.toLocaleDateString()}</Text>
-                    <MaterialCommunityIcons name="calendar-month" size={20} color={COLORS.primary} />
+              <View style={styles.createFieldGroup}>
+                <Text style={styles.createSectionLabel}>Upload Photos <Text style={styles.optionalText}>(Optional)</Text></Text>
+                <Text style={styles.fieldHintStrong}>Add photos to help professionals understand better</Text>
+                <View style={styles.photoRow}>
+                  <TouchableOpacity style={styles.addPhotoBox} onPress={pickTaskPhoto}>
+                    <MaterialCommunityIcons name="image-outline" size={26} color="#0D9488" />
+                    <Text style={styles.addPhotoText}>Add Photo</Text>
                   </TouchableOpacity>
+                  {selectedPhotos.map((uri) => (
+                    <View key={uri} style={styles.photoThumbWrap}>
+                      <Image source={{ uri }} style={styles.photoThumb} />
+                      <TouchableOpacity style={styles.removePhotoBtn} onPress={() => removeTaskPhoto(uri)}>
+                        <MaterialCommunityIcons name="close" size={16} color="#64748B" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>TIME</Text>
-                  <TouchableOpacity style={styles.datePickerBtn} onPress={openTimePicker}>
-                    <Text style={styles.dateText}>{scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                    <MaterialCommunityIcons name="clock-outline" size={20} color={COLORS.primary} />
-                  </TouchableOpacity>
+                <Text style={styles.fieldHint}>You can add up to 5 photos</Text>
+              </View>
+
+              <View style={styles.createFieldGroup}>
+                <Text style={styles.createSectionLabel}>Additional Preferences <Text style={styles.optionalText}>(Optional)</Text></Text>
+                <View style={styles.preferenceGrid}>
+                  {PREFERENCES.map((pref) => {
+                    const active = selectedPreferences.includes(pref.id);
+                    return (
+                      <TouchableOpacity key={pref.id} style={[styles.preferenceChip, active && styles.preferenceChipActive]} onPress={() => togglePreference(pref.id)}>
+                        <MaterialCommunityIcons name={pref.icon} size={18} color={active ? '#0D9488' : '#64748B'} />
+                        <Text style={[styles.preferenceText, active && styles.preferenceTextActive]}>{pref.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleNext}>
-              <Text style={styles.submitBtnText}>Review Details</Text>
-              <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
+            <TouchableOpacity style={styles.createPrimaryBtn} onPress={handleNext}>
+              <Text style={styles.createPrimaryText}>Continue to Description</Text>
+              <MaterialCommunityIcons name="arrow-right" size={22} color="#FFF" />
             </TouchableOpacity>
           </ScrollView>
+        </>
+      )}
 
-          <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
-            <View style={styles.modalOverlay}>
-              <View style={styles.pickerModal}>
-                <Text style={styles.modalTitle}>Choose date</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={dateDraft}
-                  onChangeText={setDateDraft}
-                  placeholder="YYYY-MM-DD"
-                  keyboardType="numbers-and-punctuation"
-                />
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowDatePicker(false)}>
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.modalApplyBtn} onPress={applyDateDraft}>
-                    <Text style={styles.modalApplyText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
+      {taskMode === 'post' && step === 'description' && !detailEditorConfig && (
+        <>
+          <View style={styles.createHeader}>
+            <TouchableOpacity onPress={() => setStep('details')} style={styles.createBackBtn}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
+            </TouchableOpacity>
+            <Text style={styles.createHeaderTitle}>Task Description</Text>
+            <View style={{ width: 52 }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
+            <View style={styles.createStepper}>
+              {['Task Details', 'Description', 'Review'].map((label, index) => {
+                const active = index === 1;
+                const done = index < 1;
+                return (
+                  <React.Fragment key={label}>
+                    <View style={styles.createStepUnit}>
+                      <View style={[styles.createStepCircle, (active || done) && styles.createStepCircleActive]}>
+                        <Text style={[styles.createStepNum, (active || done) && styles.createStepNumActive]}>{index + 1}</Text>
+                      </View>
+                      <Text style={[styles.createStepLabel, active && styles.createStepLabelActive]}>{label}</Text>
+                    </View>
+                    {index < 2 && <View style={[styles.createStepConnector, done && styles.createStepConnectorDone]} />}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+
+            <View style={styles.tipCard}>
+              <MaterialCommunityIcons name="lightbulb-outline" size={34} color="#0D9488" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tipTitle}>Tip</Text>
+                <Text style={styles.tipText}>The more details you provide, the better quotes you'll receive.</Text>
+              </View>
+              <MaterialCommunityIcons name="close" size={22} color="#0D9488" />
+            </View>
+
+            <Text style={styles.descriptionLabel}>Describe your task</Text>
+            <View style={styles.descriptionInputWrap}>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Explain in detail what you need done..."
+                placeholderTextColor="#94A3B8"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                maxLength={1000}
+                textAlignVertical="top"
+              />
+              <Text style={styles.descriptionCounter}>{description.length}/1000</Text>
+            </View>
+            <Text style={styles.descriptionHint}>Include as much detail as possible</Text>
+
+            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('what')}>
+              <View>
+                <Text style={styles.promptTitle}>What needs to be done?</Text>
+                <Text style={styles.promptText} numberOfLines={2}>
+                  {whatNeedsDone || 'e.g. Install a new water heater, Fix broken plumbing, Paint entire living room...'}
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('important')}>
+              <View>
+                <Text style={styles.promptTitle}>Important details</Text>
+                <Text style={styles.promptText} numberOfLines={2}>
+                  {importantDetails || 'Mention the issue, size, urgency, and anything the professional should know.'}
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('scope')}>
+              <View>
+                <Text style={styles.promptTitle}>Task Scope</Text>
+                <Text style={styles.promptText}>{taskScope || 'Select the scope of work'}</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
+            </TouchableOpacity>
+
+            <View style={styles.materialsCard}>
+              <Text style={styles.promptTitle}>Materials</Text>
+              <Text style={styles.promptText}>Who will provide the materials?</Text>
+              <View style={styles.materialsRow}>
+                <TouchableOpacity style={[styles.materialOption, materialsProvider === 'professional' && styles.materialOptionActive]} onPress={() => setMaterialsProvider('professional')}>
+                  {materialsProvider === 'professional' && (
+                    <View style={styles.materialCheck}>
+                      <MaterialCommunityIcons name="check" size={14} color="#FFF" />
+                    </View>
+                  )}
+                  <MaterialCommunityIcons name="briefcase-variant" size={28} color="#0D9488" />
+                  <Text style={styles.materialTitle}>Professional</Text>
+                  <Text style={styles.materialSub}>I want the professional to provide materials</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.materialOption, materialsProvider === 'client' && styles.materialOptionActive]} onPress={() => setMaterialsProvider('client')}>
+                  {materialsProvider === 'client' && (
+                    <View style={styles.materialCheck}>
+                      <MaterialCommunityIcons name="check" size={14} color="#FFF" />
+                    </View>
+                  )}
+                  <MaterialCommunityIcons name="account-outline" size={30} color="#475569" />
+                  <Text style={styles.materialTitle}>I Will Provide</Text>
+                  <Text style={styles.materialSub}>I will provide the materials</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </Modal>
 
-          <Modal visible={showTimePicker} transparent animationType="fade" onRequestClose={() => setShowTimePicker(false)}>
-            <View style={styles.modalOverlay}>
-              <View style={styles.pickerModal}>
-                <Text style={styles.modalTitle}>Choose time</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={timeDraft}
-                  onChangeText={setTimeDraft}
-                  placeholder="HH:MM"
-                  keyboardType="numbers-and-punctuation"
-                />
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowTimePicker(false)}>
-                    <Text style={styles.modalCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.modalApplyBtn} onPress={applyTimeDraft}>
-                    <Text style={styles.modalApplyText}>Apply</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+            <View style={styles.descriptionActions}>
+              <TouchableOpacity style={styles.descriptionBackBtn} onPress={() => setStep('details')}>
+                <MaterialCommunityIcons name="arrow-left" size={22} color="#071936" />
+                <Text style={styles.descriptionBackText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.descriptionNextBtn} onPress={handleDescriptionNext}>
+                <Text style={styles.descriptionNextText}>Continue to Review</Text>
+                <MaterialCommunityIcons name="arrow-right" size={22} color="#FFF" />
+              </TouchableOpacity>
             </View>
-          </Modal>
+
+            <View style={styles.secureRow}>
+              <MaterialCommunityIcons name="shield-check-outline" size={18} color="#0D9488" />
+              <Text style={styles.secureText}>Your information is secure and private</Text>
+            </View>
+          </ScrollView>
+        </>
+      )}
+
+      {taskMode === 'post' && step === 'description' && detailEditorConfig && (
+        <>
+          <View style={styles.createHeader}>
+            <TouchableOpacity onPress={closeDetailEditor} style={styles.createBackBtn}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
+            </TouchableOpacity>
+            <Text style={styles.createHeaderTitle}>{detailEditorConfig.title}</Text>
+            <View style={{ width: 52 }} />
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
+            <View style={styles.detailEditorCard}>
+              <Text style={styles.detailEditorTitle}>{detailEditorConfig.title}</Text>
+              <Text style={styles.detailEditorSub}>{detailEditorConfig.subtitle}</Text>
+              <TextInput
+                style={styles.detailEditorInput}
+                value={detailEditorConfig.value}
+                onChangeText={detailEditorConfig.setter}
+                placeholder={detailEditorConfig.placeholder}
+                placeholderTextColor="#94A3B8"
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+            <TouchableOpacity style={styles.createPrimaryBtn} onPress={closeDetailEditor}>
+              <Text style={styles.createPrimaryText}>Save Details</Text>
+              <MaterialCommunityIcons name="check" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </ScrollView>
         </>
       )}
 
       {taskMode === 'post' && step === 'review' && (
         <>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => setStep('details')} style={styles.backBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.primary} />
+          <View style={styles.createHeader}>
+            <TouchableOpacity onPress={() => setStep('description')} style={styles.createBackBtn}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Review Task</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.createHeaderTitle}>Review Task</Text>
+            <View style={{ width: 52 }} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            {/* Step Indicator */}
-            <View style={styles.stepRow}>
-              <View style={[styles.stepItem, styles.stepActive]}>
-                <Text style={styles.stepNum}>1</Text>
-              </View>
-              <View style={styles.stepLine} />
-              <View style={[styles.stepItem, styles.stepActive]}>
-                <Text style={styles.stepNum}>2</Text>
-              </View>
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
+            <View style={styles.createStepper}>
+              {['Task Details', 'Description', 'Review'].map((label, index) => (
+                <React.Fragment key={label}>
+                  <View style={styles.createStepUnit}>
+                    <View style={styles.createStepCircleActive}>
+                      <Text style={styles.createStepNumActive}>{index + 1}</Text>
+                    </View>
+                    <Text style={[styles.createStepLabel, index === 2 && styles.createStepLabelActive]}>{label}</Text>
+                  </View>
+                  {index < 2 && <View style={[styles.createStepConnector, styles.createStepConnectorDone]} />}
+                </React.Fragment>
+              ))}
             </View>
 
-            <Text style={styles.mainTitle}>Review Your Task</Text>
+            <Text style={[styles.mainTitle, { color: colors.text }]}>Review Your Task</Text>
 
-            {/* Task Preview */}
-            <View style={styles.reviewCard}>
-              <View style={styles.catBadge}>
-                <Text style={styles.catBadgeText}>{selectedCat}</Text>
+            <View style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.catBadge, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : colors.accentSoft }]}>
+                <Text style={[styles.catBadgeText, { color: colors.accent }]}>{selectedCat}</Text>
               </View>
-              <Text style={styles.reviewTitle}>{title}</Text>
-              <Text style={styles.reviewDescription}>{description}</Text>
+              <Text style={[styles.reviewTitle, { color: colors.text }]}>{title}</Text>
+              <Text style={[styles.reviewDescription, { color: colors.textSecondary }]}>{description}</Text>
 
               <View style={styles.reviewGrid}>
                 <View style={styles.reviewItem}>
-                  <Text style={styles.reviewLabel}>📍 Location</Text>
-                  <Text style={styles.reviewValue}>{location}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📍 Location</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{location}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={styles.reviewLabel}>💰 Budget</Text>
-                  <Text style={styles.reviewValue}>{parseInt(budget).toLocaleString()} XAF</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>💰 Budget</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{parseInt(budget).toLocaleString()} XAF</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={styles.reviewLabel}>📅 Date</Text>
-                  <Text style={styles.reviewValue}>{scheduledDate.toLocaleDateString()}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📅 Date</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{scheduledDate.toLocaleDateString()}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={styles.reviewLabel}>⏰ Time</Text>
-                  <Text style={styles.reviewValue}>{scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>⏰ Time</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
               </View>
 
-              <View style={styles.infoBox}>
-                <MaterialCommunityIcons name="information-outline" size={18} color="#92400E" />
-                <Text style={styles.infoText}>Your task will be sent to our admin team for verification before being shown to professionals.</Text>
+              {whatNeedsDone ? (
+                <View style={styles.reviewFullItem}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>What needs to be done</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{whatNeedsDone}</Text>
+                </View>
+              ) : null}
+
+              {importantDetails ? (
+                <View style={styles.reviewFullItem}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Important details</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{importantDetails}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.reviewGrid}>
+                <View style={styles.reviewItem}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Scope</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{taskScope || 'Not specified'}</Text>
+                </View>
+                <View style={styles.reviewItem}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Materials</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{materialsProvider === 'professional' ? 'Professional will provide' : 'Client will provide'}</Text>
+                </View>
+                <View style={styles.reviewItem}>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Photos</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{selectedPhotos.length} uploaded</Text>
+                </View>
+              </View>
+
+              {selectedPhotos.length > 0 && (
+                <View style={styles.reviewPhotoRow}>
+                  {selectedPhotos.map((uri) => (
+                    <Image key={uri} source={{ uri }} style={styles.reviewPhoto} />
+                  ))}
+                </View>
+              )}
+
+              <View style={[styles.infoBox, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : colors.accentSoft, borderColor: colors.accent }]}>
+                <MaterialCommunityIcons name="information-outline" size={20} color={colors.accent} />
+                <Text style={[styles.infoText, { color: colors.accent }]}>Your task will be sent to our admin team for verification before being shown to professionals.</Text>
               </View>
             </View>
 
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.backBtn2} onPress={() => setStep('details')}>
-                <MaterialCommunityIcons name="chevron-left" size={20} color={COLORS.primary} />
-                <Text style={styles.backBtnText}>Back</Text>
+              <TouchableOpacity style={[styles.backBtn2, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setStep('description')}>
+                <MaterialCommunityIcons name="chevron-left" size={20} color={colors.text} />
+                <Text style={[styles.backBtnText, { color: colors.text }]}>Back</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.submitBtn, { flex: 1 }]} onPress={handlePublish} disabled={loading}>
+              <TouchableOpacity style={[styles.submitBtn, { flex: 1, backgroundColor: colors.accent }]} onPress={handlePublish} disabled={loading}>
                 <Text style={styles.submitBtnText}>{loading ? 'Saving...' : editingJob ? 'Save Changes' : 'Publish Task'}</Text>
                 <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
               </TouchableOpacity>
@@ -581,159 +1026,947 @@ const PostTaskScreen = ({ route, navigation }) => {
       )}
 
       {taskMode === 'post' && step === 'success' && (
-        <View style={styles.successContainer}>
-          <View style={styles.iconWrap}>
-            <MaterialCommunityIcons name="check-circle" size={90} color={COLORS.success} />
+        <View style={[styles.successContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.iconWrap, { backgroundColor: colors.success + '15', padding: 25, borderRadius: 50 }]}>
+            <MaterialCommunityIcons name="check-decagram" size={90} color={colors.success} />
           </View>
-          <Text style={styles.successTitle}>{editingJob ? 'Task Updated Successfully!' : 'Task Posted Successfully!'}</Text>
-          <Text style={styles.successSubtitle}>
-            Your task has been sent to our admin team for verification. Once approved, professionals in your area will be able to see and quote on your task.
+          <Text style={[styles.successTitle, { color: colors.text }]}>{editingJob ? 'Task Updated!' : 'Task Posted!'}</Text>
+          <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
+            Your task has been sent to our admin team for verification. Professionals will see it once approved.
           </Text>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => {
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.accent }]} onPress={() => {
             setTaskMode('tasks');
             setStep('details');
           }}>
-            <Text style={styles.primaryBtnText}>View Job Status</Text>
+            <Text style={styles.primaryBtnText}>View My Tasks</Text>
+            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => {
-            startNewTask();
-          }}>
-            <Text style={styles.secondaryBtnText}>Post Another Task</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 12 }]} onPress={() => navigation.getParent()?.navigate('MainTabs', { screen: 'Home' })}>
-            <Text style={styles.secondaryBtnText}>Return Home</Text>
+          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: colors.accent }]} onPress={startNewTask}>
+            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Post Another Task</Text>
           </TouchableOpacity>
         </View>
       )}
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+  container: { flex: 1 },
+  tasksHeader: {
+    paddingTop: 54,
+    paddingHorizontal: 18,
+    paddingBottom: 22,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  menuBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tasksHeaderTitle: {
+    color: '#071936',
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  addTaskBtn: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0D9488',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.26,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  createHeader: {
+    paddingTop: 54,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+  },
+  createBackBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createHeaderTitle: {
+    color: '#071936',
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  createScrollContent: {
+    paddingHorizontal: 18,
+    paddingBottom: 140,
+  },
+  createStepper: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 10,
+    marginBottom: 28,
+    paddingHorizontal: 34,
+  },
+  createStepUnit: {
+    width: 72,
+    alignItems: 'center',
+  },
+  createStepCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E8EEF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 13,
+  },
+  createStepCircleActive: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 13,
+  },
+  createStepNum: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  createStepNumActive: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  createStepLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  createStepLabelActive: {
+    color: '#0D9488',
+  },
+  createStepConnector: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#D8E0EA',
+    marginTop: 15,
+    marginHorizontal: -18,
+  },
+  createStepConnectorDone: {
+    backgroundColor: '#0D9488',
+  },
+  createHero: {
+    minHeight: 140,
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingLeft: 20,
+    paddingRight: 122,
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  createHeroTextWrap: {
+    justifyContent: 'center',
+  },
+  createHeroTitle: {
+    color: '#FFFFFF',
+    fontSize: 23,
+    lineHeight: 28,
+    fontWeight: '900',
+    marginBottom: 10,
+  },
+  createHeroSub: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  createHeroImage: {
+    position: 'absolute',
+    right: 18,
+    bottom: 18,
+    width: 96,
+    height: 88,
+  },
+  createFormCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    marginBottom: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  createSectionLabel: {
+    color: '#071936',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  optionalText: {
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  viewAllText: {
+    color: '#0D9488',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  categoryChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 24,
+  },
+  categoryChoice: {
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+  },
+  categoryChoiceActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+  },
+  categoryChoiceText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  categoryChoiceTextActive: {
+    color: '#0D9488',
+  },
+  createFieldGroup: {
+    marginBottom: 24,
+  },
+  createInput: {
+    height: 54,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    color: '#071936',
+    paddingHorizontal: 14,
+    paddingRight: 58,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  inputCounter: {
+    position: 'absolute',
+    right: 14,
+    bottom: 18,
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  createLocationInput: {
+    height: 54,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    marginTop: 12,
+  },
+  createLocationTextInput: {
+    flex: 1,
+    color: '#071936',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  fieldHint: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: 9,
+  },
+  fieldHintStrong: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  budgetModeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    marginBottom: 14,
+  },
+  budgetModeBtn: {
+    flex: 1,
+    minHeight: 70,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  budgetModeBtnActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F0FDFA',
+  },
+  budgetModeTitle: {
+    color: '#071936',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  budgetModeTitleActive: {
+    color: '#0D9488',
+  },
+  budgetModeSub: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  budgetAmountRow: {
+    height: 54,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  currencyBox: {
+    width: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
+  },
+  currencyBoxText: {
+    color: '#071936',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  budgetAmountInput: {
+    flex: 1,
+    color: '#071936',
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  photoRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  addPhotoBox: {
+    width: 78,
+    height: 78,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FFFD',
+  },
+  addPhotoText: {
+    color: '#0D9488',
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 5,
+  },
+  photoThumbWrap: {
+    width: 78,
+    height: 78,
+    borderRadius: 8,
+  },
+  photoThumb: {
+    width: 78,
+    height: 78,
+    borderRadius: 8,
+  },
+  removePhotoBtn: {
+    position: 'absolute',
+    right: -8,
+    top: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  createPrimaryBtn: {
+    height: 58,
+    borderRadius: 10,
+    backgroundColor: '#0D9488',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginHorizontal: 8,
+    marginBottom: 18,
+  },
+  createPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  categorySearchWrap: {
+    height: 56,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  categorySearchInput: {
+    flex: 1,
+    color: '#071936',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  categoryResults: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 22,
+  },
+  categoryResultItem: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  categoryResultIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    backgroundColor: '#F0FDFA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryResultIconActive: {
+    backgroundColor: '#0D9488',
+  },
+  categoryResultText: {
+    flex: 1,
+    color: '#071936',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  preferenceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+  },
+  preferenceChip: {
+    minHeight: 38,
+    borderRadius: 7,
+    backgroundColor: '#F8FAFC',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 10,
+  },
+  preferenceChipActive: {
+    backgroundColor: '#F0FDFA',
+  },
+  preferenceText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  preferenceTextActive: {
+    color: '#071936',
+  },
+  detailEditorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 18,
+  },
+  detailEditorTitle: {
+    color: '#071936',
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  detailEditorSub: {
+    color: '#64748B',
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  detailEditorInput: {
+    minHeight: 190,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    color: '#071936',
+    padding: 14,
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  tipCard: {
+    minHeight: 100,
+    borderRadius: 12,
+    backgroundColor: '#F0FDFA',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    marginBottom: 26,
+  },
+  tipTitle: {
+    color: '#071936',
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 7,
+  },
+  tipText: {
+    color: '#071936',
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
+  descriptionLabel: {
+    color: '#071936',
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 12,
+  },
+  descriptionInputWrap: {
+    minHeight: 160,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DCE4EE',
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    marginBottom: 8,
+  },
+  descriptionInput: {
+    minHeight: 116,
+    color: '#071936',
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  descriptionCounter: {
+    alignSelf: 'flex-end',
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  descriptionHint: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 22,
+  },
+  descriptionPromptCard: {
+    minHeight: 88,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 17,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  materialsCard: {
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  materialsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 14,
+  },
+  materialOption: {
+    flex: 1,
+    minHeight: 142,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  materialOptionActive: {
+    borderColor: '#0D9488',
+    backgroundColor: '#F8FFFD',
+  },
+  materialCheck: {
+    position: 'absolute',
+    right: 8,
+    top: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  materialTitle: {
+    color: '#071936',
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  materialSub: {
+    color: '#64748B',
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  promptTitle: {
+    color: '#071936',
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  promptText: {
+    color: '#64748B',
+    fontSize: 13,
+    lineHeight: 21,
+    fontWeight: '700',
+    maxWidth: 270,
+  },
+  descriptionActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 26,
+  },
+  descriptionBackBtn: {
+    flex: 0.55,
+    height: 58,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  descriptionBackText: {
+    color: '#071936',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  descriptionNextBtn: {
+    flex: 1.45,
+    height: 58,
+    borderRadius: 10,
+    backgroundColor: '#0D9488',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  descriptionNextText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  secureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  secureText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   header: {
     paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  backBtn: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
-  backBtn2: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF', borderRadius: 8, paddingVertical: 15, borderWidth: 1, borderColor: '#E5E7EB' },
-  backBtnText: { color: COLORS.primary, fontSize: 14, fontWeight: '700' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 20 },
-  stepItem: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
-  stepActive: { backgroundColor: COLORS.primary },
-  stepNum: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  stepNumInactive: { color: '#6B7280', fontSize: 14, fontWeight: '700' },
-  stepLine: { width: 40, height: 2, backgroundColor: '#F3F4F6', marginHorizontal: 5 },
-  mainTitle: { fontSize: 24, fontWeight: '800', color: COLORS.primary, marginBottom: 25 },
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 25 },
-  catCard: {
-    width: '23%', backgroundColor: '#FFF', borderRadius: 8,
-    paddingVertical: 12, alignItems: 'center', gap: 6,
-    borderWidth: 1, borderColor: '#F3F4F6',
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  backBtn2: { flex: 0.4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, paddingVertical: 15, borderWidth: 1 },
+  backBtnText: { fontSize: 15, fontWeight: '700' },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  scrollContent: { paddingHorizontal: 0, paddingBottom: 122 },
+  tasksHero: {
+    minHeight: 146,
+    marginHorizontal: 18,
+    marginTop: 16,
+    marginBottom: 22,
+    borderRadius: 20,
+    overflow: 'hidden',
+    paddingLeft: 22,
+    paddingRight: 132,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  catCardActive: { borderColor: COLORS.primary, backgroundColor: '#F0F9FF' },
-  catIconWrap: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
-  catIconWrapActive: { backgroundColor: COLORS.primary },
-  catName: { fontSize: 10, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase' },
-  catNameActive: { color: COLORS.primary },
-  form: { gap: 20, marginBottom: 30 },
-  inputGroup: { gap: 8 },
-  inputLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 1 },
-  input: {
-    backgroundColor: '#F9FAFB', borderRadius: 8, padding: 15,
-    fontSize: 16, color: COLORS.primary, borderWidth: 0, borderBottomWidth: 1, borderColor: '#DADDE1',
+  tasksHeroText: { flex: 1, justifyContent: 'center' },
+  tasksHeroTitle: {
+    color: '#FFF',
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: '900',
+    marginBottom: 12,
   },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  locationInputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB',
-    borderRadius: 8, paddingHorizontal: 15, borderWidth: 0, borderBottomWidth: 1, borderColor: '#DADDE1', minHeight: 50,
+  tasksHeroSubtitle: {
+    color: '#FFF',
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
   },
-  locationInput: { flex: 1, height: 50, color: COLORS.primary, fontSize: 16, marginLeft: 10 },
-  row: { flexDirection: 'row', gap: 15 },
-  budgetInputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB',
-    borderRadius: 8, paddingHorizontal: 15, height: 50, borderWidth: 0, borderBottomWidth: 1, borderColor: '#DADDE1',
+  tasksHeroImage: {
+    position: 'absolute',
+    right: 16,
+    bottom: 14,
+    width: 116,
+    height: 100,
   },
-  currency: { fontSize: 18, fontWeight: '700', color: COLORS.primary, marginRight: 5 },
-  budgetInput: { flex: 1, fontSize: 16, fontWeight: '700', color: COLORS.primary },
-  datePickerBtn: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#F9FAFB', borderRadius: 8, paddingHorizontal: 15, height: 50, borderWidth: 0, borderBottomWidth: 1, borderColor: '#DADDE1',
+  filterBar: {
+    marginHorizontal: 18,
+    marginBottom: 18,
+    height: 70,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  dateText: { fontSize: 15, color: COLORS.primary, fontWeight: '600' },
-  submitBtn: {
-    backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 18,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
-    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5,
+  filterScroll: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  submitBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  buttonRow: { flexDirection: 'row', gap: 12, marginBottom: 100 },
-  reviewCard: { backgroundColor: '#FFF', borderRadius: 8, padding: 25, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 20 },
-  catBadge: { backgroundColor: '#EEF4FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, alignSelf: 'flex-start', marginBottom: 12 },
-  catBadgeText: { fontSize: 12, fontWeight: '700', color: COLORS.primary, textTransform: 'uppercase' },
-  reviewTitle: { fontSize: 22, fontWeight: '800', color: COLORS.primary, marginBottom: 12 },
-  reviewDescription: { fontSize: 15, color: '#6B7280', lineHeight: 22, marginBottom: 16 },
-  reviewGrid: { marginBottom: 16 },
-  reviewItem: { marginBottom: 12 },
-  reviewLabel: { fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 4 },
-  reviewValue: { fontSize: 15, fontWeight: '600', color: COLORS.primary },
-  infoBox: { flexDirection: 'row', gap: 10, backgroundColor: '#FEF3C7', padding: 12, borderRadius: 10, borderLeftWidth: 4, borderLeftColor: '#F59E0B' },
-  infoText: { fontSize: 12, color: '#92400E', fontWeight: '500', flex: 1 },
-  successContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
-  iconWrap: { marginBottom: 24 },
-  successTitle: { fontSize: 24, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginBottom: 12 },
-  successSubtitle: { fontSize: 15, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 40 },
-  primaryBtn: {
-    backgroundColor: COLORS.accent, borderRadius: 10,
-    paddingVertical: 16, width: '100%', alignItems: 'center', marginBottom: 14, flexDirection: 'row', justifyContent: 'center', gap: 8,
+  filterItem: {
+    height: 58,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
-  primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
-  secondaryBtn: {
-    borderWidth: 1.5, borderColor: COLORS.primary, borderRadius: 10,
-    paddingVertical: 15, width: '100%', alignItems: 'center',
+  filterLabelRow: {
+    minHeight: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
-  secondaryBtnText: { color: COLORS.primary, fontSize: 16, fontWeight: '700' },
-  myTasksHero: { marginTop: 10 },
-  taskList: { marginTop: 20, gap: 14 },
-  taskCard: { backgroundColor: '#FFF', borderRadius: 0, paddingVertical: 18, borderBottomWidth: 1, borderColor: '#E5E7EB' },
-  taskCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  taskStatus: { fontSize: 11, color: '#F97316', fontWeight: '800', textTransform: 'uppercase', flexShrink: 1, textAlign: 'right' },
-  taskMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  taskMetaText: { flex: 1, color: '#6B7280', fontSize: 13, fontWeight: '600' },
-  taskBudget: { marginTop: 12, color: COLORS.primary, fontSize: 18, fontWeight: '900' },
-  taskActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
-  taskOutlineBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 86, height: 40, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' },
-  taskOutlineText: { color: COLORS.primary, fontSize: 13, fontWeight: '800' },
-  taskSolidBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 104, height: 40, borderRadius: 8, backgroundColor: '#10B981' },
-  taskSolidText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  emptyTasks: { alignItems: 'center', paddingVertical: 50, paddingHorizontal: 20 },
-  emptyTasksTitle: { marginTop: 12, color: COLORS.primary, fontSize: 18, fontWeight: '900' },
-  emptyTasksText: { marginTop: 6, color: '#6B7280', fontSize: 13, textAlign: 'center', lineHeight: 19 },
-  rejectionBox: { marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: '#FEF2F2' },
-  rejectionText: { color: '#B91C1C', fontSize: 12, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', justifyContent: 'center', paddingHorizontal: 24 },
-  pickerModal: { backgroundColor: '#FFF', borderRadius: 18, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: COLORS.primary, marginBottom: 14 },
-  modalInput: {
-    height: 52, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB',
-    paddingHorizontal: 14, color: COLORS.primary, fontSize: 16, fontWeight: '700',
-    backgroundColor: '#F9FAFB',
+  filterText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '900',
+    textAlign: 'center',
   },
-  modalActions: { flexDirection: 'row', gap: 12, marginTop: 18 },
-  modalCancelBtn: {
-    flex: 1, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB',
-    justifyContent: 'center', alignItems: 'center',
+  filterDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 5,
   },
-  modalApplyBtn: {
-    flex: 1, height: 48, borderRadius: 12, backgroundColor: COLORS.primary,
-    justifyContent: 'center', alignItems: 'center',
+  filterUnderline: {
+    width: 36,
+    height: 4,
+    borderRadius: 3,
+    marginTop: 9,
+    backgroundColor: 'transparent',
   },
-  modalCancelText: { color: COLORS.primary, fontWeight: '800' },
+  stepRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 30, paddingHorizontal: 20 },
+  stepItem: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  stepNum: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  stepNumInactive: { fontSize: 16, fontWeight: '800' },
+  stepLine: { width: 60, height: 2, marginHorizontal: 10 },
+  mainTitle: { fontSize: 28, fontWeight: '900', paddingHorizontal: 20, marginBottom: 25 },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 30, paddingHorizontal: 20 },
+  catCard: { width: '23%', borderRadius: 12, paddingVertical: 14, alignItems: 'center', gap: 8, borderWidth: 1.5 },
+  catIconWrap: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  catName: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  form: { gap: 24, marginBottom: 40, paddingHorizontal: 20 },
+  inputGroup: { gap: 10 },
+  inputLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1.2 },
+  input: { borderRadius: 12, padding: 16, fontSize: 16, fontWeight: '600', borderWidth: 1.5 },
+  textArea: { height: 120, textAlignVertical: 'top' },
+  locationInputWrap: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16, borderWidth: 1.5, height: 56 },
+  locationInput: { flex: 1, fontSize: 16, marginLeft: 12, fontWeight: '600' },
+  row: { flexDirection: 'row', gap: 16 },
+  budgetInputWrap: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16, height: 56, borderWidth: 1.5 },
+  currency: { fontSize: 16, fontWeight: '800', marginRight: 8 },
+  budgetInput: { flex: 1, fontSize: 18, fontWeight: '800' },
+  datePickerBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16, height: 56, borderWidth: 1.5 },
+  dateText: { fontSize: 15, fontWeight: '700' },
+  submitBtn: { marginHorizontal: 20, borderRadius: 14, paddingVertical: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, elevation: 4 },
+  submitBtnText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  buttonRow: { flexDirection: 'row', gap: 12, marginTop: 10, paddingHorizontal: 20 },
+  reviewCard: { marginHorizontal: 8, borderRadius: 5, padding: 18, borderWidth: 1.5, marginBottom: 30 },
+  reviewTitle: { fontSize: 24, fontWeight: '900', marginBottom: 14 },
+  reviewDescription: { fontSize: 16, lineHeight: 24, marginBottom: 20 },
+  reviewGrid: { gap: 16, marginBottom: 24 },
+  reviewItem: { gap: 4 },
+  reviewFullItem: { gap: 7, marginBottom: 16 },
+  reviewPhotoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 18 },
+  reviewPhoto: { width: 86, height: 86, borderRadius: 5 },
+  reviewLabel: { fontSize: 13, fontWeight: '800' },
+  reviewValue: { fontSize: 16, fontWeight: '700' },
+  infoBox: { flexDirection: 'row', gap: 12, padding: 16, borderRadius: 12, borderLeftWidth: 6 },
+  infoText: { fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 20 },
+  taskList: { gap: 10 },
+  taskCard: {
+    marginHorizontal: 18,
+    marginBottom: 2,
+    paddingTop: 18,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    borderRadius: 18,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  taskCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardRightMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  cardDate: { color: '#64748B', fontSize: 15, fontWeight: '900' },
+  catBadge: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  catBadgeText: { fontSize: 13, fontWeight: '900' },
+  taskBodyRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginBottom: 18 },
+  taskCopy: { flex: 1, minWidth: 0 },
+  taskTitle: { color: '#071936', fontSize: 20, fontWeight: '900', marginBottom: 10 },
+  taskDescriptionText: { color: '#1E2E4A', fontSize: 15, lineHeight: 23, fontWeight: '500' },
+  statusPill: {
+    minWidth: 116,
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  statusPillText: { fontSize: 13, fontWeight: '900' },
+  taskMetaGrid: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 22 },
+  taskMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
+  taskMetaValue: { color: '#071936', fontSize: 15, fontWeight: '800' },
+  metaDivider: { width: 1.5, height: 21, backgroundColor: '#CBD5E1' },
+  budgetValue: { color: '#06B85F', fontSize: 16, fontWeight: '900' },
+  rejectionBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
+  rejectionText: { fontSize: 13, fontWeight: '700', flex: 1 },
+  taskActionGroup: { flexDirection: 'row', gap: 8, marginTop: 5 },
+  secondaryActionBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  bookAgainBtn: { flex: 1.85 },
+  secondaryActionText: { color: '#071936', fontSize: 15, fontWeight: '900' },
+  primaryActionBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0D9488',
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  blueActionBtn: {
+    flex: 1.45,
+    backgroundColor: '#1F73F1',
+    shadowColor: '#1F73F1',
+  },
+  primaryActionText: { color: '#FFF', fontSize: 15, fontWeight: '900' },
+  successContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  iconWrap: { marginBottom: 30 },
+  successTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 16 },
+  successSubtitle: { fontSize: 16, textAlign: 'center', lineHeight: 24, marginBottom: 40 },
+  primaryBtn: { borderRadius: 16, paddingVertical: 18, width: '100%', alignItems: 'center', marginBottom: 16, flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  primaryBtnText: { color: '#FFF', fontSize: 18, fontWeight: '800' },
+  secondaryBtn: { borderWidth: 2, borderRadius: 16, paddingVertical: 16, width: '100%', alignItems: 'center' },
+  secondaryBtnText: { fontSize: 16, fontWeight: '800' },
+  emptyTasks: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 40 },
+  emptyTasksTitle: { marginTop: 20, fontSize: 22, fontWeight: '900' },
+  emptyTasksText: { marginTop: 10, fontSize: 15, textAlign: 'center', lineHeight: 24 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 30 },
+  pickerModal: { borderRadius: 24, padding: 25 },
+  modalTitle: { fontSize: 20, fontWeight: '900', marginBottom: 20 },
+  modalInput: { height: 56, borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 16, fontSize: 16, fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  modalCancelBtn: { flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  modalApplyBtn: { flex: 1, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  modalCancelText: { fontWeight: '800' },
   modalApplyText: { color: '#FFF', fontWeight: '800' },
 });
 

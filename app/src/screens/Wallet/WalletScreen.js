@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Image,
+  StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { CustomHeader } from '../../navigation/NavigationComponents';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 
@@ -13,29 +13,31 @@ const WalletScreen = ({ navigation }) => {
   
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="My Wallet" colors={colors} />
-
-      {/* Internal Header Removed as per Point 2 - relying on Global Header */}
-
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Current Balance Card */}
-        <View style={[styles.balanceCard, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>CURRENT BALANCE</Text>
-          <View style={styles.balanceRow}>
-            <Text style={[styles.balanceAmount, { color: colors.text }]}>{walletBalance}</Text>
-            <Text style={[styles.balanceCurrency, { color: colors.textSecondary }]}>Coins</Text>
-          </View>
 
-          <TouchableOpacity 
-            style={[styles.topUpBtn, { backgroundColor: colors.accent }]}
-            onPress={() => navigation.navigate('TopUp')}
-          >
-            <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.topUpText}>Top Up Balance</Text>
-          </TouchableOpacity>
+        {/* Premium Gradient Balance Card */}
+        <LinearGradient
+          colors={['#1D4ED8', '#0D9488']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.balanceCard}
+      >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
+        </TouchableOpacity>
+        <Text style={styles.balanceLabel}>MY WALLET BALANCE</Text>
+        <View style={styles.balanceRow}>
+          <Text style={styles.balanceAmount}>{walletBalance}</Text>
+          <Text style={styles.balanceCurrency}> Coins 🪙</Text>
         </View>
+        <TouchableOpacity
+          style={styles.topUpBtn}
+          onPress={() => navigation.navigate('TopUp')}
+        >
+          <MaterialCommunityIcons name="plus-circle-outline" size={18} color="#0D9488" />
+          <Text style={styles.topUpText}>Top Up Balance</Text>
+        </TouchableOpacity>
+      </LinearGradient>
 
         {/* Transaction History Header */}
         <View style={styles.historyHeaderRow}>
@@ -94,7 +96,7 @@ const WalletScreen = ({ navigation }) => {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.offerTitle, { color: colors.text }]}>Earn Free Coins</Text>
-            <Text style={[styles.offerSubtitle, { color: colors.textSecondary }]}>Invite your friends to Fixam and earn 3 bonus coins.</Text>
+            <Text style={[styles.offerSubtitle, { color: colors.textSecondary }]}>Invite a friend to Fixam and earn 1 coin.</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
         </TouchableOpacity>

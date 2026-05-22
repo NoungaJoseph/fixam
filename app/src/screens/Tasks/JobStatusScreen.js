@@ -5,9 +5,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { getMediaUrl } from '../../services/api';
 
 const JobStatusScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
@@ -21,7 +20,7 @@ const JobStatusScreen = ({ route, navigation }) => {
   const assignedProvider = assignedProviderUser ? {
     name: assignedProviderUser.fullName || assignedProviderUser.name || 'Assigned Professional',
     id: assignedProviderUser.id,
-    avatar: assignedProviderUser.avatar || assignedProviderUser.image,
+    avatar: getMediaUrl(assignedProviderUser.avatar || assignedProviderUser.image),
   } : null;
   const steps = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
   const currentStep = Math.max(0, steps.indexOf(normalizedStatus));
@@ -86,30 +85,27 @@ const JobStatusScreen = ({ route, navigation }) => {
   };
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.container}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDarkMode ? 1 : 0 }]}>
-            <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
+        <View style={[styles.header, { borderBottomColor: colors.border, borderBottomWidth: 1 }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+            <MaterialCommunityIcons name="chevron-left" size={28} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Job Details</Text>
-          <View style={{ width: 40 }} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Job Tracking</Text>
+          <View style={{ width: 44 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.jobHero}>
-            <View style={[styles.idBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-              <Text style={[styles.idText, { color: colors.textSecondary }]}>Job #{job.id || 'New'}</Text>
+            <View style={[styles.idBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : colors.accentSoft }]}>
+              <Text style={[styles.idText, { color: colors.accent, fontWeight: '800' }]}>#{job.id?.slice(-6) || 'TASK'}</Text>
             </View>
             <Text style={[styles.jobTitle, { color: colors.text }]}>{job.title || 'Task details'}</Text>
-            <View style={[styles.statusChip, { backgroundColor: isDarkMode ? 'rgba(249, 115, 22, 0.1)' : '#EFF6FF' }]}>
-              <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
-              <Text style={[styles.statusChipText, { color: colors.text }]}>{displayStatus}</Text>
+            <View style={[styles.statusChip, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : '#EFF6FF' }]}>
+              <View style={[styles.statusDot, { backgroundColor: colors.accent }]} />
+              <Text style={[styles.statusChipText, { color: colors.accent }]}>{displayStatus}</Text>
             </View>
           </View>
 
@@ -119,12 +115,12 @@ const JobStatusScreen = ({ route, navigation }) => {
               {steps.map((step, i) => (
                 <React.Fragment key={step}>
                   <View style={styles.stepContainer}>
-                    <View style={[styles.stepDot, { backgroundColor: i <= currentStep ? colors.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6'), borderColor: i <= currentStep ? colors.primary : colors.border }]}>
-                      {i < currentStep ? <MaterialCommunityIcons name="check" size={14} color="#FFF" /> : <View style={[styles.innerDot, { backgroundColor: i === currentStep ? colors.card : '#D1D5DB' }]} />}
+                    <View style={[styles.stepDot, { backgroundColor: i <= currentStep ? colors.accent : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6'), borderColor: i <= currentStep ? colors.accent : colors.border }]}>
+                      {i < currentStep ? <MaterialCommunityIcons name="check" size={16} color="#FFF" /> : <View style={[styles.innerDot, { backgroundColor: i === currentStep ? colors.card : colors.placeholder }]} />}
                     </View>
-                    <Text style={[styles.stepText, { color: i <= currentStep ? colors.text : colors.textSecondary, fontWeight: i <= currentStep ? '700' : '600' }]}>{step.replace(/_/g, ' ')}</Text>
+                    <Text style={[styles.stepText, { color: i <= currentStep ? colors.text : colors.textSecondary, fontWeight: i <= currentStep ? '800' : '600' }]}>{step.replace(/_/g, ' ')}</Text>
                   </View>
-                  {i < steps.length - 1 && <View style={[styles.stepLine, { backgroundColor: i < currentStep ? colors.primary : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6') }]} />}
+                  {i < steps.length - 1 && <View style={[styles.stepLine, { backgroundColor: i < currentStep ? colors.accent : (isDarkMode ? 'rgba(255,255,255,0.05)' : colors.border) }]} />}
                 </React.Fragment>
               ))}
             </View>
@@ -132,138 +128,127 @@ const JobStatusScreen = ({ route, navigation }) => {
 
           {job.assignments?.length > 0 && normalizedStatus === 'PENDING' && (
             <View style={styles.applicationsSection}>
-              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Provider Applications ({job.assignments.length})</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Applications ({job.assignments.length})</Text>
               {job.assignments.map((assignment) => {
                 const provider = getProviderFromAssignment(assignment);
                 const providerUser = provider?.user || {};
-                const canOpenProfile = Boolean(provider?.id || providerUser?.id);
                 return (
-                  <TouchableOpacity
-                    key={assignment.id}
-                    style={[styles.applicationCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                    activeOpacity={0.85}
-                    disabled={!canOpenProfile}
-                    onPress={() => navigation.navigate('ProviderProfile', { provider })}
-                  >
-                    <Image
-                      source={providerUser.avatar ? { uri: providerUser.avatar } : { uri: `https://ui-avatars.com/api/?name=${providerUser.fullName || 'Provider'}&background=random` }}
-                      style={styles.applicationAvatar}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.applicationName, { color: colors.text }]}>{providerUser.fullName || providerUser.name || 'Provider'}</Text>
-                      <Text style={[styles.applicationMeta, { color: colors.textSecondary }]}>
-                        {(provider?.skills || []).slice(0, 2).join(', ') || 'Professional'} | {Number(provider?.rating || 0).toFixed(1)} rating
-                      </Text>
-                    </View>
-                    {canOpenProfile ? (
-                      <TouchableOpacity style={[styles.profileBtn, { borderColor: colors.border }]} onPress={() => navigation.navigate('ProviderProfile', { provider })}>
-                        <Text style={[styles.profileBtnText, { color: colors.text }]}>Profile</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                    <TouchableOpacity style={[styles.chooseBtn, { backgroundColor: colors.accent }]} onPress={() => chooseProvider(assignment)}>
-                      <Text style={styles.chooseBtnText}>Choose</Text>
+                  <View key={assignment.id} style={[styles.applicationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <TouchableOpacity 
+                      style={styles.applicationInfoRow}
+                      onPress={() => navigation.navigate('ProviderProfile', { provider })}
+                    >
+                      <Image
+                        source={getMediaUrl(providerUser.avatar) ? { uri: getMediaUrl(providerUser.avatar) } : { uri: `https://ui-avatars.com/api/?name=${providerUser.fullName || 'Provider'}&background=random` }}
+                        style={styles.applicationAvatar}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.applicationName, { color: colors.text }]}>{providerUser.fullName || 'Provider'}</Text>
+                        <View style={styles.ratingRow}>
+                          <MaterialCommunityIcons name="star" size={14} color="#FBBF24" />
+                          <Text style={[styles.applicationMeta, { color: colors.textSecondary }]}>
+                            {Number(provider?.rating || 0).toFixed(1)} rating
+                          </Text>
+                        </View>
+                      </View>
                     </TouchableOpacity>
-                  </TouchableOpacity>
+                    
+                    <View style={styles.applicationActionRow}>
+                      <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.border, flex: 1 }]} onPress={() => navigation.navigate('ProviderProfile', { provider })}>
+                        <Text style={[styles.outlineBtnText, { color: colors.text }]}>View Profile</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.solidBtn, { backgroundColor: colors.accent, flex: 1.5 }]} onPress={() => chooseProvider(assignment)}>
+                        <Text style={styles.solidBtnText}>Hire Now</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 );
               })}
             </View>
           )}
 
           <View style={styles.detailsList}>
-            <View style={[styles.detailItem, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDarkMode ? 1 : 0 }]}>
-              <View style={[styles.detailIconWrap, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-                <MaterialCommunityIcons name="account-hard-hat" size={22} color={colors.primary} />
+            <View style={[styles.detailItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.detailIconWrap, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : colors.accentSoft }]}>
+                <MaterialCommunityIcons name="account-hard-hat" size={24} color={colors.accent} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Assigned Professional</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{assignedProvider?.name || 'Not assigned yet'}</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{assignedProvider?.name || 'Searching for providers...'}</Text>
               </View>
-              <TouchableOpacity
-                style={[styles.chatBtn, { backgroundColor: colors.card }]}
-                disabled={!assignedProvider}
-                onPress={() => navigation.navigate('Chat', { receiverId: assignedProvider.id, userName: assignedProvider.name, avatar: assignedProvider.avatar, task: job })}
-              >
-                <MaterialCommunityIcons name="message-text" size={20} color={colors.primary} />
-              </TouchableOpacity>
+              {assignedProvider && (
+                <TouchableOpacity
+                  style={[styles.chatBtn, { backgroundColor: colors.accent }]}
+                  onPress={() => navigation.navigate('Chat', { receiverId: assignedProvider.id, userName: assignedProvider.name, avatar: assignedProvider.avatar, task: job })}
+                >
+                  <MaterialCommunityIcons name="message-text" size={22} color="#FFF" />
+                </TouchableOpacity>
+              )}
             </View>
 
-            <Detail icon="map-marker-radius" label="Service Location" value={job.location || 'No location yet'} colors={colors} isDarkMode={isDarkMode} />
-            <Detail icon="calendar-check" label="Scheduled Date & Time" value={job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'Not scheduled'} colors={colors} isDarkMode={isDarkMode} />
-            <Detail icon="text-box-outline" label="Task Details" value={job.description || 'No description provided'} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="map-marker-radius" label="Location" value={job.location || 'On-site'} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="calendar-clock" label="Scheduled" value={job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'ASAP'} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="text-box-outline" label="Description" value={job.description || 'No additional details'} colors={colors} isDarkMode={isDarkMode} />
           </View>
 
-          <View style={[styles.costCard, { backgroundColor: colors.primary }]}>
-            <Text style={styles.costLabel}>Total Estimated Cost</Text>
-            <Text style={styles.costValue}>{job.cost || `${Number(job.budget || 0).toLocaleString()} XAF`}</Text>
+          <View style={[styles.costCard, { backgroundColor: colors.accent }]}>
+            <Text style={styles.costLabel}>Total Estimated Budget</Text>
+            <Text style={styles.costValue}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
           </View>
 
           <View style={styles.actions}>
-            {assignedProvider ? (
-              <TouchableOpacity style={[styles.trackActionBtn, { backgroundColor: colors.accent }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
-                <MaterialCommunityIcons name="map-marker-path" size={18} color="#FFF" />
-                <Text style={styles.completeActionBtnText}>Track Provider</Text>
+            {assignedProvider && (
+              <TouchableOpacity style={[styles.mainActionBtn, { backgroundColor: colors.accent }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
+                <MaterialCommunityIcons name="map-marker-path" size={22} color="#FFF" />
+                <Text style={styles.mainActionText}>Track Provider on Map</Text>
               </TouchableOpacity>
-            ) : null}
+            )}
 
-            {/* Mark as Completed + Rate: Client rates Provider */}
-            {user?.role === 'CLIENT' && assignedProvider && (
+            {user?.role === 'CLIENT' && assignedProvider && normalizedStatus !== 'COMPLETED' && (
               <TouchableOpacity
-                style={[styles.completeActionBtn, { backgroundColor: '#10B981' }]}
+                style={[styles.mainActionBtn, { backgroundColor: colors.success }]}
                 onPress={() => Alert.alert(
                   'Mark as Completed',
-                  'This will mark the task as done. You can then rate the provider.',
+                  'Is the task done? This will finalize the payment.',
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Complete & Rate',
                       onPress: async () => {
                         try {
-                          await api.patch(`/jobs/${job.id}/status`, { status: 'COMPLETED' });
+                          await api.put(`/jobs/${job.id}/status`, { status: 'COMPLETED' });
                           navigation.navigate('Rating', {
                             jobId: job.id,
                             targetUser: assignedProviderUser,
                             mode: 'rate_provider',
                           });
                         } catch (err) {
-                          Alert.alert('Error', err.response?.data?.message || 'Could not complete the task.');
+                          Alert.alert('Error', err.response?.data?.message || 'Could not update task.');
                         }
                       }
                     }
                   ]
                 )}
               >
-                <Text style={styles.completeActionBtnText}>Mark as Completed & Rate</Text>
+                <MaterialCommunityIcons name="check-decagram" size={22} color="#FFF" />
+                <Text style={styles.mainActionText}>Mark Completed & Rate</Text>
               </TouchableOpacity>
             )}
 
-            {/* Provider rates Client */}
-            {user?.role === 'PROVIDER' && normalizedStatus === 'COMPLETED' && (
-              <TouchableOpacity
-                style={[styles.completeActionBtn, { backgroundColor: colors.accent }]}
-                onPress={() => navigation.navigate('Rating', {
-                  jobId: job.id,
-                  targetUser: { id: job.clientId, fullName: job.client?.fullName, avatar: job.client?.avatar },
-                  mode: 'rate_client',
-                })}
-              >
-                <Text style={styles.completeActionBtnText}>Rate Client</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={[styles.cancelActionBtn, { borderColor: colors.error }]}>
-              <Text style={[styles.cancelActionBtnText, { color: colors.error }]}>Cancel Task</Text>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.error }]}>
+              <Text style={[styles.cancelBtnText, { color: colors.error }]}>Cancel Task Request</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
 const Detail = ({ icon, label, value, colors, isDarkMode }) => (
-  <View style={[styles.detailItem, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: isDarkMode ? 1 : 0 }]}>
-    <View style={[styles.detailIconWrap, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-      <MaterialCommunityIcons name={icon} size={22} color={colors.primary} />
+  <View style={[styles.detailItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.detailIconWrap, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : colors.accentSoft }]}>
+      <MaterialCommunityIcons name={icon} size={24} color={colors.accent} />
     </View>
     <View style={{ flex: 1 }}>
       <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{label}</Text>
@@ -274,49 +259,51 @@ const Detail = ({ icon, label, value, colors, isDarkMode }) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
-  backBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700' },
-  scrollContent: { paddingBottom: 50 },
-  jobHero: { alignItems: 'center', paddingVertical: 30, paddingHorizontal: 20 },
-  idBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 15 },
-  idText: { fontSize: 12, fontWeight: '700' },
-  jobTitle: { fontSize: 24, fontWeight: '800', marginBottom: 15, textAlign: 'center' },
-  statusChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusChipText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  trackerContainer: { paddingHorizontal: 20, marginBottom: 30 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: 20 },
+  header: { paddingTop: 10, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  scrollContent: { paddingBottom: 60 },
+  jobHero: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 25 },
+  idBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginBottom: 15 },
+  idText: { fontSize: 12, textTransform: 'uppercase' },
+  jobTitle: { fontSize: 28, fontWeight: '900', marginBottom: 20, textAlign: 'center', lineHeight: 36 },
+  statusChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 25 },
+  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  statusChipText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase' },
+  trackerContainer: { paddingHorizontal: 25, marginBottom: 40 },
+  sectionLabel: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', marginBottom: 25, letterSpacing: 1 },
   tracker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  stepContainer: { alignItems: 'center', width: 80 },
-  stepDot: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  innerDot: { width: 8, height: 8, borderRadius: 4 },
-  stepLine: { flex: 1, height: 2, marginHorizontal: -20, marginBottom: 20 },
-  stepText: { fontSize: 11, marginTop: 8 },
-  detailsList: { paddingHorizontal: 20, marginBottom: 30 },
-  applicationsSection: { paddingHorizontal: 20, marginBottom: 24 },
-  applicationCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, marginBottom: 10 },
-  applicationAvatar: { width: 46, height: 46, borderRadius: 14 },
-  applicationName: { fontSize: 15, fontWeight: '800' },
-  applicationMeta: { fontSize: 12, fontWeight: '600', marginTop: 3 },
-  chooseBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12 },
-  chooseBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
-  profileBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-  profileBtnText: { fontSize: 12, fontWeight: '900' },
-  detailItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 20, marginBottom: 12, gap: 15 },
-  detailIconWrap: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  detailLabel: { fontSize: 11, fontWeight: '600' },
-  detailValue: { fontSize: 14, fontWeight: '700', marginTop: 2 },
-  chatBtn: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  costCard: { marginHorizontal: 20, padding: 25, borderRadius: 25, alignItems: 'center', marginBottom: 30 },
-  costLabel: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 8 },
-  costValue: { fontSize: 28, fontWeight: '900', color: '#FFF' },
-  actions: { paddingHorizontal: 20, gap: 12 },
-  trackActionBtn: { height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
-  completeActionBtn: { height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  completeActionBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  cancelActionBtn: { height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5 },
-  cancelActionBtnText: { fontSize: 16, fontWeight: '700' },
+  stepContainer: { alignItems: 'center', width: 70 },
+  stepDot: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
+  innerDot: { width: 10, height: 10, borderRadius: 5 },
+  stepLine: { flex: 1, height: 3, marginHorizontal: -15, marginBottom: 22 },
+  stepText: { fontSize: 11, marginTop: 10, textAlign: 'center' },
+  detailsList: { paddingHorizontal: 25, marginBottom: 35 },
+  applicationsSection: { paddingHorizontal: 25, marginBottom: 35 },
+  applicationCard: { padding: 20, borderRadius: 24, borderWidth: 1.5, marginBottom: 15 },
+  applicationInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 20 },
+  applicationAvatar: { width: 56, height: 56, borderRadius: 18 },
+  applicationName: { fontSize: 17, fontWeight: '900' },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  applicationMeta: { fontSize: 13, fontWeight: '700' },
+  applicationActionRow: { flexDirection: 'row', gap: 12 },
+  outlineBtn: { height: 48, borderRadius: 14, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  outlineBtnText: { fontSize: 14, fontWeight: '800' },
+  solidBtn: { height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  solidBtnText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  detailItem: { flexDirection: 'row', alignItems: 'center', padding: 18, borderRadius: 20, marginBottom: 15, gap: 18, borderWidth: 1, borderColor: 'rgba(0,0,0,0)' },
+  detailIconWrap: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  detailLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  detailValue: { fontSize: 15, fontWeight: '700', marginTop: 4, lineHeight: 22 },
+  chatBtn: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  costCard: { marginHorizontal: 25, padding: 30, borderRadius: 25, alignItems: 'center', marginBottom: 40, elevation: 8, shadowOpacity: 0.3, shadowRadius: 15 },
+  costLabel: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '700', marginBottom: 10, textTransform: 'uppercase' },
+  costValue: { fontSize: 32, fontWeight: '900', color: '#FFF' },
+  actions: { paddingHorizontal: 25, gap: 15 },
+  mainActionBtn: { height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 12, elevation: 4 },
+  mainActionText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  cancelBtn: { height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
+  cancelBtnText: { fontSize: 16, fontWeight: '800' },
 });
 
 export default JobStatusScreen;

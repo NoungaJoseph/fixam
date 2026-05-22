@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 
@@ -8,6 +8,43 @@ const AppContext = createContext();
 const hiddenJobsKey = (userId) => `fixam:hidden-jobs:${userId || 'guest'}`;
 const favoriteJobsKey = (userId) => `fixam:favorite-jobs:${userId || 'guest'}`;
 const appliedJobsKey = (userId) => `fixam:applied-jobs:${userId || 'guest'}`;
+const favoriteProvidersKey = (userId) => `fixam:favorite-providers:${userId || 'guest'}`;
+
+const normalizeUserMedia = (item) => item ? ({
+  ...item,
+  avatar: getMediaUrl(item.avatar),
+  image: getMediaUrl(item.image),
+}) : item;
+
+const normalizeProvider = (provider) => provider ? ({
+  ...provider,
+  user: normalizeUserMedia(provider.user),
+  avatar: getMediaUrl(provider.avatar),
+  image: getMediaUrl(provider.image),
+}) : provider;
+
+const normalizeJob = (job) => job ? ({
+  ...job,
+  client: typeof job.client === 'object' ? normalizeUserMedia(job.client) : job.client,
+  provider: normalizeUserMedia(job.provider),
+  photos: Array.isArray(job.photos) ? job.photos.map((photo) => (
+    typeof photo === 'string' ? getMediaUrl(photo) : photo
+  )) : job.photos,
+  assignments: Array.isArray(job.assignments) ? job.assignments.map((assignment) => ({
+    ...assignment,
+    provider: assignment.provider ? {
+      ...assignment.provider,
+      user: normalizeUserMedia(assignment.provider.user),
+    } : assignment.provider,
+  })) : job.assignments,
+}) : job;
+
+const normalizeConversation = (conversation) => conversation ? ({
+  ...conversation,
+  participants: Array.isArray(conversation.participants)
+    ? conversation.participants.map(normalizeUserMedia)
+    : conversation.participants,
+}) : conversation;
 
 export const AppProvider = ({ children }) => {
   const { token, user, updateProfile } = useAuth();
@@ -19,6 +56,7 @@ export const AppProvider = ({ children }) => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [hiddenJobIds, setHiddenJobIds] = useState([]);
   const [favoriteJobIds, setFavoriteJobIds] = useState([]);
+  const [favoriteProviderIds, setFavoriteProviderIds] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [isProviderOnline, setIsProviderOnline] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,19 +82,22 @@ export const AppProvider = ({ children }) => {
       if (!user?.id) {
         setHiddenJobIds([]);
         setFavoriteJobIds([]);
+        setFavoriteProviderIds([]);
         setAppliedJobIds([]);
         return;
       }
 
       try {
-        const [hidden, favorites, applied] = await Promise.all([
+        const [hidden, favorites, applied, providerFavorites] = await Promise.all([
           AsyncStorage.getItem(hiddenJobsKey(user.id)),
           AsyncStorage.getItem(favoriteJobsKey(user.id)),
           AsyncStorage.getItem(appliedJobsKey(user.id)),
+          AsyncStorage.getItem(favoriteProvidersKey(user.id)),
         ]);
         setHiddenJobIds(hidden ? JSON.parse(hidden) : []);
         setFavoriteJobIds(favorites ? JSON.parse(favorites) : []);
         setAppliedJobIds(applied ? JSON.parse(applied) : []);
+        setFavoriteProviderIds(providerFavorites ? JSON.parse(providerFavorites) : []);
       } catch (error) {
         console.log('Error loading job preferences:', error.message);
       }
@@ -141,7 +182,7 @@ export const AppProvider = ({ children }) => {
   const fetchProviders = async () => {
     try {
       const res = await api.get('/providers');
-      setProviders(res.data.data || []);
+      setProviders((res.data.data || []).map(normalizeProvider));
     } catch (error) {
       console.log('[Providers Fetch Error]:', error.message);
     }
@@ -160,10 +201,13 @@ export const AppProvider = ({ children }) => {
         fetchProviders()
       ]);
 
-      setJobs(jobsRes.data.data || []);
+      setJobs((jobsRes.data.data || []).map(normalizeJob));
       setWalletBalance(walletRes.data.data?.balance || 0);
-      setConversations(chatRes.data.data || []);
+      setConversations((chatRes.data.data || []).map(normalizeConversation));
       setTransactions(transRes.data.data || []);
+      if (user?.role?.toUpperCase() === 'CLIENT') {
+        fetchFavoriteProviders();
+      }
     } catch (error) {
       console.log('[AppData Partial Error]:', error.message);
     } finally {
@@ -192,7 +236,7 @@ export const AppProvider = ({ children }) => {
   const fetchConversations = useCallback(async () => {
     try {
       const res = await api.get('/chat/conversations');
-      setConversations(res.data.data || []);
+      setConversations((res.data.data || []).map(normalizeConversation));
     } catch (error) {
       console.log('Error refreshing conversations:', error);
     }
@@ -217,6 +261,26 @@ export const AppProvider = ({ children }) => {
     return jobs.filter((job) => favorites.has(job.id));
   }, [jobs, favoriteJobIds]);
 
+  const favoriteProviders = useMemo(() => {
+    const favorites = new Set(favoriteProviderIds);
+    return providers.filter((provider) => favorites.has(provider.id));
+  }, [providers, favoriteProviderIds]);
+
+  const fetchFavoriteProviders = async () => {
+    if (!token) return [];
+    try {
+      const res = await api.get('/providers/favorites');
+      const list = (res.data.data || []).map(normalizeProvider);
+      const ids = list.map((provider) => provider.id);
+      setFavoriteProviderIds(ids);
+      await AsyncStorage.setItem(favoriteProvidersKey(user?.id), JSON.stringify(ids));
+      return list;
+    } catch (error) {
+      console.log('[Favorite Providers Fetch Error]:', error.message);
+      return [];
+    }
+  };
+
   const hideJob = async (jobId) => {
     if (!jobId) return;
     const nextHidden = Array.from(new Set([...hiddenJobIds, jobId]));
@@ -235,6 +299,30 @@ export const AppProvider = ({ children }) => {
     await AsyncStorage.setItem(favoriteJobsKey(user?.id), JSON.stringify(next));
   };
 
+  const toggleFavoriteProvider = async (providerId) => {
+    if (!providerId) return;
+    const exists = favoriteProviderIds.includes(providerId);
+    const next = exists
+      ? favoriteProviderIds.filter((id) => id !== providerId)
+      : [...favoriteProviderIds, providerId];
+    setFavoriteProviderIds(next);
+    await AsyncStorage.setItem(favoriteProvidersKey(user?.id), JSON.stringify(next));
+
+    if (token) {
+      try {
+        if (exists) {
+          await api.delete(`/providers/${providerId}/favorite`);
+        } else {
+          await api.post(`/providers/${providerId}/favorite`);
+        }
+      } catch (error) {
+        setFavoriteProviderIds(favoriteProviderIds);
+        await AsyncStorage.setItem(favoriteProvidersKey(user?.id), JSON.stringify(favoriteProviderIds));
+        throw error;
+      }
+    }
+  };
+
   const markJobApplied = async (jobId) => {
     if (!jobId) return;
     const next = Array.from(new Set([...appliedJobIds, jobId]));
@@ -245,7 +333,7 @@ export const AppProvider = ({ children }) => {
   const postJob = async (newJob) => {
     try {
       const res = await api.post('/jobs', newJob);
-      setJobs(prev => [...prev, res.data.data]);
+      setJobs(prev => [...prev, normalizeJob(res.data.data)]);
       return res.data;
     } catch (error) {
       throw error;
@@ -303,6 +391,8 @@ export const AppProvider = ({ children }) => {
       visibleJobs,
       favoriteJobs,
       favoriteJobIds,
+      favoriteProviders,
+      favoriteProviderIds,
       appliedJobIds,
       hiddenJobIds,
       conversations,
@@ -324,6 +414,8 @@ export const AppProvider = ({ children }) => {
       deductCoin,
       hideJob,
       toggleFavoriteJob,
+      toggleFavoriteProvider,
+      fetchFavoriteProviders,
       markJobApplied
     }}>
       {children}

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { setAuthToken } from '../services/api';
+import api, { getMediaUrl, setAuthToken } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -32,6 +32,18 @@ const getStoredToken = async (key) => {
   }
 };
 
+const normalizeUser = (value) => {
+  if (!value) return value;
+  return {
+    ...value,
+    avatar: getMediaUrl(value.avatar),
+    providerProfile: value.providerProfile ? {
+      ...value.providerProfile,
+      avatar: getMediaUrl(value.providerProfile.avatar),
+    } : value.providerProfile,
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -49,7 +61,7 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedUserStr) {
           const storedUser = JSON.parse(storedUserStr);
           setToken(storedToken);
-          setUser(storedUser);
+          setUser(normalizeUser(storedUser));
           setAuthToken(storedToken);
         }
       } catch (error) {
@@ -78,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     try {
       const res = await api.post('/auth/verify-otp', { email, phone, otp });
-      setUser(res.data.user);
+      setUser(normalizeUser(res.data.user));
       setToken(res.data.token);
       setHasLoggedOut(false);
       return res.data;
@@ -92,7 +104,7 @@ export const AuthProvider = ({ children }) => {
   const loginDirect = (userData, userToken) => {
     // Set token immediately in API headers
     setAuthToken(userToken);
-    setUser(userData);
+    setUser(normalizeUser(userData));
     setToken(userToken);
     setHasLoggedOut(false);
   };
@@ -106,7 +118,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (updates) => {
     try {
       const res = await api.put('/users/profile', updates);
-      setUser(res.data.data);
+      setUser(normalizeUser(res.data.data));
       return res.data;
     } catch (error) {
       throw error;

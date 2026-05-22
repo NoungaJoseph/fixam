@@ -4,7 +4,7 @@ import {
   StatusBar, SafeAreaView, Switch, Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -15,7 +15,7 @@ const HiddenProfileScreen = ({ navigation }) => {
   const [hideFrom, setHideFrom] = useState({ search: true, categories: true, recommendations: false });
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} style={styles.background}>
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -107,7 +107,7 @@ const HiddenProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

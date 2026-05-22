@@ -4,7 +4,7 @@ import {
   StatusBar, SafeAreaView, TextInput, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -39,7 +39,7 @@ const DeleteAccountScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFF', '#FEF2F2', '#FFF']} style={styles.background}>
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -82,11 +82,6 @@ const DeleteAccountScreen = ({ navigation }) => {
           {/* Alternatives */}
           <View style={[styles.altCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.altTitle, { color: colors.text }]}>💡 Consider these alternatives first:</Text>
-            <TouchableOpacity style={styles.altRow} onPress={() => navigation.navigate('HiddenProfile')}>
-              <MaterialCommunityIcons name="eye-off-outline" size={18} color={colors.accent} />
-              <Text style={[styles.altText, { color: colors.accent }]}>Hide your profile instead (recoverable)</Text>
-              <MaterialCommunityIcons name="chevron-right" size={16} color={colors.accent} />
-            </TouchableOpacity>
             <TouchableOpacity style={styles.altRow}>
               <MaterialCommunityIcons name="pause-circle-outline" size={18} color={colors.primary} />
               <Text style={[styles.altText, { color: colors.text }]}>Pause your account temporarily</Text>
@@ -135,7 +130,7 @@ const DeleteAccountScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

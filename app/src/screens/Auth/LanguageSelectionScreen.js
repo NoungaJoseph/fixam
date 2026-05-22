@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, StatusBar, ImageBackground, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { COLORS } from '../../services/theme';
+
 import { useLanguage } from '../../context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.14)',
   },
   kicker: { fontSize: 13, fontWeight: '700', color: '#BFD7FF', textAlign: 'center', marginBottom: 8, textTransform: 'uppercase' },
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.white, textAlign: 'center', marginBottom: 20, lineHeight: 32 },
+  title: { fontSize: 24, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 20, lineHeight: 32 },
   langBtn: { 
     backgroundColor: 'rgba(255, 255, 255, 0.13)', 
     borderBottomWidth: 1, 
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   langIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   flagText: { fontSize: 22 },
   langCopy: { flex: 1 },
-  langText: { fontSize: 16, fontWeight: '800', color: COLORS.white },
+  langText: { fontSize: 16, fontWeight: '800', color: '#FFF' },
   langSub: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.64)', marginTop: 2 },
 });
 

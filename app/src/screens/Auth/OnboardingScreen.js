@@ -4,7 +4,7 @@ import {
   FlatList, Dimensions, SafeAreaView
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { COLORS } from '../../services/theme';
+
 import { useLanguage } from '../../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
@@ -18,14 +18,14 @@ const OnboardingScreen = ({ navigation }) => {
       title: t('onboarding.slide1Title'),
       desc: t('onboarding.slide1Desc'),
       image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop',
-      badge: { text: 'Verified Pros', icon: 'decagram', color: COLORS.accent }
+      badge: { text: 'Verified Pros', icon: 'decagram', color: '#0D9488' }
     },
     {
       id: '2',
       title: t('onboarding.slide2Title'),
       desc: t('onboarding.slide2Desc'),
       image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=2070&auto=format&fit=crop',
-      badge: { text: 'Trusted Pro', icon: 'shield-check', color: COLORS.white }
+      badge: { text: 'Trusted Pro', icon: 'shield-check', color: '#FFFFFF' }
     },
     {
       id: '3',
@@ -71,7 +71,7 @@ const OnboardingScreen = ({ navigation }) => {
                 style={styles.slideImage}
               />
               <View style={styles.badgeTopRight}>
-                <MaterialIcons name="workspace-premium" size={18} color={COLORS.accent} />
+                <MaterialIcons name="workspace-premium" size={18} color="#0D9488" />
                 <Text style={styles.badgeText}>Verified Pros</Text>
               </View>
             </View>
@@ -84,12 +84,12 @@ const OnboardingScreen = ({ navigation }) => {
                 style={styles.slideImageDark}
               />
               <View style={styles.badgeTopLeft}>
-                <MaterialIcons name="verified" size={18} color={COLORS.accent} />
+                <MaterialIcons name="verified" size={18} color="#0D9488" />
                 <Text style={styles.badgeText}>Trusted Pro</Text>
               </View>
               <View style={styles.badgeBottomRight}>
                 <View style={styles.starCircle}>
-                  <MaterialIcons name="star" size={20} color={COLORS.accent} />
+                  <MaterialIcons name="star" size={20} color="#0D9488" />
                 </View>
                 <View style={{ marginLeft: 10 }}>
                   <Text style={styles.ratingTitle}>4.9 Rating</Text>
@@ -152,7 +152,7 @@ const OnboardingScreen = ({ navigation }) => {
           <Text style={styles.headerLogo}>Fixam</Text>
         ) : (
           <TouchableOpacity onPress={() => flatListRef.current?.scrollToIndex({ index: currentIndex - 1 })}>
-            <MaterialIcons name="arrow-back" size={24} color={COLORS.primary} />
+            <MaterialIcons name="arrow-back" size={24} color="#0F172A" />
           </TouchableOpacity>
         )}
 
@@ -187,7 +187,7 @@ const OnboardingScreen = ({ navigation }) => {
         {/* Next / Get Started Button */}
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
           <Text style={styles.nextBtnText}>{currentIndex === 2 ? t('onboarding.getStarted') : t('onboarding.next')}</Text>
-          <MaterialIcons name="arrow-forward" size={20} color={COLORS.white} />
+          <MaterialIcons name="arrow-forward" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -201,9 +201,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10,
     height: 60,
   },
-  headerLogo: { fontSize: 22, fontWeight: '800', color: COLORS.primary },
+  headerLogo: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
   skipText: { fontSize: 16, fontWeight: '600', color: '#4B5563' },
-  langHeader: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary },
+  langHeader: { fontSize: 14, fontWeight: '600', color: '#475569' },
 
   slide: { width, alignItems: 'center' },
   
@@ -235,10 +235,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5,
   },
-  badgeText: { fontSize: 13, fontWeight: '700', color: COLORS.primary, marginLeft: 6 },
+  badgeText: { fontSize: 13, fontWeight: '700', color: '#0F172A', marginLeft: 6 },
   starCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center' },
-  ratingTitle: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
-  ratingSub: { fontSize: 10, color: COLORS.textSecondary, marginTop: 2 },
+  ratingTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  ratingSub: { fontSize: 10, color: '#475569', marginTop: 2 },
 
   slide3Visual: { width: width - 60, height: 340, justifyContent: 'center' },
   directServiceImage: { width: '100%', height: 150, borderRadius: 24, marginBottom: 12 },
@@ -249,35 +249,35 @@ const styles = StyleSheet.create({
   },
   premiumMark: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: '#0D1B2A', marginBottom: 10 },
   premiumMarkText: { color: '#FFF', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  connectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.primary, marginBottom: 14 },
+  connectionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 14 },
   flowRow: { flexDirection: 'row', alignItems: 'center' },
-  flowStep: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
+  flowStep: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#0D9488', justifyContent: 'center', alignItems: 'center' },
   flowText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
   flowLine: { width: 34, height: 2, backgroundColor: '#BDD6FF' },
   s3CardsRow: { flexDirection: 'row', gap: 16 },
-  s3DarkCard: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 16, padding: 18, gap: 10 },
+  s3DarkCard: { flex: 1, backgroundColor: '#0F172A', borderRadius: 16, padding: 18, gap: 10 },
   s3DarkCardText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
   premiumBadge: { alignSelf: 'flex-start', color: '#9CC3FF', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   s3LightCard: { flex: 1, backgroundColor: '#DCE8F9', borderRadius: 16, padding: 18, gap: 10 },
-  s3LightCardText: { color: COLORS.primary, fontSize: 15, fontWeight: '600' },
-  cashBadge: { alignSelf: 'flex-start', color: COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  s3LightCardText: { color: '#0F172A', fontSize: 15, fontWeight: '600' },
+  cashBadge: { alignSelf: 'flex-start', color: '#0F172A', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
 
   textContent: { alignItems: 'center', marginTop: 40, paddingHorizontal: 20 },
-  title: { fontSize: 28, fontWeight: '800', color: COLORS.primary, textAlign: 'center', marginBottom: 6 },
+  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 6 },
   subtitleFr: { fontSize: 18, fontWeight: '600', color: '#8F9BB3', textAlign: 'center', marginBottom: 16 },
   desc: { fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 24, paddingHorizontal: 10 },
 
   bottomArea: { paddingHorizontal: 30, paddingBottom: 40, alignItems: 'center' },
   dotsRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
-  dotActive: { width: 24, backgroundColor: COLORS.accent },
-  nextBtn: { backgroundColor: COLORS.accent, width: '100%', paddingVertical: 18, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+  dotActive: { width: 24, backgroundColor: '#0D9488' },
+  nextBtn: { backgroundColor: '#0D9488', width: '100%', paddingVertical: 18, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   
   langPillContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
   langLabel: { fontSize: 13, fontWeight: '600', color: '#4B5563', marginRight: 10 },
   langPill: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFF' },
-  langPillText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  langPillText: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
 });
 
 export default OnboardingScreen;

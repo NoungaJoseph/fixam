@@ -1,11 +1,13 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { COLORS } from '../../services/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const MessageBubble = ({ message, isMe }) => {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.container, isMe ? styles.myMessage : styles.theirMessage]}>
-      <Text style={[styles.text, isMe ? styles.myText : styles.theirText]}>
+    <View style={[styles.container, isMe ? styles.myMessage : [styles.theirMessage, { backgroundColor: colors.card }]]}>
+      <Text style={[styles.text, isMe ? styles.myText : [styles.theirText, { color: colors.text }]]}>
         {message.text}
       </Text>
       <Text style={[styles.time, isMe ? styles.myTime : styles.theirTime]}>

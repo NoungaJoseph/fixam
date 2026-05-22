@@ -6,12 +6,11 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
 const ProviderPhotoScreen = ({ navigation, route }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, colors } = useTheme();
   const [photoUploaded, setPhotoUploaded] = useState(false);
 
   const handleFinish = () => {
@@ -26,71 +25,67 @@ const ProviderPhotoScreen = ({ navigation, route }) => {
   };
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.background}
-      resizeMode="cover"
+    <View 
+      style={[styles.background, { backgroundColor: colors.background }]}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.overlay}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+      <View style={[styles.overlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.4)' : 'transparent' }]}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
           <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>fixam</Text>
+            <Text style={[styles.logoText, { color: isDarkMode ? '#FFF' : colors.primary }]}>fixam</Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Profile Picture</Text>
-            <Text style={styles.cardDesc}>Upload a professional photo to build trust with your future clients.</Text>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? 'rgba(25, 30, 40, 0.9)' : colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : colors.text }]}>Profile Picture</Text>
+            <Text style={[styles.cardDesc, { color: isDarkMode ? 'rgba(255,255,255,0.85)' : colors.textSecondary }]}>Upload a professional photo to build trust with your future clients.</Text>
 
             <View style={styles.photoSection}>
-              <View style={[styles.photoOutline, photoUploaded && styles.photoOutlineActive]}>
+              <View style={[styles.photoOutline, photoUploaded && { borderColor: colors.accent }]}>
                 <TouchableOpacity
-                  style={[styles.photoContainer, photoUploaded && styles.photoContainerActive]}
+                  style={[styles.photoContainer, photoUploaded && { backgroundColor: colors.accent }]}
                   onPress={() => setPhotoUploaded(!photoUploaded)}
                 >
                   <MaterialCommunityIcons
                     name={photoUploaded ? "account-check" : "account"}
                     size={100}
-                    color={photoUploaded ? "#FFF" : "rgba(255,255,255,0.1)"}
+                    color={photoUploaded ? "#FFF" : colors.placeholder}
                   />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.editBtn} onPress={() => setPhotoUploaded(!photoUploaded)}>
+                <TouchableOpacity style={[styles.editBtn, { backgroundColor: colors.accent, borderColor: isDarkMode ? '#191E28' : colors.card }]} onPress={() => setPhotoUploaded(!photoUploaded)}>
                   <MaterialCommunityIcons name={photoUploaded ? "check" : "camera"} size={20} color="#FFF" />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
+            <TouchableOpacity style={[styles.finishBtn, { backgroundColor: colors.accent }]} onPress={handleFinish}>
               <Text style={styles.finishBtnText}>Complete Registration</Text>
             </TouchableOpacity>
 
-            <Text style={styles.infoText}>You can always change your photo later in settings.</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>You can always change your photo later in settings.</Text>
           </View>
 
         </ScrollView>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   background: { flex: 1, width: width, height: height },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  overlay: { flex: 1 },
   scrollContent: { paddingHorizontal: 25, paddingTop: 80, paddingBottom: 40, alignItems: 'center' },
   logoContainer: { marginBottom: 40 },
-  logoText: { fontSize: 34, fontWeight: '700', color: '#FFF', letterSpacing: 2 },
+  logoText: { fontSize: 34, fontWeight: '700', letterSpacing: 2 },
   card: {
     width: '100%',
-    backgroundColor: 'rgba(25, 30, 40, 0.9)',
     borderRadius: 30,
     padding: 35,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
   },
-  cardTitle: { fontSize: 24, fontWeight: '700', color: '#FFF', textAlign: 'center', marginBottom: 15 },
-  cardDesc: { fontSize: 15, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 22, marginBottom: 40 },
+  cardTitle: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 15 },
+  cardDesc: { fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 40 },
   photoSection: { marginBottom: 45 },
   photoOutline: {
     width: 180,
@@ -102,9 +97,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 5,
   },
-  photoOutlineActive: {
-    borderColor: '#1E67D1',
-  },
   photoContainer: {
     width: '100%',
     height: '100%',
@@ -114,38 +106,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
-  photoContainerActive: {
-    backgroundColor: '#1E67D1',
-  },
   editBtn: {
     position: 'absolute',
     bottom: 5,
     right: 5,
-    backgroundColor: '#1E67D1',
     width: 45,
     height: 45,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#191E28',
   },
   finishBtn: {
-    backgroundColor: '#1E67D1',
     paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 20,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#1E67D1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
     marginBottom: 20,
   },
   finishBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  infoText: { fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
+  infoText: { fontSize: 12, textAlign: 'center' },
 });
 
 export default ProviderPhotoScreen;

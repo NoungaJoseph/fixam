@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Menu, X, ChevronDown, User, Briefcase, Info, PlusCircle, LayoutGrid } from 'lucide-react';
+import { Search, Menu, X, ChevronDown, User, Briefcase, Info, PlusCircle, LayoutGrid, Zap, ArrowRight, ShieldCheck, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -115,7 +115,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-    </header>
     </header>
   );
 }

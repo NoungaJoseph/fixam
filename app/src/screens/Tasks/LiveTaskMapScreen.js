@@ -17,7 +17,7 @@ import { useTheme } from '../../context/ThemeContext';
 const { width, height } = Dimensions.get('window');
 
 const LiveTaskMapScreen = ({ navigation, route }) => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const task = route.params?.task || {};
   const lat = task.latitude != null ? Number(task.latitude) : null;
   const lng = task.longitude != null ? Number(task.longitude) : null;
@@ -97,8 +97,8 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: '#000' }]}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <MapView
         style={{ width, height }}
         mapType="standard"
@@ -120,19 +120,19 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
 
       <SafeAreaView style={styles.overlay}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: '#FFF' }]} onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#111" />
+          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: colors.card }]} onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
           </TouchableOpacity>
-          <View style={[styles.titleBox, { backgroundColor: '#FFF' }]}>
-            <Text style={styles.titleText} numberOfLines={1}>{task.title || 'Live tracking'}</Text>
+          <View style={[styles.titleBox, { backgroundColor: colors.card }]}>
+            <Text style={[styles.titleText, { color: colors.text }]} numberOfLines={1}>{task.title || 'Live tracking'}</Text>
             {!hasCoords ? (
               <Text style={styles.subMuted}>Precise pins appear when the task includes coordinates.</Text>
             ) : (
               <Text style={styles.subMuted}>{task.location || 'Open in Maps for turn-by-turn directions'}</Text>
             )}
           </View>
-          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: '#FFF' }]} onPress={openInGoogleMaps}>
-            <MaterialCommunityIcons name="directions" size={22} color="#111" />
+          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: colors.card }]} onPress={openInGoogleMaps}>
+            <MaterialCommunityIcons name="directions" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>

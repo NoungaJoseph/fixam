@@ -102,8 +102,8 @@ export default function ProviderListPage() {
                   {filtered.map((p) => (
                     <article key={p.id} className="card-premium" style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '100px 1fr auto', gap: '2rem', alignItems: 'center' }}>
                       <div style={{ width: '100px', height: '100px', borderRadius: '2rem', overflow: 'hidden', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                        {p.image || p.avatar ? (
-                          <img src={p.image || p.avatar} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {p.image ? (
+                          <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--primary)', fontSize: '2rem' }}>
                             {p.name?.charAt(0)}
@@ -123,7 +123,7 @@ export default function ProviderListPage() {
                              <Star size={16} style={{ fill: '#fbbf24', color: '#fbbf24' }} /> {p.rating || '5.0'}
                            </span>
                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                             <MapPin size={16} /> {p.location || p.serviceArea || 'Douala, CM'}
+                             <MapPin size={16} /> {p.serviceArea || p.distance || 'Douala, CM'}
                            </span>
                            <span style={{ background: 'var(--surface-alt)', padding: '0.25rem 0.75rem', borderRadius: '0.5rem', fontSize: '11px', color: 'var(--navy)' }}>
                              XAF {Number(p.rate || 0).toLocaleString()} / hr

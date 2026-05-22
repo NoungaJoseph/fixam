@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -10,6 +11,7 @@ import { useAppContext } from '../context/AppContext';
 import { CustomDrawerContent } from './NavigationComponents';
 
 import ProviderHomeScreen from '../screens/Provider/ProviderHomeScreen';
+import FindJobsScreen from '../screens/Provider/FindJobsScreen';
 import TaskDetailsScreen from '../screens/Provider/TaskDetailsScreen';
 import TaskDiscoveryScreen from '../screens/Provider/TaskDiscoveryScreen';
 import MyJobsScreen from '../screens/Provider/MyJobsScreen';
@@ -56,6 +58,16 @@ const HomeStack = () => (
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="FindJobs" component={FindJobsScreen} />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+  </Stack.Navigator>
+);
+
+const FindJobsStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="FindJobsMain" component={FindJobsScreen} />
+    <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} />
   </Stack.Navigator>
 );
 
@@ -67,6 +79,7 @@ const JobsStack = () => (
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="ReviewTask" component={ReviewTaskScreen} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} />
   </Stack.Navigator>
 );
 
@@ -80,6 +93,7 @@ const WalletStack = () => (
     <Stack.Screen name="TopUpSuccess" component={TopUpSuccessScreen} />
     <Stack.Screen name="CoinPaymentForm" component={CoinPaymentFormScreen} />
     <Stack.Screen name="CoinPaymentSuccess" component={CoinPaymentSuccessScreen} />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
 );
 
@@ -94,6 +108,7 @@ const MessagesStack = () => (
     <Stack.Screen name="ChatList" component={ChatListScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} />
   </Stack.Navigator>
 );
 
@@ -119,7 +134,7 @@ const ProfileStack = () => (
 );
 
 const BottomTabNavigator = () => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
   const { unreadCount } = useAppContext();
 
@@ -127,40 +142,138 @@ const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => {
         const routeName = getFocusedRouteNameFromRoute(route) ?? route.name;
-        const hideTabBar = ['Chat', 'TaskDetails', 'DocUpload', 'Selfie', 'VerificationSuccess', 'TopUpAmount', 'TopUpPayment', 'TopUpSuccess', 'CoinPaymentSuccess'].includes(routeName);
+        const hideTabBar = [
+          'Chat', 
+          'DocUpload', 
+          'Selfie', 
+          'VerificationSuccess', 
+          'TaskDetails',
+          'LiveTaskMap'
+        ].includes(routeName);
         return {
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.placeholder,
-        tabBarStyle: {
-          display: hideTabBar ? 'none' : 'flex',
-          height: 65, paddingBottom: 10, paddingTop: 10,
-          backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.border,
-        },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
-      }}}
+          headerShown: false,
+          tabBarActiveTintColor: '#0D9488',
+          tabBarInactiveTintColor: isDarkMode ? '#64748B' : '#94A3B8',
+          tabBarStyle: {
+            display: hideTabBar ? 'none' : 'flex',
+            height: Platform.OS === 'ios' ? 90 : 76,
+            paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+            paddingTop: 8,
+            backgroundColor: colors.tabBar,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            borderWidth: 0,
+            borderTopWidth: 0,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.06,
+            shadowRadius: 10,
+            elevation: 16,
+          },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '800', marginTop: 2 },
+        };
+      }}
     >
-      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "home" : "home-outline"} size={25} color={color} /> }} />
-      <Tab.Screen name="My Jobs" component={JobsStack} options={{ title: t('tabs.myJobs'), tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={25} color={color} /> }} />
-      <Tab.Screen name="Stats" component={StatsStack} options={{ title: 'Stats', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "stats-chart" : "stats-chart-outline"} size={25} color={color} /> }} />
-      <Tab.Screen name="Messages" component={MessagesStack} options={{ title: t('tabs.messages'), tabBarBadge: unreadCount > 0 ? unreadCount : null, tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={25} color={color} /> }} />
-      <Tab.Screen name="Settings" component={ProfileStack} options={{ title: t('tabs.settings'), tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? "menu" : "menu-outline"} size={26} color={color} /> }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeStack}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
+          )
+        }}
+      />
+      <Tab.Screen
+        name="My Jobs"
+        component={JobsStack}
+        options={{
+          title: t('tabs.myJobs'),
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "briefcase" : "briefcase-outline"} size={22} color={color} />
+          )
+        }}
+      />
+      <Tab.Screen
+        name="Find Jobs"
+        component={FindJobsStack}
+        options={{
+          title: 'Find Jobs',
+          tabBarIcon: ({ focused }) => (
+            <View style={{
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: '#0D9488',
+              borderWidth: 3,
+              borderColor: isDarkMode ? '#0F172A' : '#FFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: -22,
+              shadowColor: '#0D9488',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 6,
+              elevation: 8,
+              transform: [{ scale: focused ? 1.05 : 1 }],
+            }}>
+              <Ionicons name="search" size={22} color="#FFF" />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Messages"
+        component={MessagesStack}
+        options={{
+          title: 'Messages',
+          tabBarBadge: unreadCount > 0 ? unreadCount : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
+          )
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={ProfileStack}
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
+          )
+        }}
+      />
     </Tab.Navigator>
   );
 };
 
 const ProviderTabNavigator = () => {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerActiveBackgroundColor: colors.accent + '15',
-        drawerActiveTintColor: colors.accent,
-        drawerInactiveTintColor: colors.textSecondary,
-        drawerLabelStyle: { fontSize: 15, fontWeight: '700', marginLeft: -10 },
-        drawerStyle: { width: '75%' },
+        drawerActiveBackgroundColor: isDarkMode ? '#134E4A' : '#ECFDF5',
+        drawerActiveTintColor: '#0D9488',
+        drawerInactiveTintColor: colors.text,
+        drawerLabelStyle: { fontSize: 15, fontWeight: '700', marginLeft: -6 },
+        drawerItemStyle: { borderRadius: 14, marginHorizontal: 8, paddingVertical: 2 },
+        drawerStyle: { 
+          width: '78%', 
+          backgroundColor: 'transparent',
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 4, height: 0 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+        },
+        drawerContentStyle: { backgroundColor: 'transparent' },
+        overlayColor: 'rgba(15, 23, 42, 0.42)',
+        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0F172A' : '#FFF' },
       }}
     >
       <Drawer.Screen
@@ -171,14 +284,7 @@ const ProviderTabNavigator = () => {
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="home-variant-outline" size={24} color={color} />
         }}
       />
-      <Drawer.Screen
-        name="Jobs"
-        component={JobsStack}
-        options={{
-          drawerLabel: 'My Jobs',
-          drawerIcon: ({ color }) => <MaterialCommunityIcons name="briefcase-outline" size={24} color={color} />,
-        }}
-      />
+
       <Drawer.Screen
         name="Wallet"
         component={WalletStack}

@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, TouchableOpacity, StatusBar, TextInput, Keyboard, ActivityIndicator, Alert, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../services/theme';
+
 import { useAuth } from '../../context/AuthContext';
 
 const OTPScreen = ({ route, navigation }) => {
@@ -68,7 +68,7 @@ const OTPScreen = ({ route, navigation }) => {
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <MaterialCommunityIcons name="chevron-left" size={28} color={COLORS.primary} />
+          <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
           <Text style={styles.logo}>Verification</Text>
         </TouchableOpacity>
       </View>
@@ -78,7 +78,7 @@ const OTPScreen = ({ route, navigation }) => {
           <MaterialCommunityIcons 
             name={method === 'phone' ? "cellphone-message" : "email-check-outline"} 
             size={50} 
-            color={COLORS.accent} 
+            color="#0D9488" 
           />
         </View>
 
@@ -146,10 +146,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: { fontSize: 20, fontWeight: '800', color: COLORS.primary },
+  logo: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
   body: { flex: 1, paddingHorizontal: 30, paddingTop: 40, alignItems: 'center' },
   iconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },
-  verifyTitle: { fontSize: 26, fontWeight: '800', color: COLORS.primary, marginBottom: 12, textAlign: 'center' },
+  verifyTitle: { fontSize: 26, fontWeight: '800', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
   verifySubtitle: { fontSize: 15, color: '#6B7280', textAlign: 'center', lineHeight: 24, marginBottom: 40 },
   hiddenInput: { 
     position: 'absolute', 
@@ -162,12 +162,12 @@ const styles = StyleSheet.create({
   },
   otpRow: { flexDirection: 'row', gap: 10, marginBottom: 30 },
   otpBox: { width: 45, height: 60, borderWidth: 2, borderColor: '#F3F4F6', borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
-  otpBoxActive: { borderColor: COLORS.accent, backgroundColor: '#FFF' },
-  otpDigit: { fontSize: 24, fontWeight: '800', color: COLORS.primary },
+  otpBoxActive: { borderColor: '#0D9488', backgroundColor: '#FFF' },
+  otpDigit: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
   resendContainer: { flexDirection: 'row', gap: 8, marginBottom: 40 },
   timerText: { fontSize: 14, color: '#9CA3AF', fontWeight: '600' },
-  resendLink: { fontSize: 14, color: COLORS.accent, fontWeight: '700', textDecorationLine: 'underline' },
-  verifyBtn: { backgroundColor: COLORS.primary, width: '100%', paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: COLORS.primary, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
+  resendLink: { fontSize: 14, color: '#0D9488', fontWeight: '700', textDecorationLine: 'underline' },
+  verifyBtn: { backgroundColor: '#0F172A', width: '100%', paddingVertical: 18, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
   verifyBtnDisabled: { opacity: 0.5 },
   verifyBtnText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
 });

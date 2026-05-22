@@ -4,9 +4,9 @@ import {
   ScrollView, StatusBar, TextInput, Modal, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../services/theme';
+
 import { useTheme } from '../../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import api from '../../services/api';
 
 const ReviewTaskScreen = ({ route, navigation }) => {
@@ -58,9 +58,8 @@ const ReviewTaskScreen = ({ route, navigation }) => {
   );
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.container}
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
@@ -182,7 +181,7 @@ const ReviewTaskScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 };
 

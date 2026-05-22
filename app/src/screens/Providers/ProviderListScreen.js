@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   FlatList, Image, StatusBar, ScrollView, SafeAreaView
@@ -6,34 +6,22 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
+import { getMediaUrl } from '../../services/api';
+
 
 const FILTERS = ['Rating', 'Price', 'Distance', 'Availability'];
 
 const ProviderListScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
-  const { providers } = useAppContext();
+  const { providers, favoriteProviderIds, toggleFavoriteProvider } = useAppContext();
   const category = route.params?.category;
+  const verifiedOnly = Boolean(route.params?.verifiedOnly);
+  const favoritesOnly = Boolean(route.params?.favoritesOnly);
   const [search, setSearch] = useState(route.params?.search || '');
   const [activeFilter, setActiveFilter] = useState('Rating');
+  const [showFilters, setShowFilters] = useState(false);
 
-  React.useLayoutEffect(() => {
-    const parent = navigation.getParent();
-    if (parent) {
-      parent.setOptions({ tabBarStyle: { display: 'none' } });
-    }
-    return () => {
-      if (parent) {
-        parent.setOptions({
-          tabBarStyle: {
-            display: 'flex',
-            height: 65, paddingBottom: 10, paddingTop: 10,
-            backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.border,
-          },
-        });
-      }
-    };
-  }, [navigation, colors.tabBar, colors.border]);
+
 
   // Improved filtering logic for real backend data
   const getProviderDistance = (provider) => {
@@ -42,7 +30,7 @@ const ProviderListScreen = ({ route, navigation }) => {
     return Number.isFinite(parsedDistance) ? parsedDistance : null;
   };
 
-  const filtered = providers.filter(p => {
+  const filtered = useMemo(() => providers.filter(p => {
     const searchLower = search.trim().toLowerCase();
     const catLower = category?.toLowerCase();
     
@@ -53,6 +41,8 @@ const ProviderListScreen = ({ route, navigation }) => {
 
     // Filter by Category if provided in route
     if (catLower && catLower !== 'all' && !skills.includes(catLower)) return false;
+    if (verifiedOnly && p.verification !== 'VERIFIED') return false;
+    if (favoritesOnly && !favoriteProviderIds?.includes(p.id)) return false;
 
     // Filter by Search terms
     if (!searchLower) return true;
@@ -78,9 +68,13 @@ const ProviderListScreen = ({ route, navigation }) => {
     }
 
     return 0;
-  });
+  }), [providers, search, category, verifiedOnly, favoritesOnly, favoriteProviderIds, activeFilter]);
 
-  const renderProvider = ({ item }) => (
+  const renderProvider = ({ item }) => {
+    const avatarUri = getMediaUrl(item.user?.avatar);
+    const isFavorite = favoriteProviderIds?.includes(item.id);
+
+    return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={() => navigation.navigate('ProviderProfile', { provider: item })}
@@ -88,7 +82,7 @@ const ProviderListScreen = ({ route, navigation }) => {
     >
       <View style={styles.cardTop}>
         <Image 
-          source={item.user?.avatar ? { uri: item.user.avatar } : { uri: `https://ui-avatars.com/api/?name=${item.user?.fullName || 'User'}&background=random` }} 
+          source={avatarUri ? { uri: avatarUri } : { uri: `https://ui-avatars.com/api/?name=${item.user?.fullName || 'User'}&background=random` }} 
           style={[styles.avatar, { backgroundColor: isDarkMode ? '#1e293b' : '#f3f4f6' }]} 
         />
         <View style={styles.cardInfo}>
@@ -103,16 +97,24 @@ const ProviderListScreen = ({ route, navigation }) => {
             </Text>
           </View>
         </View>
-        <View style={[styles.ratingBadge, { backgroundColor: isDarkMode ? 'rgba(251,191,36,0.1)' : '#FEF3C7' }]}>
-          <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
-          <Text style={[styles.ratingText, { color: '#B45309' }]}>{item.rating || '0.0'}</Text>
+        <View style={styles.cardMeta}>
+          <TouchableOpacity
+            style={[styles.favoriteBtn, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC' }]}
+            onPress={() => toggleFavoriteProvider?.(item.id)}
+          >
+            <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={20} color={isFavorite ? '#EF4444' : colors.textSecondary} />
+          </TouchableOpacity>
+          <View style={[styles.ratingBadge, { backgroundColor: isDarkMode ? 'rgba(251,191,36,0.1)' : '#FEF3C7' }]}>
+            <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
+            <Text style={[styles.ratingText, { color: '#B45309' }]}>{item.rating || '0.0'}</Text>
+          </View>
         </View>
       </View>
 
       <View style={styles.cardActions}>
         <TouchableOpacity
           style={[styles.chatBtn, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('Chat', { receiverId: item.user?.id, userName: item.user?.fullName, avatar: item.user?.avatar })}
+          onPress={() => navigation.navigate('Chat', { receiverId: item.user?.id, userName: item.user?.fullName, avatar: avatarUri })}
         >
           <MaterialCommunityIcons name="message-outline" size={16} color="#FFF" />
           <Text style={styles.chatBtnText}>Send Message</Text>
@@ -126,11 +128,11 @@ const ProviderListScreen = ({ route, navigation }) => {
       </View>
     </TouchableOpacity>
   );
+  };
 
   return (
-    <LinearGradient 
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} 
-      style={styles.container}
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <SafeAreaView style={{ flex: 1 }}>
@@ -139,9 +141,11 @@ const ProviderListScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{category && category !== 'all' ? `${category} Pros` : 'Discover Pros'}</Text>
-          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: colors.card }]}>
-            <MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {favoritesOnly ? 'Favorite Pros' : verifiedOnly ? 'Verified Pros' : category && category !== 'all' ? `${category} Pros` : 'Discover Pros'}
+          </Text>
+          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: showFilters ? colors.accent : colors.card }]} onPress={() => setShowFilters((value) => !value)}>
+            <MaterialCommunityIcons name="tune-variant" size={20} color={showFilters ? '#FFF' : colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -164,26 +168,27 @@ const ProviderListScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Filter chips */}
-        <View style={styles.filtersWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
-            {FILTERS.map(f => (
-              <TouchableOpacity
-                key={f}
-                style={[
-                  styles.filterChip, 
-                  { backgroundColor: activeFilter === f ? colors.accent : colors.card, borderColor: colors.border },
-                  activeFilter === f && { borderWidth: 0 }
-                ]}
-                onPress={() => setActiveFilter(f)}
-              >
-                <Text style={[styles.filterText, { color: activeFilter === f ? '#FFF' : colors.textSecondary }]}>
-                  {f}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {showFilters && (
+          <View style={[styles.filterPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.filterPanelTitle, { color: colors.text }]}>Sort results</Text>
+            <View style={styles.filtersRow}>
+              {FILTERS.map(f => (
+                <TouchableOpacity
+                  key={f}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: activeFilter === f ? colors.accent : (isDarkMode ? '#0F172A' : '#F8FAFC'), borderColor: activeFilter === f ? colors.accent : colors.border },
+                  ]}
+                  onPress={() => setActiveFilter(f)}
+                >
+                  <Text style={[styles.filterText, { color: activeFilter === f ? '#FFF' : colors.textSecondary }]}>
+                    {f}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* List */}
         <FlatList
@@ -201,7 +206,7 @@ const ProviderListScreen = ({ route, navigation }) => {
           }
         />
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -221,8 +226,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 15, fontWeight: '600' },
-  filtersWrapper: { marginBottom: 15 },
-  filtersRow: { paddingHorizontal: 20, gap: 10 },
+  filterPanel: { marginHorizontal: 20, marginBottom: 15, borderRadius: 8, borderWidth: 1, padding: 14 },
+  filterPanelTitle: { fontSize: 13, fontWeight: '900', marginBottom: 10 },
+  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   filterChip: {
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
     borderWidth: 1,
@@ -235,6 +241,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, elevation: 1,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  cardMeta: { alignItems: 'flex-end', gap: 8 },
+  favoriteBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 60, height: 60, borderRadius: 18 },
   cardInfo: { flex: 1, marginLeft: 15 },
   provName: { fontSize: 17, fontWeight: '800' },

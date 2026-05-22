@@ -18,7 +18,7 @@ const InvitationScreen = ({ navigation }) => {
   const onShare = async () => {
     try {
       const result = await Share.share({
-        message: `Join me on Fixam! Use my referral code ${referralCode} to get bonus coins when you sign up. Download here: https://fixam.app/download`,
+        message: `Join me on Fixam! Use my referral code ${referralCode} so I earn 1 coin when you sign up. Download here: https://fixam.app/download`,
       });
     } catch (error) {
       Alert.alert(error.message);
@@ -43,7 +43,7 @@ const InvitationScreen = ({ navigation }) => {
 
         <Text style={[styles.title, { color: colors.text }]}>Invite Friends & Earn Coins</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Earn 3 Coins for every friend who joins Fixam using your referral code. They'll get bonus coins too!
+          Invite a friend and earn 1 coin when they join Fixam using your referral code.
         </Text>
 
         {/* Code Box */}
@@ -102,7 +102,7 @@ const InvitationScreen = ({ navigation }) => {
             <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
               <Text style={styles.stepNumText}>3</Text>
             </View>
-            <Text style={[styles.stepText, { color: colors.textSecondary }]}>You both receive bonus coins instantly!</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>You receive 1 coin after their signup is confirmed</Text>
           </View>
         </View>
 

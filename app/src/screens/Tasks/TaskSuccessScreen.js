@@ -1,21 +1,20 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS } from '../../services/theme';
-import { LinearGradient } from 'expo-linear-gradient';
+
+
 import { useTheme } from '../../context/ThemeContext';
 
 const TaskSuccessScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
 
   return (
-    <LinearGradient 
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.container}
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          <MaterialCommunityIcons name="check-circle" size={90} color={COLORS.success} />
+          <MaterialCommunityIcons name="check-circle" size={90} color={colors.success} />
         </View>
 
         <Text style={[styles.title, { color: colors.text }]}>Task Posted Successfully!</Text>
@@ -36,7 +35,7 @@ const TaskSuccessScreen = ({ navigation }) => {
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
             onPress={() => navigation.navigate('MyJobs')}
           >
             <MaterialCommunityIcons name="eye-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
@@ -60,14 +59,13 @@ const TaskSuccessScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1, 
-    backgroundColor: COLORS.background,
     justifyContent: 'center', 
     alignItems: 'center', 
     padding: 30,
@@ -119,14 +117,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    shadowColor: COLORS.primary, 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 }, 
     shadowOpacity: 0.2, 
     shadowRadius: 10, 
     elevation: 5,
   },
   primaryBtnText: { 
-    color: COLORS.white, 
+    color: '#FFF', 
     fontSize: 16, 
     fontWeight: '700' 
   },

@@ -1,37 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, ArrowRight, CheckCircle, Clock, AlertCircle, Plus, ChevronRight, Loader, Zap, X, CreditCard, ShieldCheck } from 'lucide-react';
+import { 
+  MapPin, 
+  Calendar, 
+  ArrowRight, 
+  CheckCircle, 
+  Clock, 
+  AlertCircle, 
+  Plus, 
+  ChevronRight, 
+  Loader, 
+  Zap, 
+  X, 
+  CreditCard, 
+  ShieldCheck, 
+  Briefcase, 
+  Tag, 
+  Info,
+  DollarSign
+} from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import AppLayout from '../components/AppLayout';
 
 const CATEGORIES = [
-  { id: '1', name: 'Plumbing', icon: '🔧' },
-  { id: '2', name: 'Electrical', icon: '⚡' },
-  { id: '3', name: 'Cleaning', icon: '🧹' },
-  { id: '4', name: 'Carpentry', icon: '🪚' },
-  { id: '5', name: 'Painting', icon: '🖌️' },
-  { id: '6', name: 'Other', icon: '•••' },
-];
-
-const MY_TASKS = [
-  {
-    id: 't1', icon: '🔧', title: 'Kitchen Sink Repair', category: 'Plumbing',
-    status: 'IN PROGRESS', statusBg: 'bg-blue-50', statusText: 'text-blue-700',
-    pro: 'Marcus Chen', proImg: 'https://i.pravatar.cc/150?u=marcus',
-    date: 'Tomorrow, 10:00 AM', price: '85,000 XAF', progress: 65,
-  },
-  {
-    id: 't2', icon: '⚡', title: 'Living Room Rewiring', category: 'Electrical',
-    status: 'PENDING APPROVAL', statusBg: 'bg-gray-100', statusText: 'text-gray-600',
-    pro: 'Awaiting admin approval', proImg: null,
-    date: 'Awaiting selection', price: '120,000–180,000 XAF', progress: null,
-  },
-  {
-    id: 't3', icon: '🖌️', title: 'Main Bedroom Painting', category: 'Painting',
-    status: 'COMPLETED', statusBg: 'bg-green-50', statusText: 'text-green-700',
-    pro: 'David Wilson', proImg: 'https://i.pravatar.cc/150?u=david',
-    date: 'Finished 2 days ago', price: '450,000 XAF', progress: 100,
-  },
+  { id: '1', name: 'Plumbing', icon: '🔧', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
+  { id: '2', name: 'Electrical', icon: '⚡', color: 'bg-amber-500/10 text-amber-500 border-amber-500/25' },
+  { id: '3', name: 'Cleaning', icon: '🧹', color: 'bg-sky-500/10 text-sky-500 border-sky-500/25' },
+  { id: '4', name: 'Carpentry', icon: '🪚', color: 'bg-orange-500/10 text-orange-500 border-orange-500/25' },
+  { id: '5', name: 'Painting', icon: '🖌️', color: 'bg-violet-500/10 text-violet-500 border-violet-500/25' },
+  { id: '6', name: 'Other', icon: '•••', color: 'bg-gray-500/10 text-gray-500 border-gray-50/25' },
 ];
 
 type TabId = 'tasks' | 'post';
@@ -49,7 +46,7 @@ interface TaskForm {
 
 export default function PostTaskPage() {
   const navigate = useNavigate();
-  const { postJob } = useAppContext();
+  const { jobs, postJob, fetchAppData } = useAppContext();
   const [tab, setTab] = useState<TabId>('tasks');
   const [step, setStep] = useState<FormStep>('details');
   const [selectedCat, setSelectedCat] = useState('Plumbing');
@@ -64,6 +61,10 @@ export default function PostTaskPage() {
     category: 'Plumbing'
   });
 
+  useEffect(() => {
+    fetchAppData();
+  }, [fetchAppData]);
+
   const set = (k: keyof TaskForm, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const getCurrentLocation = () => {
@@ -71,7 +72,7 @@ export default function PostTaskPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          set('location', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          set('location', `Douala, Cameroon (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
         },
         (error) => alert('Unable to get location: ' + error.message)
       );
@@ -92,8 +93,11 @@ export default function PostTaskPage() {
     setLoading(true);
     try {
       await postJob({
-        ...form,
+        title: form.title,
+        description: form.description,
         category: selectedCat,
+        location: form.location,
+        budget: form.budget,
         scheduledTime: `${form.scheduledDate}T${form.scheduledTime}`
       });
       setStep('success');
@@ -107,6 +111,7 @@ export default function PostTaskPage() {
         });
       }, 3000);
     } catch (error) {
+      console.error(error);
       alert('Failed to publish task');
     } finally {
       setLoading(false);
@@ -114,224 +119,406 @@ export default function PostTaskPage() {
   };
 
   return (
-    <AppLayout title="My Tasks" subtitle="Track your projects and manage hires.">
-      
-      {/* Tab Switcher - Premium Style */}
-      <div className="inline-flex p-1.5 bg-gray-100 rounded-2xl mb-12 shadow-inner">
-        {[
-          { id: 'tasks', label: 'Dashboard', icon: <Briefcase className="w-4 h-4" /> },
-          { id: 'post', label: 'Post New Job', icon: <Plus className="w-4 h-4" /> }
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => { setTab(t.id as TabId); setStep('details'); }}
-            className={`flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all duration-300 ${tab === t.id ? 'bg-white text-navy shadow-xl' : 'text-gray-400 hover:text-navy'}`}
-          >
-            {t.icon} {t.label}
-          </button>
-    <AppLayout>
-      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem 1rem' }}>
+    <AppLayout 
+      title="My Tasks" 
+      subtitle="Track your projects, post new jobs, and coordinate with local professional talent."
+    >
+      <div className="max-w-[1200px] mx-auto pb-16">
         
-        {/* Tab Switcher */}
-        <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid var(--border)', marginBottom: '3rem' }}>
-          <button 
-            onClick={() => setTab('tasks')}
-            style={{ 
-              padding: '1rem 0', 
-              fontSize: '1rem', 
-              fontWeight: 900, 
-              border: 'none', 
-              background: 'none', 
-              color: tab === 'tasks' ? 'var(--primary)' : 'var(--text-muted)',
-              borderBottom: tab === 'tasks' ? '3px solid var(--primary)' : '3px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
+        {/* Tab Switcher - Premium Floating Bar */}
+        <div className="inline-flex p-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-2xl mb-10 shadow-sm">
+          <button
+            onClick={() => { setTab('tasks'); setStep('details'); }}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              tab === 'tasks' 
+                ? 'bg-white text-[var(--navy)] shadow-md font-extrabold border border-[var(--border)]' 
+                : 'text-[var(--muted)] hover:text-[var(--navy)]'
+            }`}
           >
-            Manage Tasks
+            <Briefcase size={14} />
+            Manage Dashboard
           </button>
-          <button 
-            onClick={() => setTab('post')}
-            style={{ 
-              padding: '1rem 0', 
-              fontSize: '1rem', 
-              fontWeight: 900, 
-              border: 'none', 
-              background: 'none', 
-              color: tab === 'post' ? 'var(--primary)' : 'var(--text-muted)',
-              borderBottom: tab === 'post' ? '3px solid var(--primary)' : '3px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
+          <button
+            onClick={() => { setTab('post'); setStep('details'); }}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+              tab === 'post' 
+                ? 'bg-white text-[var(--navy)] shadow-md font-extrabold border border-[var(--border)]' 
+                : 'text-[var(--muted)] hover:text-[var(--navy)]'
+            }`}
           >
-            Post a New Task
+            <Plus size={14} />
+            Post New Job
           </button>
         </div>
 
         {tab === 'tasks' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--navy)' }}>Active Tasks</h2>
-              <button onClick={() => setTab('post')} className="btn-primary" style={{ padding: '0.75rem 1.5rem', fontSize: '0.875rem' }}>
-                + Post Job
-              </button>
-            </div>
-
-            {MY_TASKS.map(task => (
-                  </div>
+          <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+            
+            {/* Left Hand: Task List */}
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-extrabold text-[var(--navy)] tracking-tight">Active Requests</h2>
+                  <p className="text-xs text-[var(--muted)] mt-0.5">Real-time status of your service jobs</p>
                 </div>
+                <button 
+                  onClick={() => setTab('post')} 
+                  className="btn-primary flex items-center gap-1.5 py-2 px-4 text-xs tracking-wider"
+                >
+                  <Plus size={14} /> Post Job
+                </button>
               </div>
-            ))}
-          </div>
 
-          <aside className="space-y-6">
-            <div className="bg-navy rounded-[40px] p-10 text-white relative overflow-hidden group">
-               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600 rounded-full blur-[80px] opacity-20" />
-               <h3 className="text-3xl font-black mb-4 leading-tight">Need expert help?</h3>
-               <p className="text-gray-400 font-bold mb-10 text-lg">Describe your task and get quotes from vetted local pros in minutes.</p>
-               <button onClick={() => setTab('post')} className="w-full bg-[#2563eb] text-white py-5 rounded-3xl font-black text-xl hover:bg-[#1d4ed8] transition-all flex items-center justify-center gap-3">
-                 <Plus className="w-6 h-6" /> Post Task
-               </button>
-            </div>
-
-            <div className="bg-white rounded-[40px] p-10 border border-gray-100 shadow-sm">
-               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-8">Service Summary</h4>
-               <div className="space-y-6">
-                 {[
-                   { label: 'Ongoing', val: '1', color: 'text-[#2563eb]' },
-                   { label: 'Pending', val: '1', color: 'text-navy' },
-                   { label: 'Archived', val: '1', color: 'text-gray-300' }
-                 ].map(s => (
-                   <div key={s.label} className="flex justify-between items-center pb-6 border-b border-gray-50 last:border-0 last:pb-0">
-                     <span className="text-lg font-bold text-gray-400">{s.label}</span>
-                     <span className={`text-2xl font-black ${s.color}`}>{s.val}</span>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      {/* --- POST FLOW --- */}
-      {tab === 'post' && step === 'details' && (
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-[60px] p-12 lg:p-20 border border-gray-100 shadow-sm">
-            <h2 className="text-5xl font-black text-navy mb-4 leading-none">Describe your task</h2>
-            <p className="text-xl text-gray-400 font-bold mb-16 uppercase tracking-widest text-xs">Phase 01: Requirements</p>
-
-            <div className="space-y-12">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6">Service Category</label>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCat(cat.name)}
-                      className={`flex flex-col items-center gap-3 p-6 rounded-3xl border-2 transition-all ${selectedCat === cat.name ? 'border-[#2563eb] bg-blue-50' : 'border-gray-50 hover:border-gray-100'}`}
+              {jobs.length === 0 ? (
+                <div className="bg-white border-2 border-dashed border-[var(--border)] p-12 text-center rounded-[32px]">
+                  <div className="w-16 h-16 bg-[var(--surface-alt)] border border-[var(--border)] rounded-2xl flex items-center justify-center mx-auto mb-5 text-[var(--accent)]">
+                    <Briefcase size={28} />
+                  </div>
+                  <h3 className="text-lg font-bold text-[var(--navy)] mb-1">No tasks active</h3>
+                  <p className="text-sm text-[var(--muted)] max-w-sm mx-auto mb-6">
+                    Describe what you need done and get quotes from vetted service professionals in Douala.
+                  </p>
+                  <button
+                    onClick={() => setTab('post')}
+                    className="btn-primary py-3 px-6 text-xs uppercase tracking-wider"
+                  >
+                    Post your first task
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {jobs.map((job) => (
+                    <div 
+                      key={job.id} 
+                      className="bg-white border border-[var(--border)] p-6 rounded-[24px] shadow-sm hover:border-[var(--accent)] transition-all duration-200"
                     >
-                      <span className="text-3xl">{cat.icon}</span>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${selectedCat === cat.name ? 'text-navy' : 'text-gray-400'}`}>{cat.name}</span>
-                    </button>
+                      <div className="flex justify-between items-start gap-4 mb-3">
+                        <div>
+                          <h3 className="text-base font-extrabold text-[var(--navy)] hover:text-[var(--accent)] transition-colors">
+                            {job.title}
+                          </h3>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[var(--accent)] uppercase tracking-wider mt-1 bg-[var(--surface-alt)] px-2.5 py-1 border border-[var(--border)] rounded-md">
+                            {job.category || 'General'}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                          job.status?.toUpperCase() === 'COMPLETED' 
+                            ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' 
+                            : job.status?.toUpperCase() === 'IN_PROGRESS' || job.status?.toUpperCase() === 'IN PROGRESS'
+                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                            : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                        }`}>
+                          {job.status || 'Pending'}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-[var(--muted)] mb-5 line-clamp-2">
+                        {job.description}
+                      </p>
+
+                      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-[var(--border)] text-xs text-[var(--muted)]">
+                        <div className="flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <MapPin size={13} className="text-[var(--accent)]" />
+                            {job.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar size={13} />
+                            {new Date(job.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="font-extrabold text-[var(--navy)] text-sm">
+                          {Number(job.budget || 0).toLocaleString()} XAF
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* Right Hand Sidebar Console */}
+            <div className="space-y-6">
+              <div className="bg-[var(--navy)] rounded-[32px] p-6 text-white relative overflow-hidden shadow-lg">
+                <div className="absolute -top-12 -right-12 w-28 h-28 bg-[var(--primary)] rounded-full blur-2xl opacity-20" />
+                <h3 className="text-lg font-bold mb-2">Need Expert Help?</h3>
+                <p className="text-xs text-slate-300 leading-relaxed mb-6">
+                  Post a custom job request, receive quotes, and secure payment via the Fixam Escrow wallet.
+                </p>
+                <button 
+                  onClick={() => setTab('post')} 
+                  className="w-full bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] py-3 px-4 font-bold text-xs uppercase tracking-wider transition-all duration-200 border border-[var(--primary)]"
+                >
+                  Create Job Post
+                </button>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-10">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">Job Title</label>
-                  <input value={form.title} onChange={e => set('title', e.target.value)} placeholder='e.g. Repair leaked master bathroom sink' className="w-full bg-gray-50 border-2 border-gray-50 rounded-[32px] px-10 py-6 text-xl font-bold outline-none focus:border-[#2563eb] focus:bg-white transition-all" />
+              <div className="bg-white border border-[var(--border)] rounded-[32px] p-6 shadow-sm">
+                <h4 className="text-xs font-extrabold text-[var(--navy)] uppercase tracking-wider mb-4">Job Metrics</h4>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-[var(--border)] last:border-0 last:pb-0">
+                    <span className="text-xs text-[var(--muted)]">Total Published</span>
+                    <span className="text-sm font-extrabold text-[var(--navy)]">{jobs.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-[var(--border)] last:border-0 last:pb-0">
+                    <span className="text-xs text-[var(--muted)]">In Progress</span>
+                    <span className="text-sm font-extrabold text-blue-600">
+                      {jobs.filter(j => j.status?.toUpperCase() === 'IN_PROGRESS' || j.status?.toUpperCase() === 'IN PROGRESS').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-[var(--border)] last:border-0 last:pb-0">
+                    <span className="text-xs text-[var(--muted)]">Completed</span>
+                    <span className="text-sm font-extrabold text-emerald-600">
+                      {jobs.filter(j => j.status?.toUpperCase() === 'COMPLETED').length}
+                    </span>
+                  </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">Detailed Description</label>
-                  <textarea rows={5} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Provide context, urgency, and any specific requirements..." className="w-full bg-gray-50 border-2 border-gray-50 rounded-[32px] px-10 py-8 text-xl font-bold outline-none focus:border-[#2563eb] focus:bg-white transition-all resize-none" />
-                </div>
+          </div>
+        ) : (
+          /* --- POST FLOW WIZARD --- */
+          <div className="max-w-[760px] bg-white border border-[var(--border)] rounded-[32px] p-8 lg:p-12 shadow-sm">
+            
+            {/* Steps Header indicator */}
+            <div className="flex items-center gap-4 mb-8">
+              <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
+                step === 'details' ? 'bg-blue-500/10 text-blue-600' : 'bg-emerald-500/10 text-emerald-600'
+              }`}>
+                Step {step === 'details' ? '1 of 2' : '2 of 2'}
+              </span>
+              <div className="h-[2px] flex-1 bg-[var(--border)] rounded-full">
+                <div className={`h-full rounded-full transition-all duration-300 ${
+                  step === 'details' ? 'w-[50%] bg-blue-500' : 'w-full bg-emerald-500'
+                }`} />
+              </div>
+            </div>
 
+            {step === 'details' && (
+              <div className="space-y-8 animate-up">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">Service Location</label>
-                  <div className="relative">
-                     <MapPin className="absolute left-8 top-1/2 -translate-y-1/2 text-[#2563eb]" />
-                     <input value={form.location} onChange={e => set('location', e.target.value)} placeholder="Address or Neighborhood" className="w-full bg-gray-50 border-2 border-gray-50 rounded-full pl-16 pr-10 py-6 text-lg font-bold outline-none focus:border-[#2563eb] focus:bg-white transition-all" />
+                  <h2 className="text-2xl font-extrabold text-[var(--navy)] tracking-tight">Describe Your Service Task</h2>
+                  <p className="text-xs text-[var(--muted)] mt-1">Provide clear specifications to find the perfect professional.</p>
+                </div>
+
+                {/* Category Selection */}
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-3">Service Category</label>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCat(cat.name)}
+                        className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 ${
+                          selectedCat === cat.name 
+                            ? 'border-[var(--accent)] bg-blue-500/5 text-[var(--navy)]' 
+                            : 'border-[var(--border)] hover:border-gray-300 bg-transparent text-[var(--muted)]'
+                        }`}
+                      >
+                        <span className="text-2xl mb-1">{cat.icon}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider truncate w-full text-center">{cat.name}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
+                {/* Title */}
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">Max Budget (XAF)</label>
-                  <input type="number" value={form.budget} onChange={e => set('budget', e.target.value)} className="w-full bg-gray-50 border-2 border-gray-50 rounded-full px-10 py-6 text-lg font-black outline-none focus:border-[#2563eb] focus:bg-white transition-all" />
+                  <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Job Title</label>
+                  <input 
+                    type="text" 
+                    value={form.title} 
+                    onChange={e => set('title', e.target.value)} 
+                    placeholder="e.g., Fix leaked copper pipe in kitchen" 
+                    className="input-field py-4" 
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Detailed Context & Requirements</label>
+                  <textarea 
+                    rows={4} 
+                    value={form.description} 
+                    onChange={e => set('description', e.target.value)} 
+                    placeholder="Provide details about the issue, urgency, required materials, and what needs fixing..." 
+                    className="input-field py-4 resize-none" 
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Service Location (Neighborhood)</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--accent)] w-5 h-5" />
+                    <input 
+                      type="text" 
+                      value={form.location} 
+                      onChange={e => set('location', e.target.value)} 
+                      placeholder="e.g., Bonapriso, Douala" 
+                      className="input-field pl-12 pr-28 py-4" 
+                    />
+                    <button
+                      type="button"
+                      onClick={getCurrentLocation}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-[var(--accent)] bg-blue-500/5 hover:bg-blue-500/10 px-3 py-1.5 rounded-lg border border-[var(--border)] transition-colors"
+                    >
+                      Use GPS
+                    </button>
+                  </div>
+                </div>
+
+                {/* Budget */}
+                <div>
+                  <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Max Budget (XAF)</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--accent)] w-5 h-5" />
+                    <input 
+                      type="number" 
+                      value={form.budget} 
+                      onChange={e => set('budget', e.target.value)} 
+                      className="input-field pl-12 py-4 font-extrabold" 
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-extrabold text-[var(--muted)] tracking-wider">
+                      FCFA
+                    </span>
+                  </div>
+                </div>
+
+                {/* Date & Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Scheduled Date</label>
+                    <input 
+                      type="date" 
+                      value={form.scheduledDate} 
+                      onChange={e => set('scheduledDate', e.target.value)} 
+                      className="input-field py-4" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-2">Preferred Time</label>
+                    <input 
+                      type="time" 
+                      value={form.scheduledTime} 
+                      onChange={e => set('scheduledTime', e.target.value)} 
+                      className="input-field py-4" 
+                    />
+                  </div>
+                </div>
+
+                {/* Action button */}
+                <div className="pt-4">
+                  <button 
+                    type="button"
+                    onClick={handleNext} 
+                    className="w-full bg-[var(--navy)] text-white hover:bg-[var(--navy-soft)] py-4 rounded-none font-bold text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    Review Proposal <ArrowRight size={16} />
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="pt-8">
-                 <button onClick={handleNext} className="w-full bg-[#2563eb] text-white py-6 rounded-full font-black text-2xl hover:bg-[#1d4ed8] transition-all shadow-2xl shadow-blue-900/10 flex items-center justify-center gap-4">
-                   Review and Post <ArrowRight className="w-6 h-6" />
-                 </button>
+            {step === 'review' && (
+              <div className="space-y-8 animate-up">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-[var(--navy)] tracking-tight">Confirm & Publish Job</h2>
+                  <p className="text-xs text-[var(--muted)] mt-1">Verify details before pushing to the service network.</p>
+                </div>
+
+                <div className="bg-[var(--surface-alt)] border border-[var(--border)] rounded-[24px] p-6 space-y-6">
+                  <div className="pb-4 border-b border-[var(--border)]">
+                    <span className="text-[10px] font-extrabold text-[var(--accent)] uppercase tracking-wider">
+                      {selectedCat}
+                    </span>
+                    <h3 className="text-lg font-extrabold text-[var(--navy)] mt-1">
+                      {form.title}
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider">Description</h4>
+                    <p className="text-sm text-[var(--navy)] font-medium leading-relaxed italic bg-white p-4 border border-[var(--border)] rounded-xl">
+                      "{form.description}"
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-[var(--border)] p-4 rounded-xl flex items-center gap-3">
+                      <MapPin size={20} className="text-[var(--accent)]" />
+                      <div>
+                        <p className="text-[9px] font-extrabold text-[var(--muted)] uppercase tracking-wider">Location</p>
+                        <p className="text-xs font-bold text-[var(--navy)]">{form.location}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white border border-[var(--border)] p-4 rounded-xl flex items-center gap-3">
+                      <CreditCard size={20} className="text-[var(--accent)]" />
+                      <div>
+                        <p className="text-[9px] font-extrabold text-[var(--muted)] uppercase tracking-wider">Budget Amount</p>
+                        <p className="text-xs font-extrabold text-[var(--navy)]">{Number(form.budget).toLocaleString()} XAF</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-[var(--border)] p-4 rounded-xl flex items-center gap-3">
+                    <Calendar size={20} className="text-[var(--accent)]" />
+                    <div>
+                      <p className="text-[9px] font-extrabold text-[var(--muted)] uppercase tracking-wider">Date & Time Target</p>
+                      <p className="text-xs font-bold text-[var(--navy)]">
+                        {form.scheduledDate} at {form.scheduledTime}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setStep('details')}
+                    className="flex-1 py-4 border border-[var(--border)] text-[var(--navy)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--surface-alt)] transition-colors rounded-none"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handlePublish}
+                    disabled={loading}
+                    className="flex-[2] bg-emerald-500 text-white hover:bg-emerald-600 py-4 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all rounded-none border border-emerald-500 disabled:opacity-50"
+                  >
+                    {loading ? <Loader className="w-4 h-4 animate-spin" /> : 'Confirm & Publish'}
+                    <ShieldCheck size={16} />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
 
-      {/* --- REVIEW VIEW --- */}
-      {tab === 'post' && step === 'review' && (
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-[60px] p-12 lg:p-20 border border-gray-100 shadow-sm">
-             <h2 className="text-5xl font-black text-navy mb-4 leading-none">Review Final</h2>
-             <p className="text-xl text-gray-400 font-bold mb-16 uppercase tracking-widest text-xs">Phase 02: Verification</p>
-
-             <div className="bg-gray-50 rounded-[40px] p-12 border border-gray-100 space-y-10 mb-12">
-                <div className="flex justify-between items-start">
-                   <div>
-                      <span className="text-[10px] font-black text-[#2563eb] uppercase tracking-[0.3em]">{selectedCat}</span>
-                      <h3 className="text-4xl font-black text-navy mt-2 leading-none">{form.title}</h3>
-                   </div>
-                   <button onClick={() => setStep('details')} className="px-6 py-2 bg-white rounded-full text-[#2563eb] font-black text-xs uppercase tracking-widest border border-gray-100">Edit</button>
+            {step === 'success' && (
+              <div className="py-12 text-center animate-up space-y-6">
+                <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle size={36} />
                 </div>
-                
-                <p className="text-gray-500 text-2xl font-bold italic leading-relaxed">"{form.description}"</p>
-
-                <div className="grid grid-cols-2 gap-8">
-                   <div className="flex items-center gap-5 p-6 bg-white rounded-3xl border border-gray-100">
-                      <MapPin className="text-[#2563eb] w-8 h-8" />
-                      <div>
-                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Location</p>
-                         <p className="text-lg font-black text-navy">{form.location}</p>
-                      </div>
-                   </div>
-                   <div className="flex items-center gap-5 p-6 bg-white rounded-3xl border border-gray-100">
-                      <CreditCard className="text-[#2563eb] w-8 h-8" />
-                      <div>
-                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Budget</p>
-                         <p className="text-lg font-black text-navy">{parseInt(form.budget).toLocaleString()} XAF</p>
-                      </div>
-                   </div>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-extrabold text-[var(--navy)] tracking-tight">Job Published!</h2>
+                  <p className="text-sm text-[var(--muted)] max-w-sm mx-auto">
+                    Your service post is now active on the network. Nearby professionals are being notified immediately.
+                  </p>
                 </div>
-             </div>
+                <div className="pt-4">
+                  <span className="inline-flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
+                    <Loader size={12} className="animate-spin" />
+                    Returning to dashboard...
+                  </span>
+                </div>
+              </div>
+            )}
 
-             <div className="flex gap-4">
-                <button onClick={() => setStep('details')} className="flex-1 py-6 rounded-full font-black text-xl border-2 border-gray-100 text-gray-400 hover:text-navy transition-all">Back</button>
-                <button onClick={handlePublish} disabled={loading} className="flex-[2] bg-[#2563eb] text-white py-6 rounded-full font-black text-2xl hover:bg-[#1d4ed8] transition-all shadow-2xl flex items-center justify-center gap-4">
-                  {loading ? <Loader className="w-8 h-8 animate-spin" /> : 'Confirm & Publish'} <ShieldCheck className="w-8 h-8" />
-                </button>
-             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* --- SUCCESS VIEW --- */}
-      {tab === 'post' && step === 'success' && (
-        <div className="max-w-4xl mx-auto py-20 text-center">
-           <div className="w-32 h-32 bg-blue-50 rounded-[40px] flex items-center justify-center mx-auto mb-12 shadow-inner">
-              <CheckCircle className="w-16 h-16 text-[#2563eb]" />
-           </div>
-           <h2 className="text-6xl font-black text-navy mb-6">Task Live!</h2>
-           <p className="text-2xl text-gray-400 font-bold max-w-xl mx-auto mb-16 leading-relaxed">Your task is being vetted by our administrators. You'll receive a notification as soon as it's approved.</p>
-           <button onClick={() => { setTab('tasks'); setStep('details'); }} className="bg-navy text-white px-16 py-6 rounded-full font-black text-2xl hover:bg-black transition-all shadow-2xl">
-             My Dashboard
-           </button>
-        </div>
-      )}
-
+      </div>
     </AppLayout>
   );
 }

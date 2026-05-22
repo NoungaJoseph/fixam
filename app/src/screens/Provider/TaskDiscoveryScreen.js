@@ -4,7 +4,6 @@ import {
   SafeAreaView, TextInput, ActivityIndicator, ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
@@ -135,10 +134,7 @@ const TaskDiscoveryScreen = ({ navigation }) => {
   );
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.background}
-    >
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
@@ -240,7 +236,6 @@ const TaskDiscoveryScreen = ({ navigation }) => {
               renderItem={({ item }) => <TaskCard task={item} />}
               keyExtractor={item => item.id}
               contentContainerStyle={styles.listContent}
-              scrollEnabled={false}
             />
 
             {/* Pagination */}
@@ -280,7 +275,7 @@ const TaskDiscoveryScreen = ({ navigation }) => {
           </>
         )}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

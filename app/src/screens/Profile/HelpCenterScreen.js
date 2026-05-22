@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, TextInput
+  StatusBar, SafeAreaView, TextInput, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import api from '../../services/api';
 
 const FAQS = [
   {
@@ -47,11 +48,32 @@ const HelpCenterScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const [search, setSearch] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
+  const [openingChat, setOpeningChat] = useState(false);
 
   const filtered = FAQS.filter(f =>
     f.q.toLowerCase().includes(search.toLowerCase()) ||
     f.a.toLowerCase().includes(search.toLowerCase())
   );
+
+  const openLiveChat = async () => {
+    if (openingChat) return;
+    setOpeningChat(true);
+    try {
+      const res = await api.post('/chat/support');
+      const conversation = res.data.data;
+      const support = conversation?.participants?.[0] || {};
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        receiverId: support.id,
+        userName: support.fullName || 'Fixam Support',
+        avatar: support.avatar,
+      });
+    } catch (error) {
+      Alert.alert('Support unavailable', error.response?.data?.message || 'Please try again in a moment.');
+    } finally {
+      setOpeningChat(false);
+    }
+  };
 
   return (
     <View style={[styles.background, { backgroundColor: colors.background }]}>
@@ -117,13 +139,17 @@ const HelpCenterScreen = ({ navigation }) => {
           {/* Contact options */}
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 22 }]}>Contact Support</Text>
           {CONTACT_OPTIONS.map((opt, i) => (
-            <TouchableOpacity key={i} style={[styles.contactCard, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity
+              key={i}
+              style={[styles.contactCard, { borderBottomColor: colors.border }]}
+              onPress={opt.label === 'Live Chat' ? openLiveChat : undefined}
+            >
               <View style={styles.contactIcon}>
                 <MaterialCommunityIcons name={opt.icon} size={24} color={opt.color} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.contactLabel, { color: colors.text }]}>{opt.label}</Text>
-                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>{opt.sub}</Text>
+                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>{opt.label === 'Live Chat' && openingChat ? 'Opening support...' : opt.sub}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
             </TouchableOpacity>

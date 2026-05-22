@@ -6,7 +6,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import api from '../../services/api';
 
 const CLIENT_TAGS = ['Friendly', 'Clear Instructions', 'Paid on Time', 'Respectful', 'Easy to Work With'];
@@ -75,9 +75,8 @@ const RatingScreen = ({ route, navigation }) => {
   const ratingLabel = rating === 5 ? 'Excellent!' : rating === 4 ? 'Very Good' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : rating === 1 ? 'Needs Improvement' : 'Tap to rate';
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.container}
+    <View 
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
@@ -201,7 +200,7 @@ const RatingScreen = ({ route, navigation }) => {
         </View>
 
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 };
 

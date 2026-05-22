@@ -3,24 +3,71 @@ import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   FlatList, KeyboardAvoidingView, Platform, Image, StatusBar, ActivityIndicator, Alert
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useSocket } from '../../context/SocketContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { LinearGradient } from 'expo-linear-gradient';
-import api from '../../services/api';
+
+import api, { getMediaUrl } from '../../services/api';
 import { useAppContext } from '../../context/AppContext';
+
+const SUPPORTED_MESSAGE_TYPES = new Set(['TEXT', 'IMAGE', 'FILE']);
+
+const normalizeMessage = (message) => {
+  if (!message) return null;
+  const type = String(message.type || 'TEXT').toUpperCase();
+  const content = message.content || message.mediaUrl || '';
+  const isUnsupportedCallMessage = ['AUDIO', 'AUDIO_CALL', 'VIDEO_CALL'].includes(type)
+    || String(content).toLowerCase().includes('audio not supported');
+
+  if (isUnsupportedCallMessage || !SUPPORTED_MESSAGE_TYPES.has(type)) return null;
+
+  return {
+    ...message,
+    type,
+    content: type === 'TEXT' ? content : getMediaUrl(content),
+  };
+};
+
+const normalizeMessages = (list = []) => list.map(normalizeMessage).filter(Boolean);
+
+const mergeMessage = (list, incoming) => {
+  const message = normalizeMessage(incoming);
+  if (!message) return list;
+
+  const next = [...list];
+  const matchIndex = next.findIndex((item) => (
+    item.id === message.id
+    || (message.clientMessageId && item.clientMessageId === message.clientMessageId)
+    || (
+      item.status === 'sending'
+      && item.senderId === message.senderId
+      && item.type === message.type
+      && item.content === message.content
+    )
+  ));
+
+  if (matchIndex >= 0) {
+    next[matchIndex] = { ...next[matchIndex], ...message, status: 'sent' };
+    return next;
+  }
+
+  return [...next, message];
+};
 
 const ChatScreen = ({ route, navigation }) => {
   const { conversationId, userName, receiverId, avatar, task } = route.params || {};
+  const avatarUri = getMediaUrl(avatar);
   console.log('[ChatScreen] Params:', { conversationId, userName, receiverId });
   const { user, uploadFile } = useAuth();
   const { fetchConversations, fetchNotifications } = useAppContext();
   const { isDarkMode, colors } = useTheme();
   const { t } = useLanguage();
   const { on, emit } = useSocket();
+  const insets = useSafeAreaInsets();
   
   const [activeConvId, setActiveConvId] = useState(conversationId);
   const [messages, setMessages] = useState([]);
@@ -28,9 +75,15 @@ const ChatScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(!!conversationId); // Only show loading if we have a conversationId to fetch
   const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [activeTask, setActiveTask] = useState(task || null);
   const flatListRef = useRef();
+  const activeConvIdRef = useRef(conversationId);
   console.log('[ChatScreen] Initial loading state:', !!conversationId);
+
+  useEffect(() => {
+    activeConvIdRef.current = activeConvId;
+  }, [activeConvId]);
 
   const fetchMessages = useCallback(async () => {
     if (!activeConvId) {
@@ -41,7 +94,7 @@ const ChatScreen = ({ route, navigation }) => {
     try {
       console.log('[ChatScreen] Fetching messages for conversation:', activeConvId);
       const res = await api.get(`/chat/${activeConvId}/messages?limit=80`, { timeout: 12000 });
-      setMessages(res.data.data || []);
+      setMessages(normalizeMessages(res.data.data || []));
       console.log('[ChatScreen] Loaded', res.data.data?.length || 0, 'messages');
 
       try {
@@ -84,10 +137,7 @@ const ChatScreen = ({ route, navigation }) => {
     const offMessage = on('message:new', (msg) => {
       console.log('[ChatScreen] Received message:new event:', msg.id, 'for conv:', msg.conversationId, 'expected:', activeConvId);
       if (msg.conversationId === activeConvId) {
-        setMessages(prev => {
-          if (prev.some(m => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        setMessages(prev => mergeMessage(prev, msg));
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         if (msg.senderId !== user?.id) {
           api.put(`/chat/${activeConvId}/read`, {}, { timeout: 8000 }).then(() => {
@@ -129,28 +179,35 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   const handleSend = async (content = input, type = 'TEXT') => {
-    if (!content.trim() && type === 'TEXT') return;
+    const trimmedContent = type === 'TEXT' ? content.trim() : content;
+    if (!trimmedContent) return;
+    if (isSending && type === 'TEXT') return;
+
+    const clientMessageId = `mobile-${user?.id || 'user'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     // Always send receiverId to backend to create conversation if needed
     const messageData = { 
-      conversationId: activeConvId || null, 
+      conversationId: activeConvIdRef.current || null,
       receiverId,
-      content, 
-      type 
+      content: trimmedContent,
+      type,
+      clientMessageId,
     };
 
     try {
-      const tempId = `temp-${Date.now()}`;
       const optimisticMsg = {
-        id: tempId,
+        id: clientMessageId,
+        clientMessageId,
+        conversationId: activeConvIdRef.current,
         senderId: user.id,
-        content,
+        content: trimmedContent,
         type,
         createdAt: new Date().toISOString(),
         status: 'sending'
       };
       setMessages(prev => [...prev, optimisticMsg]);
       if (type === 'TEXT') setInput('');
+      setIsSending(true);
       
       console.log('[ChatScreen] Sending message:', messageData);
       const res = await api.post('/chat/send', messageData, { timeout: 30000 });
@@ -158,20 +215,21 @@ const ChatScreen = ({ route, navigation }) => {
       console.log('[ChatScreen] Message sent successfully:', newMessage.id, 'ConvId:', newMessage.conversationId);
       
       // Replace optimistic with real message
-      const finalMsg = { ...newMessage, status: 'sent' };
-      setMessages(prev => prev.map(m => m.id === tempId ? finalMsg : m));
+      const finalMsg = { ...newMessage, clientMessageId, status: 'sent' };
+      setMessages(prev => mergeMessage(prev, finalMsg));
       
       // UPDATE active conversation ID if this was a new conversation
-      if (!activeConvId && newMessage.conversationId) {
+      if (!activeConvIdRef.current && newMessage.conversationId) {
         console.log('[ChatScreen] Setting conversation ID after send:', newMessage.conversationId);
         setActiveConvId(newMessage.conversationId);
+        activeConvIdRef.current = newMessage.conversationId;
         // Join the conversation room now that we have the ID
         emit('join:conversation', newMessage.conversationId);
-      } else if (activeConvId) {
-        console.log('[ChatScreen] Already in conversation:', activeConvId);
+      } else if (activeConvIdRef.current) {
+        console.log('[ChatScreen] Already in conversation:', activeConvIdRef.current);
       }
       
-      emit('typing', { conversationId: activeConvId || newMessage.conversationId, isTyping: false });
+      emit('typing', { conversationId: activeConvIdRef.current || newMessage.conversationId, isTyping: false });
     } catch (error) {
       console.log('Detailed Send error:', {
         message: error.message,
@@ -180,8 +238,10 @@ const ChatScreen = ({ route, navigation }) => {
         response: error.response?.data
       });
       // Remove optimistic message if failed
-      setMessages(prev => prev.filter(m => m.status !== 'sending'));
+      setMessages(prev => prev.filter(m => m.clientMessageId !== clientMessageId));
       Alert.alert('Error', 'Failed to send message. Please try again.');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -235,7 +295,7 @@ const ChatScreen = ({ route, navigation }) => {
           (isImage || isAudio) && { padding: 5, borderRadius: 15 }
         ]}>
           {isImage ? (
-            <Image source={{ uri: item.content }} style={styles.chatImage} resizeMode="cover" />
+            <Image source={{ uri: getMediaUrl(item.content) }} style={styles.chatImage} resizeMode="cover" />
           ) : isAudio ? null : (
             <Text style={[styles.bubbleText, isMe && styles.bubbleTextRight, { color: isMe ? '#FFF' : colors.text }]}>
               {item.content}
@@ -251,12 +311,12 @@ const ChatScreen = ({ route, navigation }) => {
   };
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <View style={[styles.header, { backgroundColor: isDarkMode ? 'transparent' : '#FFF', borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}><MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} /></TouchableOpacity>
-        {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.headerAvatar} />
+        {avatarUri ? (
+          <Image source={{ uri: avatarUri }} style={styles.headerAvatar} />
         ) : (
           <View style={[styles.headerAvatar, { backgroundColor: colors.accent + '20', justifyContent: 'center', alignItems: 'center' }]}><Text style={{ color: colors.accent, fontWeight: '800' }}>{userName?.charAt(0)}</Text></View>
         )}
@@ -276,21 +336,25 @@ const ChatScreen = ({ route, navigation }) => {
         ) : null}
       </View>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         {loading ? <ActivityIndicator size="large" color={colors.accent} style={{ flex: 1 }} /> : (
           <FlatList ref={flatListRef} data={messages} keyExtractor={item => item.id} renderItem={renderMessage} contentContainerStyle={styles.messageList} showsVerticalScrollIndicator={false} onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })} />
         )}
 
-        <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+        <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={handleImagePick} disabled={isUploading}>{isUploading ? <ActivityIndicator size="small" color={colors.accent} /> : <MaterialCommunityIcons name="plus" size={24} color={colors.accent} />}</TouchableOpacity>
           <View style={[styles.inputContainer, { backgroundColor: colors.background }]}>
             <TextInput style={[styles.textInput, { color: colors.text }]} placeholder={t('messages.type')} placeholderTextColor={colors.placeholder} value={input} onChangeText={(t) => { setInput(t); emit('typing', { conversationId: activeConvId, isTyping: t.length > 0 }); }} multiline />
           </View>
           
-          <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.accent, opacity: input.trim() ? 1 : 0.45 }]} onPress={() => handleSend()} disabled={!input.trim()}><MaterialCommunityIcons name="send" size={20} color="#FFF" /></TouchableOpacity>
+          <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.accent, opacity: input.trim() && !isSending ? 1 : 0.45 }]} onPress={() => handleSend()} disabled={!input.trim() || isSending}><MaterialCommunityIcons name="send" size={20} color="#FFF" /></TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 };
 

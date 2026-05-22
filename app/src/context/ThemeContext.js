@@ -1,14 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useState } from 'react';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const systemColorScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(false);
-
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
+  const toggleTheme = () => setIsDarkMode(v => !v);
   const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
 
   return (
@@ -20,42 +16,86 @@ export const ThemeProvider = ({ children }) => {
 
 export const useTheme = () => useContext(ThemeContext);
 
+// ─── PREMIUM LIGHT MODE ────────────────────────────────────────────────────────
 const LIGHT_COLORS = {
-  primary: '#0D1B2A',
-  accent: '#1E67D1',
-  accentSoft: '#EAF2FF',
-  teal: '#14B8A6',
-  background: '#FAFAFA',
-  surface: '#FFFFFF',
-  text: '#0D1B2A',
-  textSecondary: '#4B5563',
-  placeholder: '#6B7280',
-  border: '#E5E7EB',
-  card: '#FFFFFF',
-  tabBar: '#FFFFFF',
-  divider: '#F3F4F6',
-  success: '#22C55E',
-  error: '#EF4444',
-  navyDark: '#0D1B2A',
-  white: '#FFFFFF',
+  // Brand
+  primary:      '#0F172A',
+  accent:       '#0D9488',        // Primary Teal
+  accentBlue:   '#2563EB',        // Modern Blue
+  accentLight:  '#14B8A6',        // Secondary Teal
+  accentSoft:   '#F0FDFA',        // Teal wash
+  accentBlueSoft: '#EFF6FF',
+  teal:         '#14B8A6',
+
+  // Surfaces
+  background:   '#F8FAFC',
+  surface:      '#FFFFFF',
+  card:         '#FFFFFF',
+  tabBar:       '#FFFFFF',
+  divider:      '#F1F5F9',
+
+  // Text
+  text:          '#0F172A',
+  textSecondary: '#64748B',
+  placeholder:   '#94A3B8',
+
+  // Borders
+  border:        '#E2E8F0',
+
+  // Status
+  success:  '#22C55E',
+  warning:  '#F59E0B',
+  error:    '#EF4444',
+  info:     '#3B82F6',
+
+  // Gradients (used in JS-driven gradient backgrounds)
+  gradientStart: '#0D9488',
+  gradientEnd:   '#2563EB',
+
+  // Misc
+  white:    '#FFFFFF',
+  navyDark: '#0F172A',
+  overlay:  'rgba(15,23,42,0.5)',
 };
 
+// ─── PREMIUM DARK MODE ─────────────────────────────────────────────────────────
 const DARK_COLORS = {
-  primary: '#E2E8F0',
-  accent: '#60A5FA',
-  accentSoft: 'rgba(96, 165, 250, 0.14)',
-  teal: '#2DD4BF',
-  background: '#0F172A', 
-  surface: 'rgba(255, 255, 255, 0.03)',
-  text: '#FFFFFF', // Pure white for perfect readability against gradient
-  textSecondary: '#CBD5E1', // Brighter secondary text to remove blurriness
-  placeholder: '#94A3B8',
-  border: 'rgba(255, 255, 255, 0.1)', // Soft borders
-  card: 'rgba(15, 23, 42, 0.65)', // Semi-transparent glass effect to let gradient shine
-  tabBar: '#0A0F1C', 
-  divider: 'rgba(255, 255, 255, 0.05)',
-  success: '#34D399',
-  error: '#F87171',
+  // Brand
+  primary:      '#F8FAFC',
+  accent:       '#14B8A6',        // Brighter teal for dark
+  accentBlue:   '#3B82F6',
+  accentLight:  '#0D9488',
+  accentSoft:   'rgba(20,184,166,0.15)',
+  accentBlueSoft: 'rgba(59,130,246,0.15)',
+  teal:         '#2DD4BF',
+
+  // Surfaces
+  background:   '#020617',        // Deep navy
+  surface:      '#0F172A',
+  card:         '#111827',
+  tabBar:       '#0F172A',
+  divider:      '#1E293B',
+
+  // Text
+  text:          '#F8FAFC',
+  textSecondary: '#94A3B8',
+  placeholder:   '#475569',
+
+  // Borders
+  border:        '#1E293B',
+
+  // Status
+  success:  '#22C55E',
+  warning:  '#F59E0B',
+  error:    '#EF4444',
+  info:     '#60A5FA',
+
+  // Gradients
+  gradientStart: '#0D9488',
+  gradientEnd:   '#1D4ED8',
+
+  // Misc
+  white:    '#FFFFFF',
   navyDark: '#020617',
-  white: '#FFFFFF',
+  overlay:  'rgba(0,0,0,0.65)',
 };

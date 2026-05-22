@@ -4,19 +4,19 @@ import {
   StatusBar, SafeAreaView, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 
 const TopUpAmountScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const [amount, setAmount] = useState('');
 
-  const COIN_PRICE = 100; // 1 coin = 100 FCFA
+  const COIN_PRICE = 500; // 1 coin = 500 FCFA
 
   const handleContinue = () => {
     const numAmount = parseInt(amount);
-    if (!amount || isNaN(numAmount) || numAmount < 500) {
-      alert('Minimum top-up is 500 FCFA');
+    if (!amount || isNaN(numAmount) || numAmount < 5000) {
+      alert('Minimum top-up is 5,000 FCFA');
       return;
     }
     
@@ -32,7 +32,7 @@ const TopUpAmountScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']} style={styles.background}>
+    <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -77,7 +77,7 @@ const TopUpAmountScreen = ({ navigation }) => {
             )}
 
             <View style={styles.quickAmounts}>
-              {[1000, 2000, 5000, 10000].map(amt => (
+              {[5000, 10000, 15000, 25000].map(amt => (
                 <TouchableOpacity 
                   key={amt} 
                   style={[styles.quickBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -97,12 +97,12 @@ const TopUpAmountScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              Minimum amount is 500 FCFA.
+              Minimum purchase is 10 coins, which is 5,000 FCFA.
             </Text>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

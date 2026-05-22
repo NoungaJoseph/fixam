@@ -4,7 +4,7 @@ import {
   SafeAreaView, Animated, ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -41,9 +41,8 @@ const CoinPaymentSuccessScreen = ({ navigation, route }) => {
   };
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.background}
+    <View 
+      style={[styles.background, { backgroundColor: colors.background }]}
     >
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
@@ -173,7 +172,7 @@ const CoinPaymentSuccessScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

@@ -4,7 +4,7 @@ import {
   StatusBar, SafeAreaView, Alert, Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -16,23 +16,7 @@ const DocUploadScreen = ({ navigation, route }) => {
   const [frontImage, setFrontImage] = useState(null);
   const [backImage, setBackImage] = useState(null);
 
-  React.useLayoutEffect(() => {
-    const parent = navigation.getParent();
-    if (parent) {
-      parent.setOptions({ tabBarStyle: { display: 'none' } });
-    }
-    return () => {
-      if (parent) {
-        parent.setOptions({
-          tabBarStyle: {
-            display: 'flex',
-            height: 65, paddingBottom: 10, paddingTop: 10,
-            backgroundColor: colors.tabBar, borderTopWidth: 1, borderTopColor: colors.border,
-          },
-        });
-      }
-    };
-  }, [navigation, colors.tabBar, colors.border]);
+
 
   const pickImage = async (side) => {
     Alert.alert(
@@ -106,9 +90,8 @@ const DocUploadScreen = ({ navigation, route }) => {
   );
 
   return (
-    <LinearGradient
-      colors={isDarkMode ? ['#0F172A', '#1E1B4B', '#020617'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={styles.background}
+    <View 
+      style={[styles.background, { backgroundColor: colors.background }]}
     >
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
@@ -188,7 +171,7 @@ const DocUploadScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 

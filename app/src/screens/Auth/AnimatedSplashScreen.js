@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Animated, StatusBar, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const FIXAM_LETTERS = ['F', 'i', 'x', 'a', 'm'];
 
 const AnimatedSplashScreen = ({ navigation }) => {
+  const { colors, isDarkMode } = useTheme();
   const logoScale = useRef(new Animated.Value(0)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   
@@ -48,13 +49,10 @@ const AnimatedSplashScreen = ({ navigation }) => {
   }, [navigation, logoOpacity, logoScale, letterAnimations, containerOpacity, containerScale]);
 
   return (
-    <LinearGradient
-      colors={['#1e3a8a', '#312e81', '#0A0F2C']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
+    <View 
+      style={[styles.main, { backgroundColor: isDarkMode ? '#020617' : colors.background }]}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#1e3a8a" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <Animated.View style={[styles.container, { opacity: containerOpacity, transform: [{ scale: containerScale }] }]}>
         
         {/* Logo */}
@@ -80,6 +78,7 @@ const AnimatedSplashScreen = ({ navigation }) => {
                   styles.letter,
                   {
                     opacity: anim,
+                    color: isDarkMode ? '#FFF' : colors.primary,
                     transform: [{ translateY }]
                   }
                 ]}
@@ -91,11 +90,12 @@ const AnimatedSplashScreen = ({ navigation }) => {
         </View>
 
       </Animated.View>
-    </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  main: { flex: 1 },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -112,7 +112,6 @@ const styles = StyleSheet.create({
   letter: {
     fontSize: 48,
     fontWeight: '900',
-    color: '#FFFFFF',
     letterSpacing: 2,
   },
 });
