@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { useAppContext } from '../../context/AppContext';
+import { useSocket } from '../../context/SocketContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const TABS = [
   { key: 'All Jobs', label: 'All Jobs', icon: 'all-inclusive' },
@@ -29,13 +31,18 @@ const STATUS_CONFIG = {
 const MyJobsScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const { transactions, notificationCount } = useAppContext();
+  const { on } = useSocket();
+  const { t, locale } = useLanguage();
   const [jobs, setJobs] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('All Jobs');
 
   const fetchMyJobs = useCallback(async () => {
     try {
       const res = await api.get('/jobs/my-jobs');
+      const bookingRes = await api.get('/bookings/mine?role=PROVIDER').catch(() => ({ data: { data: [] } }));
       setJobs(res.data.data || []);
+      setBookings(bookingRes.data.data || []);
     } catch (e) {
       setJobs([]);
     }
@@ -47,7 +54,12 @@ const MyJobsScreen = ({ navigation }) => {
     return unsub;
   }, [fetchMyJobs, navigation]);
 
-  const mapped = jobs.map(job => {
+  useEffect(() => {
+    const off = on('booking:update', fetchMyJobs);
+    return () => off?.();
+  }, [fetchMyJobs, on]);
+
+  const mappedJobs = jobs.map(job => {
     let statusVal = 'Active';
     if (job.status === 'COMPLETED') statusVal = 'Completed';
     else if (job.status === 'CANCELLED') statusVal = 'Cancelled';
@@ -57,16 +69,31 @@ const MyJobsScreen = ({ navigation }) => {
       id: job.id,
       title: job.title,
       status: statusVal,
-      client: job.client?.fullName || 'Client',
+      client: job.client?.fullName || t('common.client'),
       avatar: job.client?.avatar,
-      time: job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'ASAP',
-      budget: Number(job.budget || 0),
-      location: job.location || 'On-site',
+      time: job.scheduledTime ? new Date(job.scheduledTime).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US') : t('jobs.asap'),
+      budget: Number(job.budgetMax || job.budget || 0),
+      location: job.location || t('jobs.onSite'),
       description: job.description,
       category: job.category,
       rawJob: job,
     };
   });
+  const mappedBookings = bookings.map(booking => ({
+    id: booking.id,
+    title: booking.notes || t('jobs.scheduledServiceBooking'),
+    status: booking.status === 'ACCEPTED' ? 'Booked' : booking.status === 'COMPLETED' ? 'Completed' : booking.status === 'REJECTED' || booking.status === 'CANCELLED' ? 'Cancelled' : 'Requests',
+    client: booking.client?.fullName || t('common.client'),
+    avatar: booking.client?.avatar,
+    time: `${new Date(booking.bookingDate).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')} ${booking.bookingTime}`,
+    budget: Number(booking.budget || 0),
+    location: booking.location || t('jobs.onSite'),
+    description: booking.notes,
+    category: 'booking',
+    rawJob: booking,
+    isBooking: true,
+  }));
+  const mapped = [...mappedBookings, ...mappedJobs];
 
   const totalJobs = mapped.length;
   const bookedCount = mapped.filter(j => j.status === 'Booked').length;
@@ -81,10 +108,15 @@ const MyJobsScreen = ({ navigation }) => {
 
   const handleUpdateStatus = async (jobId, status) => {
     try {
-      await api.put(`/jobs/${jobId}/status`, { status });
+      const target = mapped.find((item) => item.id === jobId);
+      if (target?.isBooking) {
+        await api.patch(`/bookings/${jobId}/status`, { status: status === 'IN_PROGRESS' ? 'ACCEPTED' : status });
+      } else {
+        await api.put(`/jobs/${jobId}/status`, { status });
+      }
       fetchMyJobs();
     } catch {
-      alert('Failed to update job status');
+      alert(t('jobs.updateFailed'));
     }
   };
 
@@ -101,11 +133,12 @@ const MyJobsScreen = ({ navigation }) => {
 
   const renderJob = ({ item }) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Requests;
+    const statusLabel = t(`jobs.statusLabels.${item.status}`);
     const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
     return (
       <TouchableOpacity
         style={[styles.jobCard, { backgroundColor: colors.card, shadowColor: isDarkMode ? 'transparent' : '#000' }]}
-        onPress={() => navigation.navigate('TaskDetails', { task: item.rawJob })}
+        onPress={() => item.isBooking ? null : navigation.navigate('TaskDetails', { task: item.rawJob })}
         activeOpacity={0.85}
       >
         <View style={styles.jobRow}>
@@ -128,12 +161,12 @@ const MyJobsScreen = ({ navigation }) => {
                 <Text style={[styles.budgetText, { color: colors.accent }]}>
                   {item.budget.toLocaleString()} FCFA
                 </Text>
-                <Text style={[styles.estimatedText, { color: colors.textSecondary }]}>Estimated</Text>
+                <Text style={[styles.estimatedText, { color: colors.textSecondary }]}>{t('jobs.estimated')}</Text>
               </View>
               <View>
                 <View style={[styles.statusBadge, { backgroundColor: darkBg }]}>
                   <MaterialCommunityIcons name={cfg.icon} size={11} color={cfg.color} />
-                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                  <Text style={[styles.statusText, { color: cfg.color }]}>{statusLabel}</Text>
                 </View>
                 <Text style={[styles.statusSub, { color: colors.textSecondary }]}>{item.time}</Text>
               </View>
@@ -144,45 +177,45 @@ const MyJobsScreen = ({ navigation }) => {
         <View style={[styles.actionRow, { borderTopColor: colors.border }]}>
           <TouchableOpacity
             style={[styles.chatBtn, { borderColor: colors.border }]}
-            onPress={() => navigation.navigate('Chat', {
-              receiverId: item.rawJob.clientId,
+              onPress={() => navigation.navigate('Chat', {
+              receiverId: item.isBooking ? item.rawJob.clientId : item.rawJob.clientId,
               userName: item.client,
               avatar: item.avatar,
               task: item.rawJob,
             })}
           >
             <MaterialCommunityIcons name="message-text-outline" size={16} color={colors.accent} />
-            <Text style={[styles.chatBtnText, { color: colors.accent }]}>Chat</Text>
+            <Text style={[styles.chatBtnText, { color: colors.accent }]}>{t('tabs.messages')}</Text>
           </TouchableOpacity>
 
           {item.status === 'Requests' && (
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-              onPress={() => navigation.navigate('TaskDetails', { task: item.rawJob })}
+              onPress={() => item.isBooking ? handleUpdateStatus(item.id, 'ACCEPTED') : navigation.navigate('TaskDetails', { task: item.rawJob })}
             >
-              <Text style={styles.primaryBtnText}>Review</Text>
+              <Text style={styles.primaryBtnText}>{item.isBooking ? t('jobs.accept') : t('jobs.review')}</Text>
             </TouchableOpacity>
           )}
           {item.status === 'Booked' && (
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-              onPress={() => Alert.alert('Start Job', 'Are you ready to start this scheduled job now?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Start', onPress: () => handleUpdateStatus(item.rawJob.id, 'IN_PROGRESS') },
+              onPress={() => Alert.alert(t('jobs.startJob'), t('jobs.startJobBody'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('jobs.start'), onPress: () => handleUpdateStatus(item.rawJob.id, 'IN_PROGRESS') },
               ])}
             >
-              <Text style={styles.primaryBtnText}>Start Job</Text>
+              <Text style={styles.primaryBtnText}>{t('jobs.startJob')}</Text>
             </TouchableOpacity>
           )}
           {item.status === 'Active' && (
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: '#22C55E' }]}
-              onPress={() => Alert.alert('Mark Complete', 'Mark this job as completed?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Complete', onPress: () => handleUpdateStatus(item.rawJob.id, 'COMPLETED') },
+              onPress={() => Alert.alert(t('jobs.markComplete'), t('jobs.markCompleteBody'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('jobs.complete'), onPress: () => handleUpdateStatus(item.rawJob.id, 'COMPLETED') },
               ])}
             >
-              <Text style={styles.primaryBtnText}>Mark Completed</Text>
+              <Text style={styles.primaryBtnText}>{t('jobs.markCompleted')}</Text>
             </TouchableOpacity>
           )}
           {item.status === 'Completed' && (
@@ -191,7 +224,7 @@ const MyJobsScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('ReviewTask', { task: item.rawJob, provider: { id: item.rawJob.clientId, fullName: item.client } })}
             >
               <MaterialCommunityIcons name="star-outline" size={13} color="#FFF" />
-              <Text style={styles.primaryBtnText}>Rate Client</Text>
+              <Text style={styles.primaryBtnText}>{t('jobs.rateClient')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -212,8 +245,8 @@ const MyJobsScreen = ({ navigation }) => {
 
         {/* Title Area */}
         <View style={styles.titleArea}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>My Jobs</Text>
-          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Manage your jobs and track progress</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('jobs.myJobs')}</Text>
+          <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{t('jobs.manageJobsSubtitle')}</Text>
         </View>
 
         {/* Bell Icon with badge */}
@@ -230,13 +263,13 @@ const MyJobsScreen = ({ navigation }) => {
       {/* Stat Cards Grid (2-row grid for balance and breathing room) */}
       <View style={styles.statsContainer}>
         <View style={styles.statsRow}>
-          <StatCard icon="clipboard-check" value={totalJobs}    label="Total Jobs"    sub="All time"  color="#22C55E" bg="#E6FDF3" />
-          <StatCard icon="calendar-clock"  value={bookedCount}   label="Booked"        sub="Scheduled" color="#8B5CF6" bg="#F5F3FF" />
-          <StatCard icon="clock"           value={inProgress}   label="In Progress"  sub="Active now" color="#2563EB" bg="#EFF6FF" />
+          <StatCard icon="clipboard-check" value={totalJobs}    label={t('jobs.totalJobs')}    sub={t('jobs.allTime')}  color="#22C55E" bg="#E6FDF3" />
+          <StatCard icon="calendar-clock"  value={bookedCount}   label={t('jobs.statusLabels.Booked')}        sub={t('jobs.scheduled')} color="#8B5CF6" bg="#F5F3FF" />
+          <StatCard icon="clock"           value={inProgress}   label={t('jobs.statusLabels.Active')}  sub={t('jobs.activeNow')} color="#2563EB" bg="#EFF6FF" />
         </View>
         <View style={[styles.statsRow, { marginTop: 8 }]}>
-          <StatCard icon="check-decagram"  value={completed}    label="Completed"    sub="All time"  color="#F59E0B" bg="#FFFBEB" />
-          <StatCard icon="wallet"          value={liveEarned.toLocaleString()} label="Total Earned" sub="FCFA" color="#0D9488" bg="#E6FDF3" />
+          <StatCard icon="check-decagram"  value={completed}    label={t('jobs.statusLabels.Completed')}    sub={t('jobs.allTime')}  color="#F59E0B" bg="#FFFBEB" />
+          <StatCard icon="wallet"          value={liveEarned.toLocaleString()} label={t('home.totalEarnings')} sub="FCFA" color="#0D9488" bg="#E6FDF3" />
         </View>
       </View>
 
@@ -254,7 +287,7 @@ const MyJobsScreen = ({ navigation }) => {
                 >
                   <View style={styles.tabContent}>
                     <MaterialCommunityIcons name={tab.icon} size={14} color="#0D9488" />
-                    <Text style={styles.tabTextActive}>{tab.label}</Text>
+                    <Text style={styles.tabTextActive}>{t(`jobs.tabs.${tab.key}`)}</Text>
                   </View>
                   <View style={styles.tabIndicator} />
                 </TouchableOpacity>
@@ -268,7 +301,7 @@ const MyJobsScreen = ({ navigation }) => {
               >
                 <View style={styles.tabContent}>
                   <MaterialCommunityIcons name={tab.icon} size={14} color={colors.textSecondary} />
-                  <Text style={[styles.tabText, { color: colors.textSecondary }]}>{tab.label}</Text>
+                  <Text style={[styles.tabText, { color: colors.textSecondary }]}>{t(`jobs.tabs.${tab.key}`)}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -285,8 +318,8 @@ const MyJobsScreen = ({ navigation }) => {
         ListEmptyComponent={
           <View style={styles.empty}>
             <MaterialCommunityIcons name="clipboard-text-outline" size={64} color={colors.border} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No jobs found</Text>
-            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Jobs will appear here once assigned</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('jobs.noJobsFoundShort')}</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('jobs.jobsAppearAssigned')}</Text>
           </View>
         }
       />

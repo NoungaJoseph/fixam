@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
 const FAQS = [
@@ -40,17 +41,33 @@ const FAQS = [
 
 const CONTACT_OPTIONS = [
   { icon: 'chat-processing-outline', label: 'Live Chat', sub: 'Typically replies in minutes', color: '#22C55E' },
-  { icon: 'email-outline', label: 'Email Support', sub: 'support@fixam.com', color: '#3B82F6' },
+  { icon: 'email-outline', label: 'Email Support', sub: 'support@fixam.com', color: '#2563EB' },
   { icon: 'phone-outline', label: 'Call Us', sub: '+237 6 70 67 12 49', color: '#F97316' },
 ];
 
 const HelpCenterScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [openFaq, setOpenFaq] = useState(null);
   const [openingChat, setOpeningChat] = useState(false);
 
-  const filtered = FAQS.filter(f =>
+  const faqs = [
+    { q: t('help.qPostTask'), a: t('help.aPostTask') },
+    { q: t('help.qPayment'), a: t('help.aPayment') },
+    { q: t('help.qVerified'), a: t('help.aVerified') },
+    { q: t('help.qCancel'), a: t('help.aCancel') },
+    { q: t('help.qCoins'), a: t('help.aCoins') },
+    { q: t('help.qReport'), a: t('help.aReport') },
+    { q: t('help.qBecomeVerified'), a: t('help.aBecomeVerified') },
+  ];
+  const contactOptions = [
+    { icon: 'chat-processing-outline', label: t('help.liveChat'), sub: t('help.liveChatSub'), color: '#22C55E', type: 'chat' },
+    { icon: 'email-outline', label: t('help.emailSupport'), sub: 'support@fixam.com', color: '#2563EB' },
+    { icon: 'phone-outline', label: t('help.callUs'), sub: '+237 6 70 67 12 49', color: '#F97316' },
+  ];
+
+  const filtered = faqs.filter(f =>
     f.q.toLowerCase().includes(search.toLowerCase()) ||
     f.a.toLowerCase().includes(search.toLowerCase())
   );
@@ -65,11 +82,11 @@ const HelpCenterScreen = ({ navigation }) => {
       navigation.navigate('Chat', {
         conversationId: conversation.id,
         receiverId: support.id,
-        userName: support.fullName || 'Fixam Support',
+        userName: support.fullName || t('support.title'),
         avatar: support.avatar,
       });
     } catch (error) {
-      Alert.alert('Support unavailable', error.response?.data?.message || 'Please try again in a moment.');
+      Alert.alert(t('support.unavailable'), error.response?.data?.message || t('support.tryLater'));
     } finally {
       setOpeningChat(false);
     }
@@ -83,21 +100,21 @@ const HelpCenterScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Help Center</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('help.title')}</Text>
           <View style={{ width: 42 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Hero */}
-          <Text style={[styles.heroTitle, { color: colors.text }]}>How can we help?</Text>
-          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>Search the FAQ or contact support below.</Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>{t('help.hero')}</Text>
+          <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{t('help.subtitle')}</Text>
 
           {/* Search */}
           <View style={[styles.searchBar, { borderColor: colors.border }]}>
             <MaterialCommunityIcons name="magnify" size={20} color={colors.placeholder} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search questions..."
+              placeholder={t('help.search')}
               placeholderTextColor={colors.placeholder}
               value={search}
               onChangeText={setSearch}
@@ -110,11 +127,11 @@ const HelpCenterScreen = ({ navigation }) => {
           </View>
 
           {/* FAQ */}
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('help.faq')}</Text>
           {filtered.length === 0 ? (
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="help-circle-outline" size={48} color={colors.border} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No results for "{search}"</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('help.noResults', { query: search })}</Text>
             </View>
           ) : filtered.map((faq, i) => (
             <TouchableOpacity
@@ -137,26 +154,26 @@ const HelpCenterScreen = ({ navigation }) => {
           ))}
 
           {/* Contact options */}
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 22 }]}>Contact Support</Text>
-          {CONTACT_OPTIONS.map((opt, i) => (
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 22 }]}>{t('help.contact')}</Text>
+          {contactOptions.map((opt, i) => (
             <TouchableOpacity
               key={i}
               style={[styles.contactCard, { borderBottomColor: colors.border }]}
-              onPress={opt.label === 'Live Chat' ? openLiveChat : undefined}
+              onPress={opt.type === 'chat' ? openLiveChat : undefined}
             >
               <View style={styles.contactIcon}>
                 <MaterialCommunityIcons name={opt.icon} size={24} color={opt.color} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.contactLabel, { color: colors.text }]}>{opt.label}</Text>
-                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>{opt.label === 'Live Chat' && openingChat ? 'Opening support...' : opt.sub}</Text>
+                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>{opt.type === 'chat' && openingChat ? t('help.openingSupport') : opt.sub}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           ))}
 
           <Text style={[styles.footNote, { color: colors.textSecondary }]}>
-            Fixam Support is available Monday – Saturday, 8 AM – 8 PM WAT.
+            {t('help.footNote')}
           </Text>
         </ScrollView>
       </SafeAreaView>

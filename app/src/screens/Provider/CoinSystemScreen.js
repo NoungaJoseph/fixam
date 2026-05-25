@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const PACKAGES = [
   { id: 'p1', coins: 10, price: '5,000 FCFA', label: 'Starter', popular: false, bonus: 0 },
@@ -22,6 +23,7 @@ const CoinSystemScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { walletBalance, transactions } = useAppContext();
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
   const [selectedPkg, setSelectedPkg] = useState('p2');
 
   const handleContinue = () => {
@@ -30,6 +32,13 @@ const CoinSystemScreen = ({ navigation }) => {
   };
 
   const estimatedFcfa = (walletBalance || 0) * 500;
+  const translateTransactionDescription = (tx) => {
+    const description = String(tx.description || '').toLowerCase();
+    if (description.includes('purchase')) return t('payments.coinPurchase');
+    if (description.includes('spent') || description.includes('unlock') || description.includes('apply')) return t('payments.coinSpent');
+    if (description.includes('service')) return t('payments.servicePayment');
+    return tx.description || (tx.amount > 0 ? t('payments.coinPurchase') : t('payments.coinSpent'));
+  };
 
   // Branded Payment Provider Logos
   const paymentLogos = [
@@ -42,7 +51,7 @@ const CoinSystemScreen = ({ navigation }) => {
       case 'Standard':
         return { bg: '#ECFDF5', text: '#0D9488' };
       case 'Popular':
-        return { bg: '#EFF6FF', text: '#3B82F6' };
+        return { bg: '#EFF6FF', text: '#2563EB' };
       case 'Premium':
         return { bg: '#F3E8FF', text: '#8B5CF6' };
       default:
@@ -64,7 +73,7 @@ const CoinSystemScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="menu" size={22} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
           
-          <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Top Up Coins</Text>
+          <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('wallet.topUpCoins')}</Text>
           
           <TouchableOpacity 
             onPress={() => navigation.navigate('HelpCenter')}
@@ -88,10 +97,10 @@ const CoinSystemScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="database" size={22} color="#FFF" />
               </View>
               
-              <Text style={styles.balanceLabel}>Current Balance</Text>
+              <Text style={styles.balanceLabel}>{t('wallet.currentBalance')}</Text>
               <View style={styles.balanceValueRow}>
                 <Text style={styles.balanceValue}>{walletBalance || 0}</Text>
-                <Text style={styles.balanceUnit}>Coins</Text>
+                <Text style={styles.balanceUnit}>{t('wallet.coins')}</Text>
               </View>
               <Text style={styles.estimatedText}>≈ {estimatedFcfa.toLocaleString()} FCFA</Text>
             </View>
@@ -100,15 +109,15 @@ const CoinSystemScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="wallet-plus-outline" size={80} color="rgba(255,255,255,0.15)" style={styles.bgWalletIcon} />
               <View style={[styles.statPill, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
                 <MaterialCommunityIcons name="account-circle-outline" size={14} color="#FFF" />
-                <Text style={styles.statPillText}>{user?.fullName?.split(' ')[0] || 'Provider'}</Text>
+                <Text style={styles.statPillText}>{user?.fullName?.split(' ')[0] || t('common.provider')}</Text>
               </View>
             </View>
           </LinearGradient>
 
           {/* Section Titles */}
-          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Choose a Coin Package</Text>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('wallet.choosePackage')}</Text>
           <Text style={[styles.subtitle, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
-            Coins are used to unlock job requests and get more opportunities.
+            {t('wallet.packageSubtitle')}
           </Text>
 
           {/* Packages List */}
@@ -136,7 +145,7 @@ const CoinSystemScreen = ({ navigation }) => {
                   {pkg.popular && (
                     <View style={styles.popularBadge}>
                       <MaterialCommunityIcons name="star" size={10} color="#FFF" style={{ marginRight: 2 }} />
-                      <Text style={styles.popularText}>BEST VALUE</Text>
+                      <Text style={styles.popularText}>{t('wallet.bestValue')}</Text>
                     </View>
                   )}
 
@@ -155,12 +164,12 @@ const CoinSystemScreen = ({ navigation }) => {
                   {/* Middle Column details */}
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.pkgCoins, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                      {pkg.coins} Coins
+                      {t('wallet.coinCount', { count: pkg.coins })}
                     </Text>
                     
                     <View style={[styles.badgePill, { backgroundColor: isDarkMode ? '#115E5920' : badgeColors.bg }]}>
                       <Text style={[styles.badgeText, { color: isDarkMode ? '#0D9488' : badgeColors.text }]}>
-                        {pkg.label}
+                        {t(`wallet.packages.${pkg.label.toLowerCase()}`)}
                       </Text>
                     </View>
                   </View>
@@ -193,9 +202,9 @@ const CoinSystemScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="shield-check" size={22} color="#10B981" style={{ marginTop: 2 }} />
             </View>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={[styles.infoTitle, { color: isDarkMode ? '#FFF' : '#14532D' }]}>Why top up coins?</Text>
+              <Text style={[styles.infoTitle, { color: isDarkMode ? '#FFF' : '#14532D' }]}>{t('wallet.whyTopUp')}</Text>
               <Text style={[styles.infoSub, { color: isDarkMode ? '#94A3B8' : '#166534' }]}>
-                Use coins to unlock job requests, boost your visibility and grow your business.
+                {t('wallet.whyTopUpDesc')}
               </Text>
             </View>
             
@@ -213,7 +222,7 @@ const CoinSystemScreen = ({ navigation }) => {
             activeOpacity={0.9}
           >
             <MaterialCommunityIcons name="lock" size={18} color="#FFF" style={{ marginRight: 6 }} />
-            <Text style={styles.continueBtnText}>Continue to Payment</Text>
+            <Text style={styles.continueBtnText}>{t('wallet.continueToPayment')}</Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color="#FFF" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
 
@@ -221,7 +230,7 @@ const CoinSystemScreen = ({ navigation }) => {
           <View style={styles.secureRow}>
             <MaterialCommunityIcons name="check-decagram" size={16} color="#22C55E" />
             <Text style={[styles.secureText, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
-              Secure payment powered by Fixam Pay
+              {t('wallet.securePayment')}
             </Text>
           </View>
 
@@ -247,12 +256,12 @@ const CoinSystemScreen = ({ navigation }) => {
           </View>
 
           {/* Transaction History Section */}
-          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A', marginTop: 12 }]}>Transaction History</Text>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A', marginTop: 12 }]}>{t('wallet.transactionHistory')}</Text>
           
           {!transactions || transactions.length === 0 ? (
             <View style={[styles.emptyHistory, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
               <MaterialCommunityIcons name="history" size={40} color={isDarkMode ? '#475569' : '#CBD5E1'} />
-              <Text style={[styles.emptyHistoryText, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>No transactions yet</Text>
+              <Text style={[styles.emptyHistoryText, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('payments.noTransactions')}</Text>
             </View>
           ) : (
             <View style={[styles.txListContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
@@ -279,14 +288,14 @@ const CoinSystemScreen = ({ navigation }) => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.txTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                      {tx.description || (tx.amount > 0 ? 'Coin Purchase' : 'Coin Spent')}
+                      {translateTransactionDescription(tx)}
                     </Text>
                     <Text style={[styles.txDate, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>
-                      {new Date(tx.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(tx.createdAt).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
                   </View>
                   <Text style={[styles.txAmount, { color: tx.amount > 0 ? '#22C55E' : '#EF4444' }]}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount} coins
+                    {tx.amount > 0 ? '+' : ''}{t('wallet.coinCount', { count: tx.amount })}
                   </Text>
                 </View>
               ))}

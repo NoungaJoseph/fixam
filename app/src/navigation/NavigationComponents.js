@@ -5,18 +5,35 @@ import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawe
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getMediaUrl } from '../services/api';
 
 export const CustomHeader = ({ navigation, title, colors }) => {
   const { user } = useAuth();
   const { notificationCount } = useAppContext();
+  const { t } = useLanguage();
 
   const ROOT_SCREENS = ['Dashboard', 'Home', 'My Wallet', 'My Tasks', 'Coin Balance', 'Messages', 'Settings', 'Invite Friends', 'My Stats', 'Reports'];
-  const isRootScreen = ROOT_SCREENS.includes(title);
+  const LOCALIZED_ROOT_SCREENS = [
+    t('drawer.home'),
+    t('drawer.myWallet'),
+    t('drawer.coinBalance'),
+    t('drawer.inviteFriends'),
+    t('drawer.myStats'),
+    t('drawer.reports'),
+    t('tabs.home'),
+    t('tabs.tasks'),
+    t('tabs.messages'),
+    t('tabs.settings'),
+    t('tabs.dashboard'),
+  ];
+  const routeName = navigation.getState?.()?.routes?.[navigation.getState?.()?.index || 0]?.name;
+  const ROOT_ROUTE_NAMES = ['MainTabs', 'Wallet', 'Invitation', 'Stats', 'Reports', 'Settings', 'Messages'];
+  const isRootScreen = ROOT_SCREENS.includes(title) || LOCALIZED_ROOT_SCREENS.includes(title) || ROOT_ROUTE_NAMES.includes(routeName);
   const isHome = title === 'Dashboard' || title === 'Home';
 
   const displayTitle = isHome
-    ? `Welcome, ${user?.fullName ? user.fullName.split(' ')[0] : 'User'}`
+    ? t('headers.welcome', { name: user?.fullName ? user.fullName.split(' ')[0] : t('common.user') })
     : title;
 
   return (
@@ -58,6 +75,7 @@ export const CustomHeader = ({ navigation, title, colors }) => {
 export const CustomDrawerContent = (props) => {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const avatarUri = getMediaUrl(user?.avatar);
   const isProvider = user?.role?.toUpperCase() === 'PROVIDER' && user?.providerProfile?.profileMode !== 'PERSONAL';
 
@@ -68,12 +86,12 @@ export const CustomDrawerContent = (props) => {
   // Determine active route
   const activeRouteName = props.state?.routeNames[props.state?.index] || 'MainTabs';
   const menuItems = [
-    { route: 'MainTabs', label: 'Home', icon: 'home-outline', color: '#0D9488' },
-    { route: 'Wallet', label: isProvider ? 'Coin Balance' : 'My Wallet', icon: isProvider ? 'database-outline' : 'wallet-outline', color: '#0D9488' },
-    { route: 'Invitation', label: 'Invite Friends', icon: 'gift-outline', color: '#6366F1' },
+    { route: 'MainTabs', label: t('drawer.home'), icon: 'home-outline', color: '#0D9488' },
+    { route: 'Wallet', label: isProvider ? t('drawer.coinBalance') : t('drawer.myWallet'), icon: isProvider ? 'database-outline' : 'wallet-outline', color: '#0D9488' },
+    { route: 'Invitation', label: t('drawer.inviteFriends'), icon: 'gift-outline', color: '#6366F1' },
     ...(isProvider ? [
-      { route: 'Stats', label: 'My Stats', icon: 'chart-bar', color: '#2563EB' },
-      { route: 'Reports', label: 'Reports', icon: 'file-chart-outline', color: '#F59E0B' },
+      { route: 'Stats', label: t('drawer.myStats'), icon: 'chart-bar', color: '#2563EB' },
+      { route: 'Reports', label: t('drawer.reports'), icon: 'file-chart-outline', color: '#F59E0B' },
     ] : []),
   ];
 
@@ -84,18 +102,18 @@ export const CustomDrawerContent = (props) => {
         key={item.route}
         style={[
           styles.customMenuItem,
-          active ? [styles.activeCapsule, { backgroundColor: isDarkMode ? 'rgba(13,148,136,0.18)' : '#E6F2F2' }] : null
+          active ? [styles.activeCapsule, { backgroundColor: isDarkMode ? 'rgba(20,184,166,0.14)' : '#E6F2F2' }] : null
         ]}
         onPress={() => props.navigation.navigate(item.route)}
       >
         <View style={styles.iconContainer}>
-          <MaterialCommunityIcons name={item.icon} size={22} color={active ? '#0D9488' : item.color} />
+          <MaterialCommunityIcons name={item.icon} size={22} color={active ? (isDarkMode ? '#14B8A6' : '#0D9488') : (isDarkMode ? '#9CA3AF' : item.color)} />
         </View>
         <Text
           style={[
             styles.menuLabelText,
             {
-              color: active ? (isDarkMode ? '#99F6E4' : '#0A5F59') : colors.text,
+              color: active ? (isDarkMode ? '#F9FAFB' : '#0A5F59') : colors.text,
               fontWeight: active ? '800' : '700'
             }
           ]}
@@ -118,31 +136,31 @@ export const CustomDrawerContent = (props) => {
     >
       <View style={{ 
         flex: 1, 
-        backgroundColor: isDarkMode ? '#0F172A' : '#FFF',
-        borderTopRightRadius: 24,
-        borderBottomRightRadius: 24,
+        backgroundColor: isDarkMode ? '#111827' : '#FFF',
+        borderTopRightRadius: 10,
+        borderBottomRightRadius: 10,
         borderRightWidth: 1.5,
-        borderRightColor: isDarkMode ? '#1E293B' : '#E2E8F0',
+        borderRightColor: isDarkMode ? '#1F2937' : '#E2E8F0',
         borderTopWidth: 1.5,
-        borderTopColor: isDarkMode ? '#1E293B' : '#E2E8F0',
+        borderTopColor: isDarkMode ? '#1F2937' : '#E2E8F0',
         borderBottomWidth: 1.5,
-        borderBottomColor: isDarkMode ? '#1E293B' : '#E2E8F0',
+        borderBottomColor: isDarkMode ? '#1F2937' : '#E2E8F0',
         overflow: 'hidden'
       }}>
       {/* Profile Header */}
-      <View style={[styles.drawerHeader, { backgroundColor: isDarkMode ? '#0F172A' : '#FFF' }]}>
+      <View style={[styles.drawerHeader, { backgroundColor: isDarkMode ? '#111827' : '#FFF' }]}>
         <View style={styles.drawerAvatarWrap}>
           {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.drawerAvatar} />
+            <Image source={{ uri: avatarUri }} style={[styles.drawerAvatar, { borderColor: isDarkMode ? '#1F2937' : '#FFF' }]} />
           ) : (
-            <View style={[styles.drawerAvatarFallback, { backgroundColor: isDarkMode ? '#1E293B' : '#E2E8F0' }]}>
-              <Text style={[styles.drawerAvatarInitial, { color: '#0D9488' }]}>{(user?.fullName || 'N').charAt(0)}</Text>
+            <View style={[styles.drawerAvatarFallback, { backgroundColor: isDarkMode ? '#0B1120' : '#E2E8F0', borderColor: isDarkMode ? '#1F2937' : '#FFF' }]}>
+              <Text style={[styles.drawerAvatarInitial, { color: isDarkMode ? '#14B8A6' : '#0D9488' }]}>{(user?.fullName || t('common.user')).charAt(0)}</Text>
             </View>
           )}
-          <View style={styles.drawerOnlineDot} />
+          <View style={[styles.drawerOnlineDot, { borderColor: isDarkMode ? '#111827' : '#FFF' }]} />
         </View>
-        <Text style={[styles.drawerName, { color: colors.text }]}>{user?.fullName || 'Nounga Joseph'}</Text>
-        <Text style={[styles.drawerEmail, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{user?.email || 'noungajoseph58@gmail.com'}</Text>
+        <Text style={[styles.drawerName, { color: colors.text }]}>{user?.fullName || t('common.user')}</Text>
+        <Text style={[styles.drawerEmail, { color: isDarkMode ? '#9CA3AF' : '#64748B' }]}>{user?.email || ''}</Text>
       </View>
 
       {/* Menu Items */}
@@ -150,14 +168,14 @@ export const CustomDrawerContent = (props) => {
         {menuItems.map(renderMenuItem)}
 
         {/* Divider */}
-        <View style={[styles.divider, { backgroundColor: isDarkMode ? '#1E293B' : '#E2E8F0' }]} />
+        <View style={[styles.divider, { backgroundColor: isDarkMode ? '#1F2937' : '#E2E8F0' }]} />
 
         {/* Dark Mode Toggle */}
         <View style={styles.darkModeRow}>
-          <View style={[styles.iconContainer, { backgroundColor: '#EEF2FF' }]}>
-            <MaterialCommunityIcons name="weather-night" size={22} color="#6366F1" />
+          <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? '#0B1120' : '#ECFDF5' }]}>
+            <MaterialCommunityIcons name="weather-night" size={22} color={isDarkMode ? '#14B8A6' : '#0D9488'} />
           </View>
-          <Text style={[styles.darkModeText, { color: colors.text }]}>Dark Mode</Text>
+          <Text style={[styles.darkModeText, { color: colors.text }]}>{t('drawer.darkMode')}</Text>
           <Switch
             value={isDarkMode}
             onValueChange={toggleTheme}
@@ -172,33 +190,33 @@ export const CustomDrawerContent = (props) => {
       <View style={styles.drawerBottom}>
         {/* Invite & Earn Card */}
         <TouchableOpacity
-          style={[styles.inviteCard, { backgroundColor: isDarkMode ? '#115E59' : '#E6F2F2', borderColor: isDarkMode ? '#0D9488' : '#B2DFDB' }]}
+          style={[styles.inviteCard, { backgroundColor: isDarkMode ? '#0B1120' : '#E6F2F2', borderColor: isDarkMode ? '#1F2937' : '#B2DFDB' }]}
           onPress={() => props.navigation.navigate('Invitation')}
           activeOpacity={0.8}
         >
           {/* Gift Box Icon */}
-          <View style={styles.giftIconContainer}>
-            <MaterialCommunityIcons name="gift" size={28} color="#0D9488" />
+          <View style={[styles.giftIconContainer, { backgroundColor: isDarkMode ? '#111827' : '#FFF' }]}>
+            <MaterialCommunityIcons name="gift" size={28} color={isDarkMode ? '#14B8A6' : '#0D9488'} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[styles.inviteTitle, { color: isDarkMode ? '#F8FAFC' : '#0F172A' }]}>Invite & Earn</Text>
-            <Text style={[styles.inviteSub, { color: isDarkMode ? '#CCFBF1' : '#64748B' }]}>
-              Invite a friend and earn <Text style={{ fontWeight: '800', color: '#0D9488' }}>1 coin</Text>
+            <Text style={[styles.inviteTitle, { color: isDarkMode ? '#F9FAFB' : '#0F172A' }]}>{t('drawer.inviteTitle')}</Text>
+            <Text style={[styles.inviteSub, { color: isDarkMode ? '#9CA3AF' : '#64748B' }]}>
+              {t('drawer.inviteSubtitle', { amount: 1 })}
             </Text>
           </View>
-          <View style={styles.inviteArrowCircle}>
-            <MaterialCommunityIcons name="chevron-right" size={16} color="#0D9488" />
+          <View style={[styles.inviteArrowCircle, { backgroundColor: isDarkMode ? 'rgba(20,184,166,0.16)' : '#99F6E4' }]}>
+            <MaterialCommunityIcons name="chevron-right" size={16} color={isDarkMode ? '#14B8A6' : '#0D9488'} />
           </View>
         </TouchableOpacity>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+        <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: isDarkMode ? 'rgba(239,68,68,0.12)' : '#FEE2E2' }]} onPress={handleLogout}>
           <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>{t('drawer.logout')}</Text>
         </TouchableOpacity>
 
         {/* Footer */}
-        <Text style={[styles.footerText, { color: '#64748B' }]}>Fixam © 2025 • v1.0.4</Text>
+        <Text style={[styles.footerText, { color: isDarkMode ? '#9CA3AF' : '#64748B' }]}>{t('drawer.version')}</Text>
       </View>
       </View>
     </DrawerContentScrollView>

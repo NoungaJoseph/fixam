@@ -9,8 +9,10 @@ import { SocketProvider } from './src/context/SocketContext';
 import { AppProvider } from './src/context/AppContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { NavigationStateProvider } from './src/context/NavigationStateContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import CallModal from './src/components/CallModal';
+import SupportChatButton from './src/components/SupportChatButton';
 
 export default function App() {
   return (
@@ -22,9 +24,12 @@ export default function App() {
               <AuthProvider>
                 <SocketProvider>
                   <AppProvider>
-                    <StatusBar style="auto" />
-                    <AppNavigator />
-                    <CallModal />
+                    <NavigationStateProvider>
+                      <StatusBar style="auto" />
+                      <AppNavigator />
+                      <SupportChatButton />
+                      <CallModal />
+                    </NavigationStateProvider>
                   </AppProvider>
                 </SocketProvider>
               </AuthProvider>

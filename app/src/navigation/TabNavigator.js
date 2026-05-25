@@ -45,6 +45,7 @@ import TopUpPaymentScreen from '../screens/Wallet/TopUpPaymentScreen';
 import TopUpSuccessScreen from '../screens/Wallet/TopUpSuccessScreen';
 import CoinPaymentFormScreen from '../screens/Wallet/CoinPaymentFormScreen';
 import CoinPaymentSuccessScreen from '../screens/Wallet/CoinPaymentSuccessScreen';
+import BookingFormScreen from '../screens/Bookings/BookingFormScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -58,6 +59,7 @@ const HomeStack = () => (
     <Stack.Screen name="FavoriteProviders" component={FavoriteProvidersScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="Rating" component={RatingScreen} />
     <Stack.Screen name="TopUp" component={TopUpScreen} />
     <Stack.Screen name="TopUpAmount" component={TopUpAmountScreen} />
@@ -113,6 +115,7 @@ const TaskStack = () => (
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="Rating" component={RatingScreen} />
   </Stack.Navigator>
 );
@@ -121,6 +124,7 @@ const MessagesStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ChatList" component={ChatListScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
   </Stack.Navigator>
 );
@@ -175,7 +179,7 @@ const BottomTabNavigator = () => {
         name="Home"
         component={HomeStack}
         options={{
-          title: 'Home',
+          title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
           )
@@ -185,7 +189,7 @@ const BottomTabNavigator = () => {
         name="My Tasks"
         component={TaskStack}
         options={{
-          title: 'Tasks',
+          title: t('tabs.tasks'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "list-circle" : "list-circle-outline"} size={22} color={color} />
           )
@@ -196,7 +200,7 @@ const BottomTabNavigator = () => {
         component={TaskStack}
         initialParams={{ screen: 'PostTask', params: { startOnPost: true } }}
         options={{
-          title: 'Create Task',
+          title: t('tabs.createTask'),
           tabBarIcon: ({ focused }) => (
             <View style={{
               width: 52,
@@ -204,7 +208,7 @@ const BottomTabNavigator = () => {
               borderRadius: 26,
               backgroundColor: '#0D9488',
               borderWidth: 3,
-              borderColor: isDarkMode ? '#0F172A' : '#FFF',
+              borderColor: isDarkMode ? '#0B1120' : '#FFF',
               alignItems: 'center',
               justifyContent: 'center',
               marginTop: -22,
@@ -233,7 +237,7 @@ const BottomTabNavigator = () => {
         name="Messages"
         component={MessagesStack}
         options={{
-          title: 'Messages',
+          title: t('tabs.messages'),
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
@@ -244,7 +248,7 @@ const BottomTabNavigator = () => {
         name="Settings"
         component={ProfileStack}
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
           )
@@ -256,6 +260,7 @@ const BottomTabNavigator = () => {
 
 const TabNavigator = () => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -268,23 +273,23 @@ const TabNavigator = () => {
         drawerItemStyle: { borderRadius: 14, marginHorizontal: 8, paddingVertical: 2 },
         drawerStyle: { 
           width: '78%', 
-          backgroundColor: 'transparent',
-          elevation: 8,
+          backgroundColor: isDarkMode ? '#111827' : '#FFFFFF',
+          elevation: 18,
           shadowColor: '#000',
           shadowOffset: { width: 4, height: 0 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
+          shadowOpacity: 0.12,
+          shadowRadius: 18,
         },
-        drawerContentStyle: { backgroundColor: 'transparent' },
-        overlayColor: 'rgba(15, 23, 42, 0.42)',
-        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0F172A' : '#FFF' },
+        drawerContentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' },
+        overlayColor: 'rgba(255, 255, 255, 0.10)',
+        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0B1120' : '#FFF' },
       }}
     >
       <Drawer.Screen
         name="MainTabs"
         component={BottomTabNavigator}
         options={{
-          drawerLabel: 'Home',
+          drawerLabel: t('drawer.home'),
           drawerIcon: ({ color }) => (
             <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons name="home-outline" size={22} color={color} />
@@ -296,7 +301,7 @@ const TabNavigator = () => {
         name="Wallet"
         component={WalletStack}
         options={{
-          drawerLabel: 'My Wallet',
+          drawerLabel: t('drawer.myWallet'),
           drawerIcon: ({ color }) => (
             <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons name="wallet-outline" size={22} color={color} />
@@ -308,7 +313,7 @@ const TabNavigator = () => {
         name="Invitation"
         component={InvitationScreen}
         options={{
-          drawerLabel: 'Invite Friends',
+          drawerLabel: t('drawer.inviteFriends'),
           drawerIcon: ({ color }) => (
             <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
               <MaterialCommunityIcons name="gift-outline" size={22} color={color} />

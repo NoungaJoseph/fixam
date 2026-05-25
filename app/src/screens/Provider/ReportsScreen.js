@@ -6,27 +6,29 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ReportsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const reports = [];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="Reports" colors={colors} />
+      <CustomHeader navigation={navigation} title={t('home.reports')} colors={colors} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: colors.text }]}>Earnings Reports</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Download and view your monthly financial statements.</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('home.earningsReports')}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('home.reportsSubtitle')}</Text>
 
         <View style={styles.reportsList}>
           {reports.length === 0 ? (
             <View style={{ padding: 60, alignItems: 'center' }}>
               <MaterialCommunityIcons name="file-document-outline" size={80} color={colors.border} />
-              <Text style={{ color: colors.textSecondary, marginTop: 20, fontSize: 16, fontWeight: '700' }}>No reports available yet</Text>
-              <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 10 }}>Reports are generated at the end of each month.</Text>
+              <Text style={{ color: colors.textSecondary, marginTop: 20, fontSize: 16, fontWeight: '700' }}>{t('home.noReports')}</Text>
+              <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 10 }}>{t('home.reportsGenerated')}</Text>
             </View>
           ) : (
             reports.map((item) => (
@@ -49,7 +51,7 @@ const ReportsScreen = ({ navigation }) => {
         </View>
 
         <TouchableOpacity style={[styles.generateBtn, { backgroundColor: colors.primary }]}>
-          <Text style={styles.generateBtnText}>Generate Custom Report</Text>
+          <Text style={styles.generateBtnText}>{t('home.generateReport')}</Text>
           <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#FFF" />
         </TouchableOpacity>
       </ScrollView>

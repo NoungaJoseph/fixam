@@ -7,18 +7,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import api, { getMediaUrl } from '../../services/api';
+import { useLanguage } from '../../context/LanguageContext';
+import { translateStatus } from '../../i18n/translate';
 
 const JobStatusScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
   const [job, setJob] = useState(route.params?.job || {});
 
   const normalizedStatus = String(job.status || 'PENDING').toUpperCase();
-  const displayStatus = normalizedStatus.replace(/_/g, ' ');
+  const displayStatus = translateStatus(normalizedStatus);
   const selectedAssignment = job.assignments?.find((assignment) => assignment.status === 'ACCEPTED');
   const assignedProviderUser = job.provider || selectedAssignment?.provider?.user;
   const assignedProvider = assignedProviderUser ? {
-    name: assignedProviderUser.fullName || assignedProviderUser.name || 'Assigned Professional',
+    name: assignedProviderUser.fullName || assignedProviderUser.name || t('jobs.assignedProfessional'),
     id: assignedProviderUser.id,
     avatar: getMediaUrl(assignedProviderUser.avatar || assignedProviderUser.image),
   } : null;
@@ -51,7 +54,7 @@ const JobStatusScreen = ({ route, navigation }) => {
       id: provider?.id || assignment?.providerId,
       user: providerUser || provider?.user || {
         id: assignment?.providerUserId || assignment?.userId,
-        fullName: assignment?.providerName || 'Provider',
+        fullName: assignment?.providerName || t('common.provider'),
         avatar: assignment?.providerAvatar,
       },
     };
@@ -59,24 +62,24 @@ const JobStatusScreen = ({ route, navigation }) => {
 
   const chooseProvider = (assignment) => {
     const provider = getProviderFromAssignment(assignment);
-    const providerName = provider?.user?.fullName || provider?.user?.name || 'this provider';
+    const providerName = provider?.user?.fullName || provider?.user?.name || t('jobs.thisProvider');
     Alert.alert(
-      'Choose provider?',
-      `Do you want to choose ${providerName} for this task? One coin will be deducted from your wallet.`,
+      t('jobs.chooseProviderQuestion'),
+      t('jobs.chooseProviderBody', { name: providerName }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Confirm',
+          text: t('common.confirm'),
           onPress: async () => {
             try {
               const res = await api.post(`/jobs/${job.id}/applications/${assignment.id}/select`);
               setJob(res.data.data);
-              Alert.alert('Provider selected', `${providerName} has been assigned to your task.`, [
-                { text: 'Close' },
-                { text: 'Track Provider', onPress: () => navigation.navigate('LiveTaskMap', { task: res.data.data }) }
+              Alert.alert(t('jobs.providerSelected'), t('jobs.providerSelectedBody', { name: providerName }), [
+                { text: t('common.close') },
+                { text: t('jobs.trackProvider'), onPress: () => navigation.navigate('LiveTaskMap', { task: res.data.data }) }
               ]);
             } catch (error) {
-              Alert.alert('Could not choose provider', error.response?.data?.message || 'Please try again.');
+              Alert.alert(t('jobs.couldNotChooseProvider'), error.response?.data?.message || t('common.tryAgain'));
             }
           }
         }
@@ -93,16 +96,16 @@ const JobStatusScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
             <MaterialCommunityIcons name="chevron-left" size={28} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Job Tracking</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('jobs.jobTracking')}</Text>
           <View style={{ width: 44 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.jobHero}>
             <View style={[styles.idBadge, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : colors.accentSoft }]}>
-              <Text style={[styles.idText, { color: colors.accent, fontWeight: '800' }]}>#{job.id?.slice(-6) || 'TASK'}</Text>
+              <Text style={[styles.idText, { color: colors.accent, fontWeight: '800' }]}>#{job.id?.slice(-6) || t('jobs.task')}</Text>
             </View>
-            <Text style={[styles.jobTitle, { color: colors.text }]}>{job.title || 'Task details'}</Text>
+            <Text style={[styles.jobTitle, { color: colors.text }]}>{job.title || t('jobs.taskDetails')}</Text>
             <View style={[styles.statusChip, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : '#EFF6FF' }]}>
               <View style={[styles.statusDot, { backgroundColor: colors.accent }]} />
               <Text style={[styles.statusChipText, { color: colors.accent }]}>{displayStatus}</Text>
@@ -110,7 +113,7 @@ const JobStatusScreen = ({ route, navigation }) => {
           </View>
 
           <View style={styles.trackerContainer}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Service Progress</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('jobs.serviceProgress')}</Text>
             <View style={styles.tracker}>
               {steps.map((step, i) => (
                 <React.Fragment key={step}>
@@ -118,7 +121,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                     <View style={[styles.stepDot, { backgroundColor: i <= currentStep ? colors.accent : (isDarkMode ? 'rgba(255,255,255,0.05)' : '#F3F4F6'), borderColor: i <= currentStep ? colors.accent : colors.border }]}>
                       {i < currentStep ? <MaterialCommunityIcons name="check" size={16} color="#FFF" /> : <View style={[styles.innerDot, { backgroundColor: i === currentStep ? colors.card : colors.placeholder }]} />}
                     </View>
-                    <Text style={[styles.stepText, { color: i <= currentStep ? colors.text : colors.textSecondary, fontWeight: i <= currentStep ? '800' : '600' }]}>{step.replace(/_/g, ' ')}</Text>
+                    <Text style={[styles.stepText, { color: i <= currentStep ? colors.text : colors.textSecondary, fontWeight: i <= currentStep ? '800' : '600' }]}>{translateStatus(step)}</Text>
                   </View>
                   {i < steps.length - 1 && <View style={[styles.stepLine, { backgroundColor: i < currentStep ? colors.accent : (isDarkMode ? 'rgba(255,255,255,0.05)' : colors.border) }]} />}
                 </React.Fragment>
@@ -128,7 +131,7 @@ const JobStatusScreen = ({ route, navigation }) => {
 
           {job.assignments?.length > 0 && normalizedStatus === 'PENDING' && (
             <View style={styles.applicationsSection}>
-              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Applications ({job.assignments.length})</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('jobs.applicationsCount', { count: job.assignments.length })}</Text>
               {job.assignments.map((assignment) => {
                 const provider = getProviderFromAssignment(assignment);
                 const providerUser = provider?.user || {};
@@ -147,7 +150,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                         <View style={styles.ratingRow}>
                           <MaterialCommunityIcons name="star" size={14} color="#FBBF24" />
                           <Text style={[styles.applicationMeta, { color: colors.textSecondary }]}>
-                            {Number(provider?.rating || 0).toFixed(1)} rating
+                            {t('jobs.ratingValue', { rating: Number(provider?.rating || 0).toFixed(1) })}
                           </Text>
                         </View>
                       </View>
@@ -155,10 +158,10 @@ const JobStatusScreen = ({ route, navigation }) => {
                     
                     <View style={styles.applicationActionRow}>
                       <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.border, flex: 1 }]} onPress={() => navigation.navigate('ProviderProfile', { provider })}>
-                        <Text style={[styles.outlineBtnText, { color: colors.text }]}>View Profile</Text>
+                        <Text style={[styles.outlineBtnText, { color: colors.text }]}>{t('profile.viewProfile')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={[styles.solidBtn, { backgroundColor: colors.accent, flex: 1.5 }]} onPress={() => chooseProvider(assignment)}>
-                        <Text style={styles.solidBtnText}>Hire Now</Text>
+                        <Text style={styles.solidBtnText}>{t('jobs.hireNow')}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -173,8 +176,8 @@ const JobStatusScreen = ({ route, navigation }) => {
                 <MaterialCommunityIcons name="account-hard-hat" size={24} color={colors.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Assigned Professional</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{assignedProvider?.name || 'Searching for providers...'}</Text>
+                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{t('jobs.assignedProfessional')}</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{assignedProvider?.name || t('jobs.searchingProviders')}</Text>
               </View>
               {assignedProvider && (
                 <TouchableOpacity
@@ -186,13 +189,13 @@ const JobStatusScreen = ({ route, navigation }) => {
               )}
             </View>
 
-            <Detail icon="map-marker-radius" label="Location" value={job.location || 'On-site'} colors={colors} isDarkMode={isDarkMode} />
-            <Detail icon="calendar-clock" label="Scheduled" value={job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : 'ASAP'} colors={colors} isDarkMode={isDarkMode} />
-            <Detail icon="text-box-outline" label="Description" value={job.description || 'No additional details'} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="map-marker-radius" label={t('jobs.location')} value={job.location || t('jobs.onSite')} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="calendar-clock" label={t('jobs.scheduled')} value={job.scheduledTime ? new Date(job.scheduledTime).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US') : t('jobs.asap')} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="text-box-outline" label={t('jobs.description')} value={job.description || t('jobs.noAdditionalDetails')} colors={colors} isDarkMode={isDarkMode} />
           </View>
 
           <View style={[styles.costCard, { backgroundColor: colors.accent }]}>
-            <Text style={styles.costLabel}>Total Estimated Budget</Text>
+            <Text style={styles.costLabel}>{t('jobs.totalEstimatedBudget')}</Text>
             <Text style={styles.costValue}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
           </View>
 
@@ -200,7 +203,7 @@ const JobStatusScreen = ({ route, navigation }) => {
             {assignedProvider && (
               <TouchableOpacity style={[styles.mainActionBtn, { backgroundColor: colors.accent }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
                 <MaterialCommunityIcons name="map-marker-path" size={22} color="#FFF" />
-                <Text style={styles.mainActionText}>Track Provider on Map</Text>
+                <Text style={styles.mainActionText}>{t('jobs.trackProviderOnMap')}</Text>
               </TouchableOpacity>
             )}
 
@@ -208,12 +211,12 @@ const JobStatusScreen = ({ route, navigation }) => {
               <TouchableOpacity
                 style={[styles.mainActionBtn, { backgroundColor: colors.success }]}
                 onPress={() => Alert.alert(
-                  'Mark as Completed',
-                  'Is the task done? This will finalize the payment.',
+                  t('jobs.markCompleted'),
+                  t('jobs.completeAndFinalizeBody'),
                   [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Complete & Rate',
+                      text: t('jobs.completeAndRate'),
                       onPress: async () => {
                         try {
                           await api.put(`/jobs/${job.id}/status`, { status: 'COMPLETED' });
@@ -223,7 +226,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                             mode: 'rate_provider',
                           });
                         } catch (err) {
-                          Alert.alert('Error', err.response?.data?.message || 'Could not update task.');
+                          Alert.alert(t('common.error'), err.response?.data?.message || t('jobs.updateFailedClient'));
                         }
                       }
                     }
@@ -231,12 +234,12 @@ const JobStatusScreen = ({ route, navigation }) => {
                 )}
               >
                 <MaterialCommunityIcons name="check-decagram" size={22} color="#FFF" />
-                <Text style={styles.mainActionText}>Mark Completed & Rate</Text>
+                <Text style={styles.mainActionText}>{t('jobs.markCompletedAndRate')}</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.error }]}>
-              <Text style={[styles.cancelBtnText, { color: colors.error }]}>Cancel Task Request</Text>
+              <Text style={[styles.cancelBtnText, { color: colors.error }]}>{t('jobs.cancelTaskRequest')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

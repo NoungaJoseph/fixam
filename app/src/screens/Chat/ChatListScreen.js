@@ -84,10 +84,10 @@ const ChatListScreen = ({ navigation }) => {
     let nextArchived;
     if (isArchived) {
       nextArchived = archivedIds.filter(id => id !== conversationId);
-      Alert.alert('Unarchived', 'This conversation has been moved back to your active list.');
+      Alert.alert(t('messages.unarchived'), t('messages.unarchivedBody'));
     } else {
       nextArchived = [...archivedIds, conversationId];
-      Alert.alert('Archived', 'This conversation has been archived successfully.');
+      Alert.alert(t('messages.archived'), t('messages.archivedBody'));
     }
     setArchivedIds(nextArchived);
     if (user?.id) {

@@ -6,6 +6,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const LOCAL_SKILLS = [
   'Plumbing', 'Electrical wiring', 'Carpentry', 'Painting', 'Tiling', 'Masonry', 'Welding', 'Roofing', 'Ceiling installation', 'POP design',
@@ -31,6 +32,7 @@ const SOCIALS = [
 const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
   const { user, updateProfile } = useAuth();
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const section = route.params?.section || 'about';
   const profile = user?.providerProfile || {};
   const [loading, setLoading] = useState(false);
@@ -84,15 +86,15 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
     try {
       setLoading(true);
       await updateProfile(updates);
-      Alert.alert('Saved', 'Your profile section was updated.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      Alert.alert(t('workProfile.saved'), t('workProfile.savedBody'), [{ text: t('common.done'), onPress: () => navigation.goBack() }]);
     } catch (error) {
-      Alert.alert('Could not save', error.response?.data?.message || 'Please try again.');
+      Alert.alert(t('workProfile.couldNotSave'), error.response?.data?.message || t('errors.apiFallback'));
     } finally {
       setLoading(false);
     }
   };
 
-  const title = section === 'skills' ? 'Edit Skills' : section === 'links' ? 'Linked Accounts' : section === 'mode' ? 'Profile Type' : 'Edit Work Profile';
+  const title = section === 'skills' ? t('workProfile.editSkills') : section === 'links' ? t('workProfile.linkedAccounts') : section === 'mode' ? t('workProfile.profileType') : t('workProfile.editWorkProfile');
 
   const outlineBtn = {
     borderWidth: 1,
@@ -118,30 +120,30 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
               {['PERSONAL', 'WORK'].map(mode => (
                 <TouchableOpacity key={mode} style={[styles.row, { borderBottomColor: colors.border }]} onPress={() => setProfileMode(mode)}>
                   <View>
-                    <Text style={[styles.rowTitle, { color: colors.text }]}>{mode === 'PERSONAL' ? 'Personal profile' : 'Work profile'}</Text>
-                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>{mode === 'PERSONAL' ? 'Use Fixam as a client.' : 'Offer services and receive jobs.'}</Text>
+                    <Text style={[styles.rowTitle, { color: colors.text }]}>{mode === 'PERSONAL' ? t('workProfile.personalProfile') : t('workProfile.workProfile')}</Text>
+                    <Text style={[styles.rowSub, { color: colors.textSecondary }]}>{mode === 'PERSONAL' ? t('workProfile.personalDesc') : t('workProfile.workDesc')}</Text>
                   </View>
                   <MaterialCommunityIcons name={profileMode === mode ? 'radiobox-marked' : 'radiobox-blank'} size={24} color={colors.text} />
                 </TouchableOpacity>
               ))}
               {profileMode === 'WORK' && (
-                <Text style={[styles.help, { color: colors.textSecondary }]}>Complete your work details after switching so clients can find and trust your profile.</Text>
+                <Text style={[styles.help, { color: colors.textSecondary }]}>{t('workProfile.completeWorkDetails')}</Text>
               )}
             </>
           )}
 
           {section === 'about' || (section === 'mode' && profileMode === 'WORK') ? (
             <>
-              <Field label="Bio" value={bio} onChangeText={setBio} colors={colors} multiline />
-              <Field label="Service Area" value={serviceArea} onChangeText={setServiceArea} colors={colors} />
-              <Field label="Experience Level" value={experienceLevel} onChangeText={setExperienceLevel} colors={colors} />
-              <Field label="Hourly Rate (XAF)" value={rate} onChangeText={setRate} colors={colors} keyboardType="numeric" />
+              <Field label={t('workProfile.bio')} value={bio} onChangeText={setBio} colors={colors} multiline />
+              <Field label={t('workProfile.serviceArea')} value={serviceArea} onChangeText={setServiceArea} colors={colors} />
+              <Field label={t('workProfile.experienceLevel')} value={experienceLevel} onChangeText={setExperienceLevel} colors={colors} />
+              <Field label={t('workProfile.hourlyRate')} value={rate} onChangeText={setRate} colors={colors} keyboardType="numeric" />
             </>
           ) : null}
 
           {section === 'skills' || (section === 'mode' && profileMode === 'WORK') ? (
             <>
-              <Field label="Search skills" value={skillSearch} onChangeText={setSkillSearch} colors={colors} placeholder="Type to search — matches appear below" />
+              <Field label={t('workProfile.searchSkills')} value={skillSearch} onChangeText={setSkillSearch} colors={colors} placeholder={t('workProfile.searchSkillsPlaceholder')} />
 
               {needle.length > 0 && (
                 <View style={[styles.resultsBox, { borderColor: colors.border, backgroundColor: colors.card }]}>
@@ -158,19 +160,19 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
                       style={[styles.resultRow, { borderBottomWidth: 0 }]}
                       onPress={() => toggleSkill(skillSearch.trim())}
                     >
-                      <Text style={[styles.skillText, { color: colors.text }]}>Add &quot;{skillSearch.trim()}&quot;</Text>
+                      <Text style={[styles.skillText, { color: colors.text }]}>{t('workProfile.addSkill', { skill: skillSearch.trim() })}</Text>
                       <MaterialCommunityIcons name="plus" size={20} color={colors.text} />
                     </TouchableOpacity>
                   ) : null}
                   {filteredSkills.length === 0 && skillSearch.trim().length > 0 && skillSearch.trim().length < 2 ? (
-                    <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>Keep typing to search the catalogue.</Text>
+                    <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>{t('workProfile.keepTyping')}</Text>
                   ) : null}
                 </View>
               )}
 
               {skills.length > 0 ? (
                 <View style={styles.selectedBlock}>
-                  <Text style={[styles.selectedLabel, { color: colors.textSecondary }]}>Selected</Text>
+                  <Text style={[styles.selectedLabel, { color: colors.textSecondary }]}>{t('workProfile.selected')}</Text>
                   <View style={styles.skillWrap}>
                     {skills.map(skill => (
                       <TouchableOpacity key={skill} style={[styles.skillChip, { borderColor: colors.border, backgroundColor: isDarkMode ? '#222' : '#F4F4F4' }]} onPress={() => toggleSkill(skill)}>
@@ -181,16 +183,16 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
                   </View>
                 </View>
               ) : (
-                <Text style={[styles.emptyHint, { color: colors.textSecondary, marginBottom: 12 }]}>No skills yet — search above or add your own.</Text>
+                <Text style={[styles.emptyHint, { color: colors.textSecondary, marginBottom: 12 }]}>{t('workProfile.noSkills')}</Text>
               )}
 
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Or type your own</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>{t('workProfile.customSkill')}</Text>
               <View style={styles.customRow}>
                 <TextInput
                   style={[styles.customInput, { color: colors.text, borderColor: colors.border, backgroundColor: colors.card }]}
                   value={customSkill}
                   onChangeText={setCustomSkill}
-                  placeholder="Custom skill name"
+                  placeholder={t('workProfile.customSkillPlaceholder')}
                   placeholderTextColor={colors.placeholder}
                   onSubmitEditing={addCustomSkill}
                 />
@@ -206,7 +208,7 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
           ))}
 
           <TouchableOpacity style={[styles.saveBtn, outlineBtn]} onPress={save} disabled={loading}>
-            <Text style={[styles.saveText, { color: colors.text }]}>{loading ? 'Saving...' : 'Save Changes'}</Text>
+            <Text style={[styles.saveText, { color: colors.text }]}>{loading ? t('workProfile.saving') : t('workProfile.saveChanges')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

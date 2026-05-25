@@ -28,7 +28,8 @@ export const SOCKET_URL = API_ORIGIN;
 
 export const getMediaUrl = (value) => {
   if (!value || typeof value !== 'string') return null;
-  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:') || value.startsWith('file:')) {
+  if (value.startsWith('file:')) return null;
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:')) {
     return value;
   }
   return `${API_ORIGIN}${value.startsWith('/') ? '' : '/'}${value}`;

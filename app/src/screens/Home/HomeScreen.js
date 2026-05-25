@@ -8,7 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getMediaUrl } from '../../services/api';
+import { translateService } from '../../i18n/translate';
 
 const { width } = Dimensions.get('window');
 
@@ -38,7 +40,7 @@ const LEARN_CARDS = [
     title: 'Receive competitive\noffers',
     desc: 'Expert providers will bid for your request',
     image: require('../../../assets/onboarding/learn_step2.png'),
-    colors: ['#2563EB', '#3B82F6']
+    colors: ['#2563EB', '#2563EB']
   },
   {
     id: '3',
@@ -62,6 +64,7 @@ const HomeScreen = ({ navigation }) => {
   const { providers, walletBalance, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -97,9 +100,9 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const firstName = user?.fullName?.split(' ')[0] || 'there';
+  const firstName = user?.fullName?.split(' ')[0] || t('common.user');
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greeting = hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
 
   // Real data counts
   const activeTaskCount = jobs?.filter(j => j.status === 'OPEN' || j.status === 'IN_PROGRESS').length || 0;
@@ -128,6 +131,15 @@ const HomeScreen = ({ navigation }) => {
   const tasksInCurrentLevel = completedTaskCount - currentThreshold;
   const tasksNeededForNextLevel = nextThreshold - currentThreshold;
   const nextRewardCoins = Math.min(currentLevel, 200);
+  const localizedLearnCards = LEARN_CARDS.map((card) => {
+    const copy = {
+      '1': [t('home.learn.step1'), t('home.clientLearn.bookTitle'), t('home.clientLearn.bookDesc')],
+      '2': [t('home.learn.step2'), t('home.clientLearn.agreeTitle'), t('home.clientLearn.agreeDesc')],
+      '3': [t('home.learn.step3'), t('home.clientLearn.payTitle'), t('home.clientLearn.payDesc')],
+      '4': [t('home.learn.tips'), t('home.clientLearn.releaseTitle'), t('home.clientLearn.releaseDesc')],
+    }[card.id];
+    return { ...card, step: copy[0], title: copy[1], desc: copy[2] };
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -148,7 +160,7 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.nameText}>{firstName}</Text>
             <View style={styles.locationRow}>
               <MaterialCommunityIcons name="map-marker" size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.locationText}>Douala, Cameroon</Text>
+              <Text style={styles.locationText}>{t('home.locationDefault')}</Text>
               <MaterialCommunityIcons name="chevron-down" size={16} color="rgba(255,255,255,0.8)" />
             </View>
           </View>
@@ -175,7 +187,7 @@ const HomeScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="magnify" size={22} color={isDarkMode ? '#94A3B8' : '#64748B'} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search for professionals or services..."
+              placeholder={t('home.searchProfessionals')}
               placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
               value={search}
               onChangeText={setSearch}
@@ -214,15 +226,15 @@ const HomeScreen = ({ navigation }) => {
               <View style={styles.walletIconWrap}>
                 <MaterialCommunityIcons name="wallet" size={20} color="#FFF" />
               </View>
-              <Text style={styles.walletLabel}>WALLET BALANCE</Text>
+              <Text style={styles.walletLabel}>{t('home.walletBalance')}</Text>
             </View>
-            <Text style={styles.walletAmount} numberOfLines={1}>{(walletBalance || 0).toLocaleString()} Coins 🪙</Text>
+            <Text style={styles.walletAmount} numberOfLines={1}>{(walletBalance || 0).toLocaleString()} {t('payments.coins')}</Text>
             
             <TouchableOpacity
               style={styles.topUpBtn}
               onPress={() => navigation.navigate('TopUp')}
             >
-              <Text style={styles.topUpText}>Top up</Text>
+              <Text style={styles.topUpText}>{t('home.topUp')}</Text>
               <MaterialCommunityIcons name="plus" size={14} color="#0D9488" />
             </TouchableOpacity>
           </View>
@@ -231,9 +243,9 @@ const HomeScreen = ({ navigation }) => {
 
           {/* Right Column: Transactions */}
           <View style={styles.walletRightCol}>
-            <Text style={styles.walletLabel}>TRANSACTIONS</Text>
+            <Text style={styles.walletLabel}>{t('payments.transactions').toUpperCase()}</Text>
             <Text style={styles.walletTxCount} numberOfLines={1}>{txCount}</Text>
-            <Text style={styles.walletSub}>This Month</Text>
+            <Text style={styles.walletSub}>{t('home.thisMonth')}</Text>
           </View>
         </TouchableOpacity>
 
@@ -244,9 +256,9 @@ const HomeScreen = ({ navigation }) => {
           style={styles.progressCard}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.progressTitle}>You're doing great! 🔥</Text>
-            <Text style={styles.progressCount}>{completedTaskCount} Tasks Completed</Text>
-            <Text style={styles.progressSub}>{Math.max(nextThreshold - completedTaskCount, 0)} more tasks to level up</Text>
+            <Text style={styles.progressTitle}>{t('home.doingGreat')} 🔥</Text>
+            <Text style={styles.progressCount}>{t('home.tasksCompleted', { count: completedTaskCount })}</Text>
+            <Text style={styles.progressSub}>{t('home.tasksToLevel', { count: Math.max(nextThreshold - completedTaskCount, 0) })}</Text>
             <View style={styles.progressBar}>
               {[1,2,3,4,5].map((i) => {
                 const stepValue = (tasksNeededForNextLevel > 0 ? (tasksInCurrentLevel / tasksNeededForNextLevel) : 1) * 5;
@@ -258,12 +270,12 @@ const HomeScreen = ({ navigation }) => {
           </View>
           <View style={styles.progressRight}>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>Level {currentLevel} ↑</Text>
+              <Text style={styles.levelText}>{t('home.level', { level: currentLevel })}</Text>
             </View>
-            <Text style={styles.rewardLabel}>Next reward</Text>
+            <Text style={styles.rewardLabel}>{t('home.nextReward')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <MaterialCommunityIcons name="star-circle" size={16} color="#FBBF24" />
-              <Text style={styles.rewardAmount}>{nextRewardCoins} Coins</Text>
+              <Text style={styles.rewardAmount}>{nextRewardCoins} {t('payments.coins')}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -275,10 +287,10 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.85}
         >
           <View style={{ flex: 1 }}>
-            <Text style={[styles.ctaTitle, { color: colors.text }]}>What do you need done?</Text>
-            <Text style={[styles.ctaSub, { color: colors.textSecondary }]}>Post a task and get offers within minutes</Text>
+            <Text style={[styles.ctaTitle, { color: colors.text }]}>{t('home.whatNeedDone')}</Text>
+            <Text style={[styles.ctaSub, { color: colors.textSecondary }]}>{t('home.postTaskOffers')}</Text>
             <LinearGradient colors={['#0D9488', '#14B8A6']} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.ctaBtnText}>Post a Task</Text>
+              <Text style={styles.ctaBtnText}>{t('home.postTask')}</Text>
               <MaterialCommunityIcons name="plus" size={16} color="#FFF" />
             </LinearGradient>
           </View>
@@ -291,9 +303,9 @@ const HomeScreen = ({ navigation }) => {
 
         {/* ═══ 4.5. LEARN FIXAM CAROUSEL ═══ */}
         <View style={styles.learnHeader}>
-          <Text style={[styles.learnTitle, { color: colors.text }]}>Learn Fixam</Text>
+          <Text style={[styles.learnTitle, { color: colors.text }]}>{t('home.learnFixam')}</Text>
           <TouchableOpacity>
-            <Text style={styles.seeAllText}>See all</Text>
+            <Text style={styles.seeAllText}>{t('home.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -307,7 +319,7 @@ const HomeScreen = ({ navigation }) => {
           scrollEventThrottle={16}
           contentContainerStyle={styles.learnScroll}
         >
-          {LEARN_CARDS.map((card) => (
+          {localizedLearnCards.map((card) => (
             <LinearGradient
               key={card.id}
               colors={card.colors}
@@ -328,7 +340,7 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Pagination Dots */}
         <View style={styles.dotsRow}>
-          {LEARN_CARDS.map((_, index) => (
+          {localizedLearnCards.map((_, index) => (
             <View
               key={index}
               style={[
@@ -350,8 +362,8 @@ const HomeScreen = ({ navigation }) => {
                 </View>
               )}
             </View>
-            <Text style={[styles.quickLabel, { color: colors.text }]}>My Tasks</Text>
-            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{activeTaskCount} Active</Text>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>{t('jobs.myTasks')}</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{t('home.activeCount', { count: activeTaskCount })}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('Messages')}>
@@ -363,32 +375,32 @@ const HomeScreen = ({ navigation }) => {
                 </View>
               )}
             </View>
-            <Text style={[styles.quickLabel, { color: colors.text }]}>Messages</Text>
-            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{unreadCount} Unread</Text>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>{t('tabs.messages')}</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{t('home.unreadCount', { count: unreadCount })}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('FavoriteProviders')}>
             <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#422006' : '#FFF7ED' }]}>
               <MaterialCommunityIcons name="star" size={24} color="#F59E0B" />
             </View>
-            <Text style={[styles.quickLabel, { color: colors.text }]}>Favorites</Text>
-            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{savedCount} Saved</Text>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>{t('home.favorites')}</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{t('home.savedCount', { count: savedCount })}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.quickItem} onPress={() => navigation.navigate('ProviderList', { verifiedOnly: true })}>
             <View style={[styles.quickIcon, { backgroundColor: isDarkMode ? '#052E16' : '#ECFDF5' }]}>
               <MaterialCommunityIcons name="check-decagram" size={24} color="#22C55E" />
             </View>
-            <Text style={[styles.quickLabel, { color: colors.text }]}>Verified Pros</Text>
-            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>Top Rated</Text>
+            <Text style={[styles.quickLabel, { color: colors.text }]}>{t('home.verifiedPros')}</Text>
+            <Text style={[styles.quickSub, { color: colors.textSecondary }]}>{t('home.topRated')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ═══ 6. POPULAR CATEGORIES ═══ */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Popular Categories</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.popularCategories')}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('ProviderList')}>
-            <Text style={styles.viewAll}>View all</Text>
+            <Text style={styles.viewAll}>{t('home.viewAll')}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
@@ -399,7 +411,7 @@ const HomeScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('ProviderList', { category: cat.name })}
             >
               <MaterialCommunityIcons name={cat.icon} size={16} color={cat.color} />
-              <Text style={[styles.catText, { color: colors.text }]}>{cat.name}</Text>
+              <Text style={[styles.catText, { color: colors.text }]}>{translateService(cat.name)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -408,9 +420,9 @@ const HomeScreen = ({ navigation }) => {
         {providers.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended Professionals</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.recommendedProfessionals')}</Text>
               <TouchableOpacity onPress={() => navigation.navigate('ProviderList')}>
-                <Text style={styles.viewAll}>View all</Text>
+                <Text style={styles.viewAll}>{t('home.viewAll')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.proScroll}>
@@ -432,8 +444,8 @@ const HomeScreen = ({ navigation }) => {
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.proName, { color: colors.text }]} numberOfLines={1}>{p.user?.fullName || 'Professional'}</Text>
-                  <Text style={[styles.proSkill, { color: colors.textSecondary }]} numberOfLines={1}>{p.skills?.[0] || 'Expert'}</Text>
+                  <Text style={[styles.proName, { color: colors.text }]} numberOfLines={1}>{p.user?.fullName || t('common.provider')}</Text>
+                  <Text style={[styles.proSkill, { color: colors.textSecondary }]} numberOfLines={1}>{p.skills?.[0] ? translateService(p.skills[0]) : t('home.expert')}</Text>
                   <View style={styles.proRatingRow}>
                     <MaterialCommunityIcons name="star" size={14} color="#F59E0B" />
                     <Text style={[styles.proRating, { color: colors.text }]}>{p.rating || '0.0'}</Text>
@@ -444,7 +456,7 @@ const HomeScreen = ({ navigation }) => {
                     style={[styles.viewProfileBtn, { borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
                     onPress={() => navigation.navigate('ProviderProfile', { provider: p })}
                   >
-                    <Text style={styles.viewProfileText}>View Profile</Text>
+                    <Text style={styles.viewProfileText}>{t('profile.viewProfile')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
@@ -460,11 +472,11 @@ const HomeScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="gift" size={36} color="#0D9488" />
           <View style={{ flex: 1, marginLeft: 14 }}>
-            <Text style={[styles.inviteTitle, { color: colors.text }]}>Invite & Earn 🎉</Text>
-            <Text style={[styles.inviteSub, { color: colors.textSecondary }]}>Invite a friend and earn 1 coin</Text>
+            <Text style={[styles.inviteTitle, { color: colors.text }]}>{t('drawer.inviteTitle')}</Text>
+            <Text style={[styles.inviteSub, { color: colors.textSecondary }]}>{t('payments.inviteEarn')}</Text>
           </View>
           <LinearGradient colors={['#0D9488', '#14B8A6']} style={styles.inviteBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.inviteBtnText}>Invite Now</Text>
+            <Text style={styles.inviteBtnText}>{t('home.inviteNow')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 

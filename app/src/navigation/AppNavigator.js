@@ -1,26 +1,34 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import TabNavigator from './TabNavigator';
 import ProviderTabNavigator from './ProviderTabNavigator';
-import { useTheme } from '../context/ThemeContext';
-import { View, ActivityIndicator } from 'react-native';
+import AnimatedSplashScreen from '../screens/Auth/AnimatedSplashScreen';
+import { useNavigationStateContext } from '../context/NavigationStateContext';
+
+const getActiveRouteName = (state) => {
+  if (!state?.routes?.length) return null;
+  const route = state.routes[state.index || 0];
+  if (route.state) return getActiveRouteName(route.state);
+  return route.name;
+};
 
 const AppNavigator = () => {
   const { user, isLoading, isRestoring } = useAuth();
-  const { colors } = useTheme();
+  const { setCurrentRouteName } = useNavigationStateContext();
+  const navigationRef = useRef(null);
 
   if (isLoading || isRestoring) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.accent} />
-      </View>
-    );
+    return <AnimatedSplashScreen onFinish={() => {}} navigation={{ replace: () => {} }} />;
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => setCurrentRouteName(navigationRef.current?.getCurrentRoute?.()?.name || null)}
+      onStateChange={(state) => setCurrentRouteName(getActiveRouteName(state))}
+    >
       {!user ? (
         <AuthNavigator />
       ) : (user.role?.toUpperCase() === 'PROVIDER' && user.providerProfile?.profileMode !== 'PERSONAL') ? (

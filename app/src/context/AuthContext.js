@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { getMediaUrl, setAuthToken } from '../services/api';
+import { requestStartupPermissions } from '../services/permissions';
 
 const AuthContext = createContext();
 
@@ -80,6 +81,9 @@ export const AuthProvider = ({ children }) => {
       storeToken('authToken', token);
       storeToken('authUser', user);
       setAuthToken(token);
+      requestStartupPermissions().catch((error) => {
+        console.log('Startup permissions skipped:', error.message);
+      });
     } else if (!token && !user && !isRestoring) {
       storeToken('authToken', null);
       storeToken('authUser', null);

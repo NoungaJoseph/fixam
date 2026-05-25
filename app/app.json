@@ -38,8 +38,11 @@
       ],
       "permissions": [
         "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.NOTIFICATIONS",
         "android.permission.POST_NOTIFICATIONS",
@@ -56,6 +59,13 @@
         {
           "photosPermission": "The app accesses your photos to let you share them with your provider/client and for profile verification.",
           "cameraPermission": "The app accesses your camera to take profile photos and document proofs."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#14B8A6"
         }
       ],
       "@react-native-community/datetimepicker",

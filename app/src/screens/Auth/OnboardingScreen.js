@@ -72,7 +72,7 @@ const OnboardingScreen = ({ navigation }) => {
               />
               <View style={styles.badgeTopRight}>
                 <MaterialIcons name="workspace-premium" size={18} color="#0D9488" />
-                <Text style={styles.badgeText}>Verified Pros</Text>
+                <Text style={styles.badgeText}>{t('onboarding.verifiedPros')}</Text>
               </View>
             </View>
           )}
@@ -85,30 +85,30 @@ const OnboardingScreen = ({ navigation }) => {
               />
               <View style={styles.badgeTopLeft}>
                 <MaterialIcons name="verified" size={18} color="#0D9488" />
-                <Text style={styles.badgeText}>Trusted Pro</Text>
+                <Text style={styles.badgeText}>{t('onboarding.trustedPro')}</Text>
               </View>
               <View style={styles.badgeBottomRight}>
                 <View style={styles.starCircle}>
                   <MaterialIcons name="star" size={20} color="#0D9488" />
                 </View>
                 <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.ratingTitle}>4.9 Rating</Text>
-                  <Text style={styles.ratingSub}>Verified Expert</Text>
+                  <Text style={styles.ratingTitle}>{t('onboarding.rating')}</Text>
+                  <Text style={styles.ratingSub}>{t('onboarding.verifiedExpert')}</Text>
                 </View>
               </View>
             </View>
           )}
 
           {index === 2 && (
-            <View style={styles.slide3Visual}>
+            <View style={styles.imageWrap}>
               <Image
-                source={require('../../../assets/onboarding/direct_local_service.png')}
+                source={require('../../../assets/gettingstarted/agree.png')}
                 style={styles.directServiceImage}
                 resizeMode="cover"
               />
               <View style={styles.connectionCard}>
                 <View style={styles.premiumMark}><Text style={styles.premiumMarkText}>FIXAM</Text></View>
-                <Text style={styles.connectionTitle}>Direct local service</Text>
+                <Text style={styles.connectionTitle}>{t('onboarding.directService')}</Text>
                 <View style={styles.flowRow}>
                   <View style={styles.flowStep}><Text style={styles.flowText}>1</Text></View>
                   <View style={styles.flowLine} />
@@ -118,14 +118,14 @@ const OnboardingScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <View style={styles.s3CardsRow}>
-                <View style={styles.s3DarkCard}>
-                  <Text style={styles.premiumBadge}>PREMIUM</Text>
-                  <Text style={styles.s3DarkCardText}>Verified{'\n'}profiles</Text>
+              <View style={styles.slide3OverlayRow}>
+                <View style={styles.slide3MiniCard}>
+                  <MaterialIcons name="verified-user" size={16} color="#0D9488" />
+                  <Text style={styles.slide3MiniText}>{t('onboarding.verifiedProfiles')}</Text>
                 </View>
-                <View style={styles.s3LightCard}>
-                  <Text style={styles.cashBadge}>SECURE</Text>
-                  <Text style={styles.s3LightCardText}>Cash on{'\n'}delivery</Text>
+                <View style={styles.slide3MiniCard}>
+                  <MaterialIcons name="payments" size={16} color="#0D9488" />
+                  <Text style={styles.slide3MiniText}>{t('onboarding.cashOnDelivery')}</Text>
                 </View>
               </View>
             </View>
@@ -241,11 +241,12 @@ const styles = StyleSheet.create({
   ratingSub: { fontSize: 10, color: '#475569', marginTop: 2 },
 
   slide3Visual: { width: width - 60, height: 340, justifyContent: 'center' },
-  directServiceImage: { width: '100%', height: 150, borderRadius: 24, marginBottom: 12 },
+  directServiceImage: { width: '100%', height: '100%', borderRadius: 24 },
   connectionCard: {
-    backgroundColor: '#FFF', borderRadius: 16, paddingVertical: 22, alignItems: 'center',
+    position: 'absolute', left: 18, right: 18, bottom: 22,
+    backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 16, paddingVertical: 18, alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
-    marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
+    borderWidth: 1, borderColor: '#F1F5F9',
   },
   premiumMark: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: '#0D1B2A', marginBottom: 10 },
   premiumMarkText: { color: '#FFF', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
@@ -254,6 +255,9 @@ const styles = StyleSheet.create({
   flowStep: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#0D9488', justifyContent: 'center', alignItems: 'center' },
   flowText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
   flowLine: { width: 34, height: 2, backgroundColor: '#BDD6FF' },
+  slide3OverlayRow: { position: 'absolute', top: 18, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  slide3MiniCard: { flex: 1, minHeight: 44, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 12, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  slide3MiniText: { flex: 1, color: '#0F172A', fontSize: 11, fontWeight: '800' },
   s3CardsRow: { flexDirection: 'row', gap: 16 },
   s3DarkCard: { flex: 1, backgroundColor: '#0F172A', borderRadius: 16, padding: 18, gap: 10 },
   s3DarkCardText: { color: '#FFF', fontSize: 15, fontWeight: '600' },

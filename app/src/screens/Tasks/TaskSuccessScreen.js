@@ -4,9 +4,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const TaskSuccessScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <View 
@@ -17,18 +19,18 @@ const TaskSuccessScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="check-circle" size={90} color={colors.success} />
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>Task Posted Successfully!</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('jobs.taskPosted')}</Text>
         
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Your task has been sent to our admin team for verification. Once approved, professionals in your area will be able to see and quote on your task.
+          {t('jobs.taskPostedSubtitle')}
         </Text>
 
         <View style={[styles.infoBox, { backgroundColor: colors.accentSoft }]}>
           <MaterialCommunityIcons name="clock-outline" size={16} color={colors.accent} />
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[styles.infoTitle, { color: colors.accent }]}>What happens next?</Text>
+            <Text style={[styles.infoTitle, { color: colors.accent }]}>{t('jobs.whatHappensNext')}</Text>
             <Text style={[styles.infoText, { color: colors.accent }]}>
-              You'll receive a notification once an admin approves your task.
+              {t('jobs.taskApprovalNotification')}
             </Text>
           </View>
         </View>
@@ -39,7 +41,7 @@ const TaskSuccessScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('MyJobs')}
           >
             <MaterialCommunityIcons name="eye-outline" size={18} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBtnText}>View Job Status</Text>
+            <Text style={styles.primaryBtnText}>{t('jobs.viewJobStatus')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -47,7 +49,7 @@ const TaskSuccessScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('PostTask')}
           >
             <MaterialCommunityIcons name="plus" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Post Another Task</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>{t('jobs.postAnotherTask')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -55,7 +57,7 @@ const TaskSuccessScreen = ({ navigation }) => {
             onPress={() => navigation.getParent()?.navigate('MainTabs', { screen: 'Home' })}
           >
             <MaterialCommunityIcons name="home-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>Return Home</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.primary }]}>{t('common.returnHome')}</Text>
           </TouchableOpacity>
         </View>
       </View>

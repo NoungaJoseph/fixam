@@ -7,6 +7,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
 const PAYMENT_METHODS = [
@@ -17,16 +19,30 @@ const PAYMENT_METHODS = [
 const CoinPaymentFormScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
+  const { on } = useSocket();
+  const { t } = useLanguage();
   const { package: pkg } = route.params || {};
 
   const [paymentId, setPaymentId] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('MTN');
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || '',
-    phone: user?.phone || '',
-    email: user?.email || ''
+    phone: user?.phone || ''
   });
   const [loading, setLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('IDLE');
+
+  useEffect(() => {
+    const off = on('payment:update', (payment) => {
+      if (payment?.status === 'SUCCESS') {
+        setPaymentStatus('SUCCESS');
+        navigation.replace('CoinPaymentSuccess', { transaction: payment.transaction || payment, package: pkg, message: t('payments.paymentConfirmed') });
+      } else if (payment?.status === 'FAILED') {
+        setPaymentStatus('FAILED');
+        Alert.alert(t('payments.failed'), payment.failureReason || t('payments.paymentNotCompleted'));
+      }
+    });
+    return () => off?.();
+  }, [navigation, on, pkg]);
 
   useEffect(() => {
     generatePaymentId();
@@ -41,41 +57,51 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
 
   const handleSubmitPayment = async () => {
     // Validate form
-    if (!formData.fullName.trim()) {
-      Alert.alert('Error', 'Please enter your full name');
-      return;
-    }
     if (!formData.phone.trim()) {
-      Alert.alert('Error', 'Please enter your phone number');
-      return;
-    }
-    if (!formData.email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
+      Alert.alert(t('common.error'), t('payments.phoneRequiredShort'));
       return;
     }
     try {
       setLoading(true);
 
-      const response = await api.post('/wallet/mobile-money/initiate', {
-        coins: pkg.coins || 0,
-        bonus: pkg.bonus || 0,
-        price: pkg.price,
-        paymentId,
-        provider: selectedMethod,
-        fullName: formData.fullName,
+      const response = await api.post('/payments/purchase-coins', {
+        amount: pkg.amount || pkg.price,
         phone: formData.phone,
-        email: formData.email,
+        provider: selectedMethod,
+        coins: pkg.coins || 0,
       });
 
-      // Navigate to success screen
-      navigation.replace('CoinPaymentSuccess', {
-        transaction: response.data.data,
-        package: pkg,
-        message: response.data.message,
-      });
+      setPaymentStatus('PROCESSING');
+      const paymentIdFromApi = response.data.data?.id;
+      Alert.alert(t('payments.promptSent'), response.data.message || t('payments.confirmOnPhone'));
+      if (paymentIdFromApi) {
+        const poll = async (attempt = 0) => {
+          if (attempt > 24) return;
+          try {
+            const statusRes = await api.get(`/payments/${paymentIdFromApi}/status`);
+            const payment = statusRes.data.data;
+            if (payment.status === 'SUCCESS') {
+              setPaymentStatus('SUCCESS');
+              navigation.replace('CoinPaymentSuccess', {
+                transaction: payment.transaction || payment,
+                package: pkg,
+                message: t('payments.paymentConfirmed'),
+              });
+              return;
+            }
+            if (payment.status === 'FAILED') {
+              setPaymentStatus('FAILED');
+              Alert.alert(t('payments.failed'), payment.failureReason || t('payments.paymentNotCompleted'));
+              return;
+            }
+          } catch (_) {}
+          setTimeout(() => poll(attempt + 1), 5000);
+        };
+        poll();
+      }
     } catch (error) {
       console.log('Payment submission error:', error);
-      Alert.alert('Error', 'Failed to submit payment request. Please try again.');
+      Alert.alert(t('common.error'), t('payments.submitPaymentFailed'));
     } finally {
       setLoading(false);
     }
@@ -94,7 +120,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialCommunityIcons name="chevron-left" size={28} color={colors.accent} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Payment Form</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('payments.formTitle')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -103,7 +129,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
           <View style={[styles.packageCard, { borderBottomColor: colors.border }]}>
             <View style={styles.packageHeader}>
               <View>
-                <Text style={[styles.packageCoins, { color: colors.text }]}>{pkg.coins} Coins</Text>
+                <Text style={[styles.packageCoins, { color: colors.text }]}>{pkg.coins} {t('payments.coins')}</Text>
                 <Text style={[styles.packageLabel, { color: colors.textSecondary }]}>{pkg.label}</Text>
               </View>
               <View style={[styles.priceBadge, { backgroundColor: colors.accentSoft }]}>
@@ -113,14 +139,14 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             {pkg.bonus > 0 && (
               <View style={styles.bonusSection}>
                 <MaterialCommunityIcons name="gift" size={20} color="#10B981" />
-                <Text style={styles.bonusText}>+{pkg.bonus} Free Bonus Coins!</Text>
+                <Text style={styles.bonusText}>{t('payments.freeBonus', { count: pkg.bonus })}</Text>
               </View>
             )}
           </View>
 
           {/* Payment ID Section */}
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>TRANSACTION ID</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('payments.transactionId')}</Text>
             <View style={[styles.paymentIdBox, { borderColor: colors.border }]}>
               <Text style={[styles.paymentId, { color: colors.accent }]}>{paymentId}</Text>
               <TouchableOpacity>
@@ -131,21 +157,10 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
 
           {/* User Info Section */}
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>YOUR INFORMATION</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('payments.yourInformation')}</Text>
 
             <View style={styles.formGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
-              <TextInput
-                style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-                placeholder="Enter your full name"
-                placeholderTextColor={colors.placeholder}
-                value={formData.fullName}
-                onChangeText={(text) => setFormData({ ...formData, fullName: text })}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Phone Number</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('payments.phoneNumber')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, borderColor: colors.border }]}
                 placeholder="+237 6XXXXXXXX"
@@ -155,23 +170,11 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
                 keyboardType="phone-pad"
               />
             </View>
-
-            <View style={styles.formGroup}>
-              <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
-              <TextInput
-                style={[styles.input, { color: colors.text, borderColor: colors.border }]}
-                placeholder="your.email@example.com"
-                placeholderTextColor={colors.placeholder}
-                value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
-                keyboardType="email-address"
-              />
-            </View>
           </View>
 
           {/* Payment Method */}
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PAYMENT METHOD</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('payments.paymentMethod')}</Text>
             <View style={styles.methodRow}>
               {PAYMENT_METHODS.map((method) => {
                 const active = selectedMethod === method.id;
@@ -202,29 +205,37 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
             <View style={styles.instructionHeader}>
               <MaterialCommunityIcons name="information" size={24} color={colors.accent} />
-              <Text style={[styles.instructionTitle, { color: colors.accent }]}>How payment works</Text>
+              <Text style={[styles.instructionTitle, { color: colors.accent }]}>{t('payments.howPaymentWorks')}</Text>
             </View>
             <Text style={[styles.instructionText, { color: colors.accent }]}>
-              Enter your mobile money number and continue. You will receive a confirmation prompt on your phone for {pkg.price}.
+              {t('payments.paymentInstructions', { price: pkg.price })}
             </Text>
+            {paymentStatus !== 'IDLE' && (
+              <View style={[styles.statusBox, { backgroundColor: colors.accentSoft }]}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={[styles.statusText, { color: colors.accent }]}>
+                  {paymentStatus === 'PROCESSING' ? t('payments.waiting') : paymentStatus}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Coin Calculation */}
           <View style={[styles.sectionCard, { borderBottomColor: colors.border }]}>
             <View style={styles.calculationRow}>
-              <Text style={[styles.calcLabel, { color: colors.textSecondary }]}>Base Coins</Text>
-              <Text style={[styles.calcValue, { color: colors.text }]}>{pkg.coins} Coins</Text>
+              <Text style={[styles.calcLabel, { color: colors.textSecondary }]}>{t('payments.baseCoins')}</Text>
+              <Text style={[styles.calcValue, { color: colors.text }]}>{pkg.coins} {t('payments.coins')}</Text>
             </View>
             {pkg.bonus > 0 && (
               <View style={styles.calculationRow}>
-                <Text style={[styles.calcLabel, { color: '#10B981' }]}>Bonus Coins</Text>
-                <Text style={[styles.calcValue, { color: '#10B981' }]}>+{pkg.bonus} Coins</Text>
+                <Text style={[styles.calcLabel, { color: '#10B981' }]}>{t('payments.bonusCoins')}</Text>
+                <Text style={[styles.calcValue, { color: '#10B981' }]}>+{pkg.bonus} {t('payments.coins')}</Text>
               </View>
             )}
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.calculationRow}>
-              <Text style={[styles.totalLabel, { color: colors.text }]}>Total Coins</Text>
-              <Text style={[styles.totalValue, { color: colors.accent }]}>{pkg.coins + (pkg.bonus || 0)} Coins</Text>
+              <Text style={[styles.totalLabel, { color: colors.text }]}>{t('payments.totalCoins')}</Text>
+              <Text style={[styles.totalValue, { color: colors.accent }]}>{pkg.coins + (pkg.bonus || 0)} {t('payments.coins')}</Text>
             </View>
           </View>
 
@@ -246,7 +257,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             ) : (
               <>
                 <MaterialCommunityIcons name="check-circle" size={20} color="#FFF" />
-                <Text style={styles.submitText}>Pay with {selectedMethod === 'MTN' ? 'MTN MoMo' : 'Orange Money'}</Text>
+                <Text style={styles.submitText}>{t('payments.payWith', { price: pkg.price, method: selectedMethod === 'MTN' ? 'MTN MoMo' : 'Orange Money' })}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -395,6 +406,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'monospace'
+  },
+  statusBox: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '800'
   },
   methodRow: {
     gap: 12,

@@ -21,7 +21,7 @@ const ICON_CONFIG = {
 const NotificationsScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const [filter, setFilter] = useState('All');
-  const { t } = useLanguage();
+  const { t, currentLanguage } = useLanguage();
   const { notifications, markNotificationAsRead, archiveNotification } = useAppContext();
   const { user } = useAuth();
 
@@ -31,10 +31,10 @@ const NotificationsScreen = ({ navigation }) => {
     const d = new Date(date);
     const now = new Date();
     const diff = Math.floor((now - d) / 1000 / 60);
-    if (diff < 1) return 'Just now';
-    if (diff < 60) return `${diff}m ago`;
-    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (diff < 1) return t('notifications.justNow');
+    if (diff < 60) return t('notifications.minutesAgo', { count: diff });
+    if (diff < 1440) return t('notifications.hoursAgo', { count: Math.floor(diff / 60) });
+    return d.toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' });
   };
 
   const handlePress = async (notif) => {
@@ -58,13 +58,13 @@ const NotificationsScreen = ({ navigation }) => {
         }
       }
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Please try again.');
+      Alert.alert(t('common.error'), err.response?.data?.message || t('common.tryAgain'));
     }
   };
 
   const handleArchive = async (notif) => {
     try { await archiveNotification(notif.id); }
-    catch (err) { Alert.alert('Error', err.response?.data?.message || 'Please try again.'); }
+    catch (err) { Alert.alert(t('common.error'), err.response?.data?.message || t('common.tryAgain')); }
   };
 
   const filtered = notifications.filter(n => {
@@ -89,9 +89,9 @@ const NotificationsScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="arrow-left" size={20} color={colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 14 }}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('notifications.title')}</Text>
             {unreadCount > 0 && (
-              <Text style={[styles.headerSub, { color: colors.accent }]}>{unreadCount} unread</Text>
+              <Text style={[styles.headerSub, { color: colors.accent }]}>{t('notifications.unreadCount', { count: unreadCount })}</Text>
             )}
           </View>
           <View style={[styles.countBadge, { backgroundColor: colors.accent }]}>
@@ -109,7 +109,7 @@ const NotificationsScreen = ({ navigation }) => {
                 style={[styles.chip, { backgroundColor: active ? colors.accent : colors.card, borderColor: active ? colors.accent : colors.border }]}
                 onPress={() => setFilter(f)}
               >
-                <Text style={[styles.chipText, { color: active ? '#FFF' : colors.text }]}>{f}</Text>
+                <Text style={[styles.chipText, { color: active ? '#FFF' : colors.text }]}>{t(`notifications.filters.${f.toLowerCase()}`)}</Text>
               </TouchableOpacity>
             );
           })}
@@ -121,9 +121,9 @@ const NotificationsScreen = ({ navigation }) => {
               <View style={[styles.emptyCircle, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
                 <MaterialCommunityIcons name="bell-off-outline" size={56} color={colors.placeholder} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No notifications</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('notifications.emptyTitle')}</Text>
               <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
-                {filter === 'Unread' ? "You've read all your notifications!" : "We'll notify you when something important happens."}
+                {filter === 'Unread' ? t('notifications.emptyUnread') : t('notifications.emptySubtitle')}
               </Text>
             </View>
           ) : (

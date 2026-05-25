@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
   StatusBar, SafeAreaView, Switch, Alert, Platform, Image
@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { translateStatus } from '../../i18n/translate';
 
 const SettingsScreen = ({ navigation, route }) => {
   const { isDarkMode, colors, toggleTheme } = useTheme();
@@ -16,30 +17,17 @@ const SettingsScreen = ({ navigation, route }) => {
   const [location, setLocation] = useState(true);
   const isProviderMode = user?.providerProfile?.profileMode === 'WORK';
 
-  useEffect(() => {
-    if (user?.role?.toUpperCase() === 'PROVIDER' && user?.providerProfile?.verification !== 'VERIFIED') {
-      Alert.alert(
-        'Verification Required',
-        'Verify your account so clients can trust your profile.',
-        [
-          { text: 'Later', style: 'cancel' },
-          { text: 'Verify Now', onPress: () => navigation.navigate('Verification') },
-        ]
-      );
-    }
-  }, [navigation, user?.providerProfile?.verification, user?.role]);
-
   const handleLogout = () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => logout() },
+    Alert.alert(t('settings.logoutConfirmTitle'), t('settings.logoutConfirmBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.logout'), style: 'destructive', onPress: () => logout() },
     ]);
   };
 
   const verStatus = user?.providerProfile?.verification;
   const verColor = verStatus === 'VERIFIED' ? '#22C55E' : verStatus === 'PENDING' ? '#F59E0B' : '#EF4444';
   const verBg = verStatus === 'VERIFIED' ? '#F0FDF4' : verStatus === 'PENDING' ? '#FFFBEB' : '#FEF2F2';
-  const verLabel = verStatus || 'UNVERIFIED';
+  const verLabel = translateStatus(verStatus || 'UNVERIFIED');
 
   // Icon config: [iconName, bgColor]
   const ICON_COLORS = {
@@ -106,13 +94,13 @@ const SettingsScreen = ({ navigation, route }) => {
           {/* Page Title */}
           <View style={styles.pageHeader}>
             <View style={styles.headerTopRow}>
-              <Text style={[styles.pageTitle, { color: colors.text }]}>Settings</Text>
+              <Text style={[styles.pageTitle, { color: colors.text }]}>{t('settings.title')}</Text>
               <TouchableOpacity style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => navigation.navigate('Notifications')}>
                 <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
-            <Text style={[styles.pageSub, { color: colors.textSecondary }]}>Manage your account and preferences</Text>
+            <Text style={[styles.pageSub, { color: colors.textSecondary }]}>{t('settings.subtitle')}</Text>
           </View>
 
           {/* Hero Profile Card */}
@@ -145,8 +133,8 @@ const SettingsScreen = ({ navigation, route }) => {
                   </View>
                 </View>
                 <View>
-                  <Text style={styles.heroName}>{user?.fullName || 'Your Name'}</Text>
-                  <Text style={styles.heroRole}>{isProviderMode ? 'Provider Account' : 'Client Account'}</Text>
+                  <Text style={styles.heroName}>{user?.fullName || t('settings.yourName')}</Text>
+                  <Text style={styles.heroRole}>{isProviderMode ? t('settings.providerAccount') : t('settings.clientAccount')}</Text>
                   <View style={[styles.verBadge, { backgroundColor: verBg }]}>
                     <MaterialCommunityIcons name="shield-check" size={12} color={verColor} />
                     <Text style={[styles.verText, { color: verColor }]}>{verLabel}</Text>
@@ -158,15 +146,15 @@ const SettingsScreen = ({ navigation, route }) => {
           </TouchableOpacity>
 
           {/* ACCOUNT */}
-          <SectionHeader icon="account-outline" label="ACCOUNT" />
+          <SectionHeader icon="account-outline" label={t('settings.account')} />
           <SectionCard>
-            <SettingItem icon="account-circle-outline" title="Profile" desc="View and edit your public profile" onPress={() => navigation.navigate('UserProfile')} />
-            <SettingItem icon="lock-outline" title="Change Password" desc="Update your security credentials" onPress={() => navigation.navigate('ChangePassword')} />
+            <SettingItem icon="account-circle-outline" title={t('settings.profile')} desc={t('settings.profileDesc')} onPress={() => navigation.navigate('UserProfile')} />
+            <SettingItem icon="lock-outline" title={t('settings.changePassword')} desc={t('settings.changePasswordDesc')} onPress={() => navigation.navigate('ChangePassword')} />
             {user?.role === 'PROVIDER' && (
               <SettingItem
                 icon="check-decagram-outline"
-                title="Verification"
-                desc="Verify your identity to build trust"
+                title={t('settings.verification')}
+                desc={t('settings.verificationDesc')}
                 onPress={() => navigation.navigate('Verification')}
                 right={
                   <View style={[styles.statusPill, { backgroundColor: verBg }]}>
@@ -178,13 +166,13 @@ const SettingsScreen = ({ navigation, route }) => {
           </SectionCard>
 
           {/* PREFERENCES */}
-          <SectionHeader icon="tune" label="PREFERENCES" />
+          <SectionHeader icon="tune" label={t('settings.preferences')} />
           <SectionCard>
-            <SettingItem icon="translate" title="Language" desc="English / French" onPress={() => navigation.navigate('LanguageSelection')} />
+            <SettingItem icon="translate" title={t('settings.language')} desc={t('settings.languageDesc')} onPress={() => navigation.navigate('LanguageSelection')} />
             <SettingItem
               icon="weather-night"
-              title="Dark Mode"
-              desc="Switch the app appearance"
+              title={t('settings.darkMode')}
+              desc={t('settings.darkModeDesc')}
               right={
                 <Switch
                   value={isDarkMode}
@@ -196,8 +184,8 @@ const SettingsScreen = ({ navigation, route }) => {
             />
             <SettingItem
               icon="map-marker-outline"
-              title="Location Services"
-              desc="For nearby task discovery"
+              title={t('settings.location')}
+              desc={t('settings.locationDesc')}
               right={
                 <Switch
                   value={location}
@@ -207,29 +195,29 @@ const SettingsScreen = ({ navigation, route }) => {
                 />
               }
             />
-             <SettingItem icon="shield-check-outline" title="Privacy & Security" desc="Manage your privacy and security" onPress={() => navigation.navigate('PrivacySecurity')} />
+             <SettingItem icon="shield-check-outline" title={t('settings.privacy')} desc={t('settings.privacyDesc')} onPress={() => navigation.navigate('PrivacySecurity')} />
           </SectionCard>
 
           {/* NOTIFICATIONS */}
-          <SectionHeader icon="bell-outline" label="NOTIFICATION PREFERENCES" />
+          <SectionHeader icon="bell-outline" label={t('settings.notifications')} />
           <SectionCard>
-            <SettingItem icon="bell-outline" title="Push Notifications" desc="Manage push notification settings" onPress={() => navigation.navigate('Notifications')} />
+            <SettingItem icon="bell-outline" title={t('settings.push')} desc={t('settings.pushDesc')} onPress={() => navigation.navigate('Notifications')} />
           </SectionCard>
 
           {/* SUPPORT */}
-          <SectionHeader icon="help-circle-outline" label="SUPPORT" />
+          <SectionHeader icon="help-circle-outline" label={t('settings.support')} />
           <SectionCard>
-            <SettingItem icon="help-circle-outline" title="Help Center" desc="Get help and support" onPress={() => navigation.navigate('HelpCenter')} />
-            <SettingItem icon="message-draw" title="Send Feedback" desc="Share your feedback with us" onPress={() => navigation.navigate('Feedback')} />
+            <SettingItem icon="help-circle-outline" title={t('settings.help')} desc={t('settings.helpDesc')} onPress={() => navigation.navigate('HelpCenter')} />
+            <SettingItem icon="message-draw" title={t('settings.feedback')} desc={t('settings.feedbackDesc')} onPress={() => navigation.navigate('Feedback')} />
           </SectionCard>
 
           {/* ACTIONS */}
-          <SectionHeader icon="power" label="ACTIONS" />
+          <SectionHeader icon="power" label={t('settings.actions')} />
           <SectionCard>
-            <SettingItem icon="logout" title="Log Out" desc="Sign out from your account" onPress={handleLogout} danger />
+            <SettingItem icon="logout" title={t('settings.logout')} desc={t('settings.logoutDesc')} onPress={handleLogout} danger />
           </SectionCard>
 
-          <Text style={[styles.version, { color: colors.placeholder }]}>Fixam v1.0.4 · Production</Text>
+          <Text style={[styles.version, { color: colors.placeholder }]}>{t('settings.version')}</Text>
           <View style={{ height: 100 }} />
         </ScrollView>
       </SafeAreaView>

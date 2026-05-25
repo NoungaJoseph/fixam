@@ -5,11 +5,9 @@ import AnimatedSplashScreen from '../screens/Auth/AnimatedSplashScreen';
 import LanguageSelectionScreen from '../screens/Auth/LanguageSelectionScreen';
 import RoleSelectionScreen from '../screens/Auth/RoleSelectionScreen';
 import OnboardingScreen from '../screens/Auth/OnboardingScreen';
-import PostRegistrationOnboardingScreen from '../screens/Auth/PostRegistrationOnboardingScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import OTPScreen from '../screens/Auth/OTPScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
-import ProviderSkillsScreen from '../screens/Auth/ProviderSkillsScreen';
 import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
 import TermsPolicyScreen from '../screens/Auth/TermsPolicyScreen';
 
@@ -26,14 +24,12 @@ const AuthNavigator = () => {
       <Stack.Screen name="Splash" component={AnimatedSplashScreen} />
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="PostRegistrationOnboarding" component={PostRegistrationOnboardingScreen} />
       <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="TermsPolicy" component={TermsPolicyScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ProviderSkills" component={ProviderSkillsScreen} />
     </Stack.Navigator>
   );
 };

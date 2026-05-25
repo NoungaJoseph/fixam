@@ -6,9 +6,14 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const RegisterScreen = ({ navigation, route }) => {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useLanguage();
+  const { loginDirect } = useAuth();
   const { role } = route.params || { role: 'client' };
   const [formData, setFormData] = useState({
     firstName: '',
@@ -22,46 +27,62 @@ const RegisterScreen = ({ navigation, route }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [agree, setAgree] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const setField = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
   
-  const handleRegister = () => {
+  const handleRegister = async () => {
     // Normalize phone: remove spaces and non-digits
     const normalizedPhone = formData.phone.replace(/\D/g, '');
     const userData = { ...formData, phone: normalizedPhone, fullName: `${formData.firstName} ${formData.lastName}`.trim() };
 
     if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      alert("First name and last name are required");
+      alert(t('validation.nameRequired'));
       return;
     }
     if (!formData.email.trim() || !/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
-      alert("A valid email address is required");
+      alert(t('validation.emailRequired'));
       return;
     }
     if (!normalizedPhone || normalizedPhone.length < 9) {
-      alert("A valid phone number is required");
+      alert(t('validation.phoneRequired'));
       return;
     }
     if (!formData.location.trim()) {
-      alert("Your location is required");
+      alert(t('validation.locationRequired'));
       return;
     }
     if (!formData.password || formData.password.length < 6) {
-      alert("Password must be at least 6 characters");
+      alert(t('validation.passwordLength'));
       return;
     }
     if (!agree) {
-      alert("Please agree to the terms and conditions");
+      alert(t('register.termsRequired'));
       return;
     }
     if (formData.password !== formData.repeatPassword) {
-      alert("Passwords do not match");
+      alert(t('validation.passwordMismatch'));
       return;
     }
-    if (role === 'provider') {
-      navigation.navigate('ProviderSkills', { userData });
-    } else {
-      navigation.navigate('PostRegistrationOnboarding', { role: 'client', userData });
+    try {
+      setSubmitting(true);
+      const res = await api.post('/auth/register', {
+        ...userData,
+        role: role.toUpperCase(),
+        providerProfile: role === 'provider' ? {
+          skills: [],
+          bio: '',
+          rate: 0,
+          serviceArea: formData.location,
+          experienceLevel: '',
+          availability: {}
+        } : undefined
+      });
+      loginDirect(res.data.user, res.data.token);
+    } catch (error) {
+      alert(error.response?.data?.message || t('errors.registrationFailed'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -75,35 +96,35 @@ const RegisterScreen = ({ navigation, route }) => {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
               <View>
-                <Text style={[styles.title, { color: colors.text }]}>Create {role === 'client' ? 'Client' : 'Provider'} Account</Text>
-                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Set up your Fixam account details.</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{role === 'client' ? t('register.clientTitle') : t('register.providerTitle')}</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('register.subtitle')}</Text>
               </View>
             </View>
 
             <View style={styles.row}>
               <View style={styles.half}>
-                <Text style={[styles.label, { color: colors.text }]}>First Name</Text>
-                <TextInput style={[styles.input, inputStyle]} placeholder="First Name" placeholderTextColor={colors.placeholder} value={formData.firstName} onChangeText={(value) => setField('firstName', value)} />
+                <Text style={[styles.label, { color: colors.text }]}>{t('register.firstName')}</Text>
+                <TextInput style={[styles.input, inputStyle]} placeholder={t('register.firstName')} placeholderTextColor={colors.placeholder} value={formData.firstName} onChangeText={(value) => setField('firstName', value)} />
               </View>
               <View style={styles.half}>
-                <Text style={[styles.label, { color: colors.text }]}>Last Name</Text>
-                <TextInput style={[styles.input, inputStyle]} placeholder="Last Name" placeholderTextColor={colors.placeholder} value={formData.lastName} onChangeText={(value) => setField('lastName', value)} />
+                <Text style={[styles.label, { color: colors.text }]}>{t('register.lastName')}</Text>
+                <TextInput style={[styles.input, inputStyle]} placeholder={t('register.lastName')} placeholderTextColor={colors.placeholder} value={formData.lastName} onChangeText={(value) => setField('lastName', value)} />
               </View>
             </View>
 
-            <Text style={[styles.label, { color: colors.text }]}>Email</Text>
-            <TextInput style={[styles.input, inputStyle]} placeholder="Email Address" placeholderTextColor={colors.placeholder} keyboardType="email-address" value={formData.email} onChangeText={(value) => setField('email', value)} />
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.email')}</Text>
+            <TextInput style={[styles.input, inputStyle]} placeholder={t('register.emailPlaceholder')} placeholderTextColor={colors.placeholder} keyboardType="email-address" value={formData.email} onChangeText={(value) => setField('email', value)} />
 
-            <Text style={[styles.label, { color: colors.text }]}>Phone Number</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.phone')}</Text>
             <TextInput style={[styles.input, inputStyle]} placeholder="6XX XXX XXX" placeholderTextColor={colors.placeholder} keyboardType="phone-pad" value={formData.phone} onChangeText={(value) => setField('phone', value)} />
 
-            <Text style={[styles.label, { color: colors.text }]}>Referral Code</Text>
-            <TextInput style={[styles.input, inputStyle]} placeholder="Optional referral code" placeholderTextColor={colors.placeholder} value={formData.referral} onChangeText={(value) => setField('referral', value)} />
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.referral')}</Text>
+            <TextInput style={[styles.input, inputStyle]} placeholder={t('register.referralPlaceholder')} placeholderTextColor={colors.placeholder} value={formData.referral} onChangeText={(value) => setField('referral', value)} />
 
-            <Text style={[styles.label, { color: colors.text }]}>Your Location</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.location')}</Text>
             <TextInput style={[styles.input, inputStyle]} placeholder="e.g. Akwa, Douala" placeholderTextColor={colors.placeholder} value={formData.location} onChangeText={(value) => setField('location', value)} />
 
-            <Text style={[styles.label, { color: colors.text }]}>Password</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.password')}</Text>
             <View style={[styles.inputWrapper, inputStyle]}>
               <TextInput 
                 style={[styles.flexInput, { color: colors.text }]} 
@@ -118,7 +139,7 @@ const RegisterScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.label, { color: colors.text }]}>Repeat Password</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('register.repeatPassword')}</Text>
             <View style={[styles.inputWrapper, inputStyle]}>
               <TextInput 
                 style={[styles.flexInput, { color: colors.text }]} 
@@ -135,11 +156,16 @@ const RegisterScreen = ({ navigation, route }) => {
 
             <TouchableOpacity style={styles.termsRow} onPress={() => setAgree(!agree)}>
               <MaterialCommunityIcons name={agree ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={agree ? colors.accent : colors.textSecondary} />
-              <Text style={[styles.termsText, { color: colors.textSecondary }]}>I agree to the Terms of Service and Privacy Policy</Text>
+              <Text style={[styles.termsText, { color: colors.textSecondary }]}>
+                {t('register.agreePrefix')}{' '}
+                <Text style={[styles.linkText, { color: colors.accent }]} onPress={() => navigation.navigate('TermsPolicy', { type: 'terms' })}>{t('register.terms')}</Text>
+                {' '}{t('register.and')}{' '}
+                <Text style={[styles.linkText, { color: colors.accent }]} onPress={() => navigation.navigate('TermsPolicy', { type: 'privacy' })}>{t('register.privacy')}</Text>
+              </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.registerBtn, { backgroundColor: colors.accent }]} onPress={handleRegister} activeOpacity={0.85}>
-              <Text style={styles.registerBtnText}>Register</Text>
+            <TouchableOpacity style={[styles.registerBtn, { backgroundColor: colors.accent, opacity: submitting ? 0.65 : 1 }]} onPress={handleRegister} activeOpacity={0.85} disabled={submitting}>
+              <Text style={styles.registerBtnText}>{submitting ? t('register.creating') : t('register.submit')}</Text>
               <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
             </TouchableOpacity>
           </ScrollView>
@@ -171,6 +197,7 @@ const styles = StyleSheet.create({
   flexInput: { flex: 1, height: '100%', fontSize: 15 },
   termsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 },
   termsText: { flex: 1, fontSize: 13, lineHeight: 19 },
+  linkText: { fontWeight: '900', textDecorationLine: 'underline' },
   registerBtn: { height: 58, borderRadius: 8, marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   registerBtnText: { color: '#FFF', fontSize: 17, fontWeight: '900' },
 });

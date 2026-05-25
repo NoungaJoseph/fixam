@@ -5,9 +5,11 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const PrivacySecurityScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useLanguage();
   const [faceId, setFaceId] = useState(true);
   const [twoStep, setTwoStep] = useState(false);
 
@@ -42,18 +44,18 @@ const PrivacySecurityScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Privacy & Security</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.privacySecurity')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Login Security</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profile.loginSecurity')}</Text>
             
             <SecurityItem 
               icon="face-recognition" 
-              title="Face ID / Biometric" 
-              desc="Use biometric to unlock app" 
+              title={t('profile.faceId')}
+              desc={t('profile.faceIdDesc')}
               hasSwitch={true}
               value={faceId}
               onValueChange={setFaceId}
@@ -61,15 +63,15 @@ const PrivacySecurityScreen = ({ navigation }) => {
 
             <SecurityItem 
               icon="key-variant" 
-              title="Change Password" 
-              desc="Last changed 3 months ago" 
+              title={t('profile.changePassword')}
+              desc={t('profile.lastChanged')}
               onPress={() => {}}
             />
 
             <SecurityItem 
               icon="shield-check-outline" 
-              title="Two-Step Verification" 
-              desc="Extra security for your account" 
+              title={t('profile.twoStep')}
+              desc={t('profile.twoStepDesc')}
               hasSwitch={true}
               value={twoStep}
               onValueChange={setTwoStep}
@@ -77,19 +79,19 @@ const PrivacySecurityScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Privacy Control</Text>
+            <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profile.privacyControl')}</Text>
             
             <SecurityItem 
               icon="file-document-outline" 
-              title="Data Usage" 
-              desc="Manage how your data is used" 
+              title={t('profile.dataUsage')}
+              desc={t('profile.dataUsageDesc')}
               onPress={() => {}}
             />
           </View>
 
           <TouchableOpacity style={styles.deleteBtn}>
             <MaterialCommunityIcons name="delete-outline" size={20} color={colors.error} />
-            <Text style={[styles.deleteText, { color: colors.error }]}>Delete Account</Text>
+            <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

@@ -6,10 +6,12 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const ChangePasswordScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { updateProfile } = useAuth();
+  const { t } = useLanguage();
   const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -20,20 +22,20 @@ const ChangePasswordScreen = ({ navigation }) => {
 
   const strength = newPass.length === 0 ? 0 : newPass.length < 6 ? 1 : newPass.length < 10 ? 2 : 3;
   const strengthColor = ['#E5E7EB', '#EF4444', '#F97316', '#22C55E'][strength];
-  const strengthLabel = ['', 'Weak', 'Fair', 'Strong'][strength];
+  const strengthLabel = ['', t('profile.weak'), t('profile.fair'), t('profile.strong')][strength];
 
   const handleSave = async () => {
-    if (!current) { Alert.alert('Required', 'Please enter your current password.'); return; }
-    if (newPass.length < 6) { Alert.alert('Too short', 'Password must be at least 6 characters.'); return; }
-    if (newPass !== confirm) { Alert.alert('Mismatch', 'New passwords do not match.'); return; }
+    if (!current) { Alert.alert(t('common.required'), t('profile.enterCurrentPassword')); return; }
+    if (newPass.length < 6) { Alert.alert(t('profile.tooShort'), t('validation.passwordLength')); return; }
+    if (newPass !== confirm) { Alert.alert(t('profile.mismatch'), t('validation.passwordMismatch')); return; }
     setLoading(true);
     try {
       await updateProfile({ currentPassword: current, password: newPass });
-      Alert.alert('Success', 'Your password has been updated successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
+      Alert.alert(t('common.success'), t('profile.passwordUpdated'), [
+        { text: t('common.done'), onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
-      Alert.alert('Update failed', error.response?.data?.message || 'Could not update password.');
+      Alert.alert(t('errors.requestFailed'), error.response?.data?.message || t('profile.updateFailed'));
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ const ChangePasswordScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Change Password</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.changePassword')}</Text>
           <View style={{ width: 42 }} />
         </View>
 
@@ -75,13 +77,13 @@ const ChangePasswordScreen = ({ navigation }) => {
           <View style={styles.lockIcon}>
             <MaterialCommunityIcons name="lock-reset" size={36} color={colors.accent} />
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Update Your Password</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('profile.updatePassword')}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Choose a strong password with a mix of letters, numbers and symbols.
+            {t('profile.passwordHelp')}
           </Text>
 
-          <InputField label="Current Password" value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder="Enter current password" />
-          <InputField label="New Password" value={newPass} onChange={setNewPass} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder="Enter new password" />
+          <InputField label={t('profile.currentPassword')} value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder={t('profile.enterCurrentPassword')} />
+          <InputField label={t('profile.newPassword')} value={newPass} onChange={setNewPass} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder={t('profile.enterNewPassword')} />
 
           {/* Strength indicator */}
           {newPass.length > 0 && (
@@ -93,15 +95,15 @@ const ChangePasswordScreen = ({ navigation }) => {
             </View>
           )}
 
-          <InputField label="Confirm New Password" value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} placeholder="Re-enter new password" />
+          <InputField label={t('profile.confirmNewPassword')} value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} placeholder={t('profile.reEnterNewPassword')} />
 
           {confirm.length > 0 && newPass !== confirm && (
-            <Text style={styles.matchError}>Passwords do not match</Text>
+            <Text style={styles.matchError}>{t('validation.passwordMismatch')}</Text>
           )}
 
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent, opacity: loading ? 0.7 : 1 }]} onPress={handleSave} disabled={loading}>
             <MaterialCommunityIcons name="lock-check-outline" size={20} color="#FFF" />
-            <Text style={styles.saveBtnText}>{loading ? 'Updating...' : 'Update Password'}</Text>
+            <Text style={styles.saveBtnText}>{loading ? t('profile.updating') : t('profile.updatePassword')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>

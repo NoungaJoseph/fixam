@@ -46,7 +46,7 @@ const LIGHT_COLORS = {
   success:  '#22C55E',
   warning:  '#F59E0B',
   error:    '#EF4444',
-  info:     '#3B82F6',
+  info:     '#2563EB',
 
   // Gradients (used in JS-driven gradient backgrounds)
   gradientStart: '#0D9488',
@@ -63,26 +63,26 @@ const DARK_COLORS = {
   // Brand
   primary:      '#F8FAFC',
   accent:       '#14B8A6',        // Brighter teal for dark
-  accentBlue:   '#3B82F6',
+  accentBlue:   '#2563EB',
   accentLight:  '#0D9488',
   accentSoft:   'rgba(20,184,166,0.15)',
   accentBlueSoft: 'rgba(59,130,246,0.15)',
   teal:         '#2DD4BF',
 
   // Surfaces
-  background:   '#020617',        // Deep navy
-  surface:      '#0F172A',
+  background:   '#0B1120',
+  surface:      '#111827',
   card:         '#111827',
-  tabBar:       '#0F172A',
-  divider:      '#1E293B',
+  tabBar:       '#111827',
+  divider:      '#1F2937',
 
   // Text
-  text:          '#F8FAFC',
-  textSecondary: '#94A3B8',
-  placeholder:   '#475569',
+  text:          '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  placeholder:   '#6B7280',
 
   // Borders
-  border:        '#1E293B',
+  border:        '#1F2937',
 
   // Status
   success:  '#22C55E',
@@ -96,6 +96,6 @@ const DARK_COLORS = {
 
   // Misc
   white:    '#FFFFFF',
-  navyDark: '#020617',
-  overlay:  'rgba(0,0,0,0.65)',
+  navyDark: '#0B1120',
+  overlay:  'rgba(11,17,32,0.72)',
 };

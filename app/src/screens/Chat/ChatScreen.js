@@ -172,10 +172,22 @@ const ChatScreen = ({ route, navigation }) => {
 
   const openTaskTracker = () => {
     if (!trackingTask?.id) {
-      Alert.alert('Location unavailable', 'Live tracking appears after a task has been accepted.');
+      Alert.alert(t('messages.locationUnavailableTitle'), t('messages.locationUnavailableBody'));
       return;
     }
     navigation.navigate('LiveTaskMap', { task: trackingTask });
+  };
+
+  const openBookingForm = () => {
+    if (!receiverId) {
+      Alert.alert(t('messages.bookingUnavailableTitle'), t('messages.bookingUnavailableBody'));
+      return;
+    }
+    navigation.navigate('BookingForm', {
+      providerId: receiverId,
+      providerName: userName,
+      task: trackingTask,
+    });
   };
 
   const handleSend = async (content = input, type = 'TEXT') => {
@@ -239,7 +251,7 @@ const ChatScreen = ({ route, navigation }) => {
       });
       // Remove optimistic message if failed
       setMessages(prev => prev.filter(m => m.clientMessageId !== clientMessageId));
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      Alert.alert(t('common.error'), t('messages.sendFailed'));
     } finally {
       setIsSending(false);
     }
@@ -248,7 +260,7 @@ const ChatScreen = ({ route, navigation }) => {
   const handleImagePick = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission required', 'Please allow photo library access to send images.');
+      Alert.alert(t('common.required'), t('messages.permissionRequired'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -275,7 +287,7 @@ const ChatScreen = ({ route, navigation }) => {
       if (!url) throw new Error('Upload did not return a URL');
       handleSend(url, msgType);
     } catch (error) {
-      Alert.alert("Error", `Could not send ${msgType.toLowerCase()}.`);
+      Alert.alert(t('common.error'), t('messages.sendFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -334,6 +346,15 @@ const ChatScreen = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
+        <TouchableOpacity
+          style={[styles.bookCompact, { backgroundColor: colors.accent }]}
+          onPress={openBookingForm}
+          accessibilityRole="button"
+          accessibilityLabel="Book service"
+        >
+          <MaterialCommunityIcons name="calendar-plus" size={18} color="#FFFFFF" />
+          <Text style={styles.bookCompactText}>Book</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -367,6 +388,8 @@ const styles = StyleSheet.create({
   headerStatus: { fontSize: 12, color: '#10B981', fontWeight: '600' },
   trackCompact: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderRadius: 4, marginLeft: 6, maxWidth: 76 },
   trackCompactCaption: { fontSize: 10, fontWeight: '800', marginTop: 2, textAlign: 'center' },
+  bookCompact: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingHorizontal: 10, height: 36, marginLeft: 6 },
+  bookCompactText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   messageList: { padding: 20, paddingBottom: 30 },
   msgRow: { marginBottom: 15, maxWidth: '85%' },
   msgRowRight: { alignSelf: 'flex-end' },

@@ -4,10 +4,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { translateService } from '../../i18n/translate';
 
 const FindJobsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { visibleJobs, notificationCount } = useAppContext();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'favorites'
   const [favorites, setFavorites] = useState([]);
@@ -75,8 +78,8 @@ const FindJobsScreen = ({ navigation }) => {
 
   const getTags = (job) => {
     const tags = [];
-    if (job.category) tags.push(job.category.toUpperCase());
-    tags.push('experienced');
+    if (job.category) tags.push(translateService(job.category).toUpperCase());
+    tags.push(t('home.experienced'));
     const titleWords = job.title?.split(' ') || [];
     if (titleWords.length > 0) tags.push(titleWords[0].toLowerCase());
     return tags.slice(0, 3);
@@ -96,8 +99,8 @@ const FindJobsScreen = ({ navigation }) => {
 
           {/* Title Area */}
           <View style={styles.titleArea}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Find Jobs</Text>
-            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Discover new opportunities</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('jobs.findJobs')}</Text>
+            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{t('jobs.discoverOpportunities')}</Text>
           </View>
 
           {/* Bell Icon */}
@@ -115,7 +118,7 @@ const FindJobsScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="magnify" size={22} color={colors.placeholder} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search by title, description, or location..."
+            placeholder={t('jobs.searchJobsPlaceholder')}
             placeholderTextColor={colors.placeholder}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -128,13 +131,13 @@ const FindJobsScreen = ({ navigation }) => {
             style={[styles.tabBtn, activeTab === 'all' && styles.tabBtnActive]}
             onPress={() => setActiveTab('all')}
           >
-            <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive, { color: activeTab === 'all' ? '#0D9488' : colors.textSecondary }]}>All Jobs</Text>
+            <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive, { color: activeTab === 'all' ? '#0D9488' : colors.textSecondary }]}>{t('jobs.allJobs')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabBtn, activeTab === 'favorites' && styles.tabBtnActive]}
             onPress={() => setActiveTab('favorites')}
           >
-            <Text style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive, { color: activeTab === 'favorites' ? '#0D9488' : colors.textSecondary }]}>Favorites ({favorites.length})</Text>
+            <Text style={[styles.tabText, activeTab === 'favorites' && styles.tabTextActive, { color: activeTab === 'favorites' ? '#0D9488' : colors.textSecondary }]}>{t('jobs.favoritesCount', { count: favorites.length })}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -146,7 +149,7 @@ const FindJobsScreen = ({ navigation }) => {
           <View style={styles.empty}>
             <MaterialCommunityIcons name="briefcase-search-outline" size={60} color={colors.placeholder} />
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              {activeTab === 'favorites' ? 'No favorite jobs yet.' : 'No jobs found matching your search.'}
+              {activeTab === 'favorites' ? t('jobs.noFavoriteJobs') : t('jobs.noJobsFound')}
             </Text>
           </View>
         ) : (
@@ -162,7 +165,7 @@ const FindJobsScreen = ({ navigation }) => {
 
                 {/* Title Row with Actions */}
                 <View style={styles.jobTopRow}>
-                  <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{job.title || 'Task Opportunity'}</Text>
+                  <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{job.title || t('home.taskOpportunity')}</Text>
                   <View style={styles.actionIcons}>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => dismissJob(job.id)}>
                       <MaterialCommunityIcons name="thumb-down-outline" size={26} color={colors.text} />
@@ -175,13 +178,13 @@ const FindJobsScreen = ({ navigation }) => {
 
                 {/* Subtitle */}
                 <Text style={[styles.jobSubtitle, { color: colors.textSecondary }]}>
-                  Fixed-price - {(job.category || 'WORK').toUpperCase()} - Est. Budget: {job.budget ? job.budget.toLocaleString() : '25,000'} FCFA
+                  {t('home.fixedPrice')} - {translateService(job.category || t('home.work')).toUpperCase()} - {t('home.estimatedBudget')}: {job.budget ? job.budget.toLocaleString() : '25,000'} FCFA
                 </Text>
 
                 {/* Description */}
                 <Text style={[styles.jobDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {job.description || 'Looking for an experienced professional to handle this task with care and expertise.'}
-                  <Text style={styles.moreText}> more</Text>
+                  {job.description || t('home.jobFallbackDescription')}
+                  <Text style={styles.moreText}> {t('home.more')}</Text>
                 </Text>
 
                 {/* Tags */}
@@ -195,7 +198,7 @@ const FindJobsScreen = ({ navigation }) => {
 
                 {/* Stats Row */}
                 <Text style={[styles.statsText, { color: colors.textSecondary }]}>
-                  0 reviews   0 spent
+                  {t('home.reviewsSpent', { reviews: 0, spent: 0 })}
                 </Text>
 
                 {/* Bottom Row */}
@@ -205,7 +208,7 @@ const FindJobsScreen = ({ navigation }) => {
                     <Text style={[styles.locationText, { color: colors.textSecondary }]}>{job.location || '4.1070, 9.7619'}</Text>
                   </View>
                   <TouchableOpacity style={styles.applyBtn} onPress={() => navigation.navigate('TaskDetails', { task: job, taskId: job.id })}>
-                    <Text style={styles.applyBtnText}>Apply</Text>
+                    <Text style={styles.applyBtnText}>{t('home.apply')}</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>

@@ -21,19 +21,19 @@ const FeedbackScreen = ({ navigation, route }) => {
 
   const handleSubmit = async () => {
     if (!topic.trim() || !message.trim()) {
-      Alert.alert('Missing details', 'Please enter a topic and message.');
+      Alert.alert(t('feedback.missing'), t('validation.feedbackRequired'));
       return;
     }
 
     try {
       setLoading(true);
       await api.post('/users/feedback', { title: topic.trim(), message: message.trim() });
-      Alert.alert('Thank you', 'Your feedback has been sent to Fixam.');
+      Alert.alert(t('feedback.thankYou'), t('feedback.sent'));
       setTopic('');
       setMessage('');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Could not send feedback', error.response?.data?.message || 'Please try again.');
+      Alert.alert(t('feedback.failed'), t('errors.apiFallback'));
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Animated, StatusBar, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const FIXAM_LETTERS = ['F', 'i', 'x', 'a', 'm'];
 
-const AnimatedSplashScreen = ({ navigation }) => {
+const AnimatedSplashScreen = ({ navigation, onFinish }) => {
   const { colors, isDarkMode } = useTheme();
   const logoScale = useRef(new Animated.Value(0)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -37,30 +38,30 @@ const AnimatedSplashScreen = ({ navigation }) => {
       Animated.timing(containerScale, { toValue: 1.2, duration: 400, useNativeDriver: true }),
     ]);
 
-    Animated.sequence([
-      logoAnim,
-      Animated.delay(200),
-      lettersAnim,
-      Animated.delay(1000), // Hold so user can read it
-      exitAnim
-    ]).start(() => {
-      navigation.replace('LanguageSelection');
+    const sequence = onFinish
+      ? Animated.loop(Animated.sequence([logoAnim, Animated.delay(200), lettersAnim, Animated.delay(1200)]))
+      : Animated.sequence([logoAnim, Animated.delay(200), lettersAnim, Animated.delay(1000), exitAnim]);
+
+    sequence.start(() => {
+      if (!onFinish) navigation.replace('LanguageSelection');
     });
+
+    return () => sequence.stop?.();
   }, [navigation, logoOpacity, logoScale, letterAnimations, containerOpacity, containerScale]);
 
   return (
-    <View 
-      style={[styles.main, { backgroundColor: isDarkMode ? '#020617' : colors.background }]}
-    >
+    <LinearGradient colors={['#0D9488', '#14B8A6', '#2563EB']} style={styles.main}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <Animated.View style={[styles.container, { opacity: containerOpacity, transform: [{ scale: containerScale }] }]}>
         
         {/* Logo */}
-        <Animated.Image
-          source={require('../../../assets/fixam.png')}
-          style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
-          resizeMode="contain"
-        />
+        <Animated.View style={[styles.logoHalo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+          <Animated.Image
+            source={require('../../../assets/fixam.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
         {/* Animated Text */}
         <View style={styles.textContainer}>
@@ -78,7 +79,7 @@ const AnimatedSplashScreen = ({ navigation }) => {
                   styles.letter,
                   {
                     opacity: anim,
-                    color: isDarkMode ? '#FFF' : colors.primary,
+                    color: '#FFFFFF',
                     transform: [{ translateY }]
                   }
                 ]}
@@ -90,7 +91,7 @@ const AnimatedSplashScreen = ({ navigation }) => {
         </View>
 
       </Animated.View>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -101,10 +102,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logoHalo: {
+    width: width * 0.48,
+    height: width * 0.48,
+    borderRadius: width * 0.24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    shadowColor: '#FFFFFF',
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 18,
+    marginBottom: 22,
+  },
   logo: {
     width: width * 0.45,
     height: width * 0.45,
-    marginBottom: 20,
   },
   textContainer: {
     flexDirection: 'row',
@@ -112,7 +126,7 @@ const styles = StyleSheet.create({
   letter: {
     fontSize: 48,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 0,
   },
 });
 

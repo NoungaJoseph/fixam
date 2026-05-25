@@ -6,27 +6,29 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
+import { useLanguage } from '../../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
 const StatsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const stats = [
-    { label: 'Completed Jobs', value: '0', icon: 'check-circle-outline', color: '#10B981' },
-    { label: 'Total Earnings', value: '0 XAF', icon: 'cash-multiple', color: '#3B82F6' },
-    { label: 'Avg Rating', value: '0.0', icon: 'star-outline', color: '#FBBF24' },
-    { label: 'Success Rate', value: '0%', icon: 'trending-up', color: '#8B5CF6' },
+    { label: t('home.completedJobs'), value: '0', icon: 'check-circle-outline', color: '#10B981' },
+    { label: t('home.totalEarnings'), value: '0 XAF', icon: 'cash-multiple', color: '#2563EB' },
+    { label: t('home.avgRating'), value: '0.0', icon: 'star-outline', color: '#FBBF24' },
+    { label: t('home.successRate'), value: '0%', icon: 'trending-up', color: '#8B5CF6' },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="My Stats" colors={colors} />
+      <CustomHeader navigation={navigation} title={t('drawer.myStats')} colors={colors} />
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: colors.text }]}>Performance Overview</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Track your progress and earnings over time.</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('home.performanceOverview')}</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('home.performanceSubtitle')}</Text>
 
         <View style={styles.statsGrid}>
           {stats.map((item, index) => (
@@ -41,14 +43,14 @@ const StatsScreen = ({ navigation }) => {
         </View>
 
         <View style={[styles.chartPlaceholder, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>Earnings Chart (Weekly)</Text>
+          <Text style={[styles.placeholderText, { color: colors.textSecondary }]}>{t('home.earningsChart')}</Text>
           <MaterialCommunityIcons name="chart-bell-curve-cumulative" size={100} color={colors.border} />
         </View>
 
         <View style={[styles.infoBox, { borderBottomColor: colors.border }]}>
           <MaterialCommunityIcons name="lightbulb-on-outline" size={20} color={colors.accent} />
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Tip: Providers with a rating above 4.5 receive 30% more job requests!
+            {t('home.statsTip')}
           </Text>
         </View>
       </ScrollView>

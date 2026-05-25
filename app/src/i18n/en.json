@@ -40,6 +40,28 @@
     "help": "Help",
     "banner": "Reliable service,\ndelivered locally."
   },
+  "register": {
+    "clientTitle": "Create a client account",
+    "providerTitle": "Create a provider account",
+    "subtitle": "Set up your Fixam account details.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "emailPlaceholder": "Email address",
+    "phone": "Phone number",
+    "referral": "Referral code",
+    "referralPlaceholder": "Optional referral code",
+    "location": "Your location",
+    "password": "Password",
+    "repeatPassword": "Repeat password",
+    "agreePrefix": "I agree to the",
+    "terms": "Terms & Conditions",
+    "and": "and",
+    "privacy": "Privacy Policy",
+    "termsRequired": "Please accept the Terms & Conditions and Privacy Policy before creating your account.",
+    "submit": "Register",
+    "creating": "Creating account..."
+  },
   "common": {
     "skip": "Skip",
     "continue": "Continue",
@@ -162,5 +184,35 @@
     "activeAreas": "ACTIVE SERVICE AREAS",
     "add": "+ Add",
     "changeLanguage": "Change Language"
+  },
+  "bookings": {
+    "title": "Book Service",
+    "date": "Date",
+    "time": "Time",
+    "location": "Location",
+    "budget": "Budget (FCFA)",
+    "details": "Task details",
+    "confirm": "Confirm Booking",
+    "sent": "Booking sent",
+    "sentBody": "The provider will see this under My Jobs > Bookings."
+  },
+  "payments": {
+    "formTitle": "Payment Form",
+    "method": "Payment method",
+    "phone": "Phone number",
+    "pay": "Pay",
+    "waiting": "Waiting for mobile money confirmation...",
+    "failed": "Payment failed"
+  },
+  "support": {
+    "title": "Fixam Support",
+    "online": "Online",
+    "connecting": "Connecting...",
+    "message": "Message support"
+  },
+  "errors": {
+    "registrationFailed": "Failed to complete registration. Please try again.",
+    "network": "Network error. Please try again.",
+    "required": "Required information is missing."
   }
 }

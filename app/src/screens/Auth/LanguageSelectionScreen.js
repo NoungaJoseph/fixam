@@ -9,8 +9,8 @@ const { width, height } = Dimensions.get('window');
 const LanguageSelectionScreen = ({ navigation }) => {
   const { changeLanguage, t } = useLanguage();
 
-  const handleSelectLanguage = (lang) => {
-    changeLanguage(lang);
+  const handleSelectLanguage = async (lang) => {
+    await changeLanguage(lang);
     navigation.replace('Onboarding');
   };
 
@@ -35,7 +35,7 @@ const LanguageSelectionScreen = ({ navigation }) => {
             </View>
             <View style={styles.langCopy}>
               <Text style={styles.langText}>{t('languageSelection.english')}</Text>
-              <Text style={styles.langSub}>English</Text>
+              <Text style={styles.langSub}>{t('languageSelection.english')}</Text>
             </View>
             <MaterialIcons name="arrow-forward-ios" size={16} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>
@@ -46,7 +46,7 @@ const LanguageSelectionScreen = ({ navigation }) => {
             </View>
             <View style={styles.langCopy}>
               <Text style={styles.langText}>{t('languageSelection.french')}</Text>
-              <Text style={styles.langSub}>Français</Text>
+              <Text style={styles.langSub}>{t('languageSelection.french')}</Text>
             </View>
             <MaterialIcons name="arrow-forward-ios" size={16} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>

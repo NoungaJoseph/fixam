@@ -1,0 +1,36 @@
+{
+  "messages": {
+    "title": "Messages",
+    "emptyTitle": "Aucun message pour le moment",
+    "emptyDesc": "Vos échanges avec les clients ou prestataires apparaîtront ici.",
+    "search": "Rechercher une conversation...",
+    "type": "Écrire un message...",
+    "online": "En ligne",
+    "typing": "écrit...",
+    "send": "Envoyer",
+    "seen": "Vu",
+    "unread": "Non lu",
+    "archive": "Archiver",
+    "archived": "Conversation archivée",
+    "unarchived": "Conversation réactivée",
+    "archivedBody": "Cette conversation a bien été archivée.",
+    "unarchivedBody": "Cette conversation est revenue dans votre liste active.",
+    "attachment": "Pièce jointe",
+    "image": "Image",
+    "file": "Fichier",
+    "locationUnavailableTitle": "Localisation indisponible",
+    "locationUnavailableBody": "Le suivi en direct apparaît après l'acceptation d'une mission.",
+    "bookingUnavailableTitle": "Réservation indisponible",
+    "bookingUnavailableBody": "Ouvrez une conversation directe avec un prestataire avant de réserver un service.",
+    "sendFailed": "Impossible d'envoyer le message. Veuillez réessayer.",
+    "permissionRequired": "Autorisez l'accès à la galerie pour envoyer des images."
+  },
+  "support": {
+    "title": "Assistance Fixam",
+    "online": "En ligne",
+    "connecting": "Connexion...",
+    "message": "Écrire à l'assistance",
+    "unavailable": "Assistance indisponible",
+    "tryLater": "Veuillez réessayer dans un instant."
+  }
+}

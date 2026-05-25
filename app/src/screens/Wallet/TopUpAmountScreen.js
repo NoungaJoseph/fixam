@@ -6,9 +6,11 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const TopUpAmountScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
 
   const COIN_PRICE = 500; // 1 coin = 500 FCFA
@@ -16,7 +18,7 @@ const TopUpAmountScreen = ({ navigation }) => {
   const handleContinue = () => {
     const numAmount = parseInt(amount);
     if (!amount || isNaN(numAmount) || numAmount < 5000) {
-      alert('Minimum top-up is 5,000 FCFA');
+      alert(t('payments.minimumTopUp'));
       return;
     }
     
@@ -40,7 +42,7 @@ const TopUpAmountScreen = ({ navigation }) => {
             <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
               <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Custom Amount</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('wallet.customAmount')}</Text>
             <View style={{ width: 42 }} />
           </View>
 
@@ -49,9 +51,9 @@ const TopUpAmountScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="currency-usd" size={40} color={colors.accent} />
             </View>
             
-            <Text style={[styles.title, { color: colors.text }]}>How much do you want to add?</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t('wallet.howMuchAdd')}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Enter the amount in FCFA. You'll receive approximately 1 coin for every {COIN_PRICE} FCFA.
+              {t('wallet.customAmountSubtitle', { price: COIN_PRICE })}
             </Text>
 
             <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -70,8 +72,8 @@ const TopUpAmountScreen = ({ navigation }) => {
             {amount.length > 0 && (
               <View style={[styles.calcBox, { backgroundColor: colors.accent + '10', borderColor: colors.accent }]}>
                 <View style={styles.calcRow}>
-                  <Text style={[styles.calcLabel, { color: colors.textSecondary }]}>Estimated Coins:</Text>
-                  <Text style={[styles.calcValue, { color: colors.text }]}>{Math.floor(parseInt(amount) / COIN_PRICE) || 0} Coins</Text>
+                  <Text style={[styles.calcLabel, { color: colors.textSecondary }]}>{t('wallet.estimatedCoins')}</Text>
+                  <Text style={[styles.calcValue, { color: colors.text }]}>{t('wallet.coinCount', { count: Math.floor(parseInt(amount) / COIN_PRICE) || 0 })}</Text>
                 </View>
               </View>
             )}
@@ -92,12 +94,12 @@ const TopUpAmountScreen = ({ navigation }) => {
               style={[styles.continueBtn, { backgroundColor: colors.accent }]}
               onPress={handleContinue}
             >
-              <Text style={styles.continueBtnText}>Continue to Payment</Text>
+              <Text style={styles.continueBtnText}>{t('wallet.continueToPayment')}</Text>
               <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
             </TouchableOpacity>
 
             <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              Minimum purchase is 10 coins, which is 5,000 FCFA.
+              {t('wallet.minimumPurchaseHint')}
             </Text>
           </ScrollView>
         </KeyboardAvoidingView>

@@ -166,6 +166,9 @@ export const AppProvider = ({ children }) => {
             : job
         )));
       });
+      const offBookingUpdate = on('booking:update', () => {
+        fetchAppData();
+      });
 
       return () => {
         offNewMessage?.();
@@ -175,6 +178,7 @@ export const AppProvider = ({ children }) => {
         offJobApproved?.();
         offJobUpdated?.();
         offApplicationCount?.();
+        offBookingUpdate?.();
       };
     }
   }, [token, on]);
@@ -193,15 +197,34 @@ export const AppProvider = ({ children }) => {
     try {
       // These routes require authentication
       const jobsEndpoint = user?.role === 'PROVIDER' ? '/jobs/available?limit=10&sortBy=newest' : '/jobs/client';
-      const [jobsRes, walletRes, chatRes, transRes] = await Promise.all([
+      const [jobsRes, walletRes, chatRes, transRes, bookingsRes] = await Promise.all([
         api.get(jobsEndpoint).catch(() => ({ data: { data: [] } })),
         api.get('/wallet/balance').catch(() => ({ data: { data: { balance: 0 } } })),
         api.get('/chat/conversations').catch(() => ({ data: { data: [] } })),
         api.get('/wallet/transactions').catch(() => ({ data: { data: [] } })),
+        user?.role?.toUpperCase() === 'CLIENT'
+          ? api.get('/bookings/mine?role=CLIENT').catch(() => ({ data: { data: [] } }))
+          : Promise.resolve({ data: { data: [] } }),
         fetchProviders()
       ]);
 
-      setJobs((jobsRes.data.data || []).map(normalizeJob));
+      const bookingJobs = (bookingsRes.data.data || []).map((booking) => normalizeJob({
+        id: booking.id,
+        clientId: booking.clientId,
+        title: booking.notes || 'Scheduled service booking',
+        description: booking.notes || 'Scheduled service booking',
+        location: booking.location,
+        budget: booking.budget,
+        budgetMin: booking.budget,
+        budgetMax: booking.budget,
+        scheduledTime: booking.bookingDate,
+        status: booking.status === 'ACCEPTED' ? 'ASSIGNED' : booking.status === 'COMPLETED' ? 'COMPLETED' : booking.status === 'CANCELLED' ? 'CANCELLED' : 'SCHEDULED',
+        approvalStatus: 'APPROVED',
+        provider: booking.provider,
+        isBooking: true,
+        booking,
+      }));
+      setJobs([...(jobsRes.data.data || []).map(normalizeJob), ...bookingJobs]);
       setWalletBalance(walletRes.data.data?.balance || 0);
       setConversations((chatRes.data.data || []).map(normalizeConversation));
       setTransactions(transRes.data.data || []);

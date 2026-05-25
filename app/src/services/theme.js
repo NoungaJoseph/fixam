@@ -2,7 +2,7 @@ import { DefaultTheme } from 'react-native-paper';
 
 export const COLORS = {
   primary: '#0D1B2A',      // Deep navy
-  accent: '#1E67D1',       // Professional service blue
+  accent: '#0D9488',
   accentSoft: '#EAF2FF',
   teal: '#14B8A6',
   background: '#FAFAFA',

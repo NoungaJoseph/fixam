@@ -6,10 +6,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { translateStatus } from '../../i18n/translate';
 
 const WalletScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { walletBalance, transactions } = useAppContext();
+  const { t } = useLanguage();
   
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -25,23 +28,23 @@ const WalletScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="rgba(255,255,255,0.9)" />
         </TouchableOpacity>
-        <Text style={styles.balanceLabel}>MY WALLET BALANCE</Text>
+        <Text style={styles.balanceLabel}>{t('payments.myWalletBalance')}</Text>
         <View style={styles.balanceRow}>
           <Text style={styles.balanceAmount}>{walletBalance}</Text>
-          <Text style={styles.balanceCurrency}> Coins 🪙</Text>
+          <Text style={styles.balanceCurrency}> {t('payments.coins')}</Text>
         </View>
         <TouchableOpacity
           style={styles.topUpBtn}
           onPress={() => navigation.navigate('TopUp')}
         >
           <MaterialCommunityIcons name="plus-circle-outline" size={18} color="#0D9488" />
-          <Text style={styles.topUpText}>Top Up Balance</Text>
+          <Text style={styles.topUpText}>{t('payments.topUpBalance')}</Text>
         </TouchableOpacity>
       </LinearGradient>
 
         {/* Transaction History Header */}
         <View style={styles.historyHeaderRow}>
-          <Text style={[styles.historyTitle, { color: colors.text }]}>Recent Transactions</Text>
+          <Text style={[styles.historyTitle, { color: colors.text }]}>{t('payments.recentTransactions')}</Text>
         </View>
 
         {/* Transactions List */}
@@ -49,7 +52,7 @@ const WalletScreen = ({ navigation }) => {
           {transactions.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
               <MaterialCommunityIcons name="history" size={48} color={colors.textSecondary + '40'} />
-              <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '700' }}>No transactions yet</Text>
+              <Text style={{ color: colors.textSecondary, marginTop: 10, fontWeight: '700' }}>{t('payments.noTransactions')}</Text>
             </View>
           ) : (
             transactions.map((item) => (
@@ -64,7 +67,7 @@ const WalletScreen = ({ navigation }) => {
                 
                 <View style={styles.transactionInfo}>
                   <Text style={[styles.transactionTitle, { color: colors.text }]}>
-                    {item.type === 'DEPOSIT' ? 'Coin Purchase' : 'Service Payment'}
+                    {item.type === 'DEPOSIT' ? t('payments.coinPurchase') : t('payments.servicePayment')}
                   </Text>
                   <Text style={[styles.transactionDate, { color: colors.textSecondary }]}>
                     {new Date(item.createdAt).toLocaleDateString()}
@@ -77,7 +80,7 @@ const WalletScreen = ({ navigation }) => {
                   </Text>
                   <View style={[styles.statusBadge, { backgroundColor: item.status === 'COMPLETED' ? '#10B98120' : '#F59E0B20' }]}>
                     <Text style={[styles.statusText, { color: item.status === 'COMPLETED' ? '#10B981' : '#F59E0B' }]}>
-                      {item.status}
+                      {translateStatus(item.status)}
                     </Text>
                   </View>
                 </View>
@@ -95,8 +98,8 @@ const WalletScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="gift-outline" size={24} color={colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.offerTitle, { color: colors.text }]}>Earn Free Coins</Text>
-            <Text style={[styles.offerSubtitle, { color: colors.textSecondary }]}>Invite a friend to Fixam and earn 1 coin.</Text>
+            <Text style={[styles.offerTitle, { color: colors.text }]}>{t('payments.earnFreeCoins')}</Text>
+            <Text style={[styles.offerSubtitle, { color: colors.textSecondary }]}>{t('payments.inviteEarn')}</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
         </TouchableOpacity>

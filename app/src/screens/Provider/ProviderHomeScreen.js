@@ -9,15 +9,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getProviderProgress } from '../../utils/providerProgress';
+import { translateService } from '../../i18n/translate';
 
 const { width } = Dimensions.get('window');
 
 const CATEGORIES = [
   { id: 'all', label: 'All', icon: 'view-grid' },
-  { id: 'plumbing', label: 'Plumbing', icon: 'water-pump' },
-  { id: 'electrical', label: 'Electrical', icon: 'lightning-bolt' },
-  { id: 'cleaning', label: 'Cleaning', icon: 'broom' },
-  { id: 'delivery', label: 'Delivery', icon: 'bike' },
+  { id: 'plumbing', label: 'Plumbing', aliases: ['plumbing', 'plomberie'], icon: 'water-pump' },
+  { id: 'electrical', label: 'Electrical', aliases: ['electrical', 'electrician', 'electricite', 'électricité'], icon: 'lightning-bolt' },
+  { id: 'cleaning', label: 'Cleaning', aliases: ['cleaning', 'house cleaning', 'office cleaning', 'nettoyage', 'menage', 'ménage'], icon: 'broom' },
+  { id: 'delivery', label: 'Delivery Driver', aliases: ['delivery', 'delivery driver', 'livraison', 'coursier'], icon: 'bike' },
 ];
 
 const LEARN_CARDS = [
@@ -32,24 +35,24 @@ const LEARN_CARDS = [
   {
     id: '2',
     step: 'STEP 2',
-    title: 'Find and accept\njobs',
-    desc: 'Choose jobs that\nmatch your skills',
+    title: 'Accept booked\nservices',
+    desc: 'Review the date, place,\nand agreed budget',
     image: require('../../../assets/onboarding/learn_step2.png'),
-    colors: ['#2563EB', '#3B82F6']
+    colors: ['#2563EB', '#2563EB']
   },
   {
     id: '3',
     step: 'STEP 3',
-    title: 'Complete jobs\nand get paid',
-    desc: 'Get paid fast and\nbuild your reputation',
+    title: 'Agree and\ndeliver',
+    desc: 'Confirm expectations,\nthen complete the work',
     image: require('../../../assets/onboarding/learn_step3.png'),
     colors: ['#8B5CF6', '#A78BFA']
   },
   {
     id: '4',
     step: 'TIPS',
-    title: 'Deliver great\nservice',
-    desc: 'Good reviews bring\nyou more jobs',
+    title: 'Pay on delivery\nworkflow',
+    desc: 'Clients pay when the\nservice is completed',
     image: require('../../../assets/onboarding/learn_tips.png'),
     colors: ['#F59E0B', '#FBBF24']
   }
@@ -62,6 +65,7 @@ const ProviderHomeScreen = ({ navigation }) => {
   } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
@@ -150,18 +154,33 @@ const ProviderHomeScreen = ({ navigation }) => {
   const filteredJobs = visibleJobs.filter(job => {
     if (dismissed.includes(job.id)) return false;
     const q = search.toLowerCase();
+    const category = String(job.category || '');
+    const categoryText = category.toLowerCase();
+    const translatedCategoryText = translateService(category).toLowerCase();
     const matchSearch = !q || job.title?.toLowerCase().includes(q)
-      || job.category?.toLowerCase().includes(q)
+      || categoryText.includes(q)
+      || translatedCategoryText.includes(q)
       || job.location?.toLowerCase().includes(q);
+    const activeCategoryConfig = CATEGORIES.find((cat) => cat.id === activeCategory);
     const matchCat = activeCategory === 'all'
-      || job.category?.toLowerCase().includes(activeCategory);
+      || activeCategoryConfig?.aliases?.some((alias) => categoryText.includes(alias) || translatedCategoryText.includes(alias));
     return matchSearch && matchCat;
   });
 
-  const firstName = user?.fullName?.split(' ')[0] || 'Enako';
+  const firstName = user?.fullName?.split(' ')[0] || t('common.provider');
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-  const completedJobsCount = user?.providerProfile?.jobsCompleted || user?.jobsCompleted || 0;
+  const greeting = hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
+  const progress = getProviderProgress(user, []);
+  const completedJobsCount = progress.completedCount;
+  const localizedLearnCards = LEARN_CARDS.map((card) => {
+    const copy = {
+      '1': [t('home.learn.step1'), t('home.learn.completeProfileTitle'), t('home.learn.completeProfileDesc')],
+      '2': [t('home.learn.step2'), t('home.learn.acceptServicesTitle'), t('home.learn.acceptServicesDesc')],
+      '3': [t('home.learn.step3'), t('home.learn.deliverTitle'), t('home.learn.deliverDesc')],
+      '4': [t('home.learn.tips'), t('home.learn.paymentTitle'), t('home.learn.paymentDesc')],
+    }[card.id];
+    return { ...card, step: copy[0], title: copy[1], desc: copy[2] };
+  });
 
   const handleScroll = (event) => {
     const slide = Math.round(event.nativeEvent.contentOffset.x / (width - 60));
@@ -175,8 +194,8 @@ const ProviderHomeScreen = ({ navigation }) => {
 
     const getTags = (j) => {
       const tags = [];
-      if (j.category) tags.push(j.category.toUpperCase());
-      tags.push('experienced');
+      if (j.category) tags.push(translateService(j.category).toUpperCase());
+      tags.push(t('home.experienced'));
       const titleWords = j.title?.split(' ') || [];
       if (titleWords.length > 0) tags.push(titleWords[0].toLowerCase());
       return tags.slice(0, 3);
@@ -191,7 +210,7 @@ const ProviderHomeScreen = ({ navigation }) => {
 
         {/* Title Row with Actions */}
         <View style={styles.jobTopRow}>
-          <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{job.title || 'Task Opportunity'}</Text>
+          <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{job.title || t('home.taskOpportunity')}</Text>
           <View style={styles.actionIcons}>
             <TouchableOpacity style={styles.actionBtn} onPress={() => dismissJob(job.id)}>
               <MaterialCommunityIcons name="thumb-down-outline" size={26} color={colors.text} />
@@ -204,13 +223,13 @@ const ProviderHomeScreen = ({ navigation }) => {
 
         {/* Subtitle */}
         <Text style={[styles.jobSubtitle, { color: colors.textSecondary }]}>
-          Fixed-price - {(job.category || 'WORK').toUpperCase()} - Est. Budget: {job.budget ? job.budget.toLocaleString() : '25,000'} FCFA
+          {t('home.fixedPrice')} - {(job.category || t('home.work')).toUpperCase()} - {t('home.estimatedBudget')}: {job.budget ? job.budget.toLocaleString() : '25,000'} FCFA
         </Text>
 
         {/* Description */}
         <Text style={[styles.jobDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-          {job.description || 'Looking for an experienced professional to handle this task with care and expertise.'}
-          <Text style={styles.moreText}> more</Text>
+          {job.description || t('home.jobFallbackDescription')}
+          <Text style={styles.moreText}> {t('home.more')}</Text>
         </Text>
 
         {/* Tags */}
@@ -224,7 +243,7 @@ const ProviderHomeScreen = ({ navigation }) => {
 
         {/* Stats Row */}
         <Text style={[styles.statsText, { color: colors.textSecondary }]}>
-          0 reviews   0 spent
+          {t('home.reviewsSpent', { reviews: 0, spent: 0 })}
         </Text>
 
         {/* Bottom Row */}
@@ -234,7 +253,7 @@ const ProviderHomeScreen = ({ navigation }) => {
             <Text style={[styles.locationText, { color: colors.textSecondary }]}>{job.location || '4.1070, 9.7619'}</Text>
           </View>
           <TouchableOpacity style={styles.applyBtn} onPress={() => navigation.navigate('TaskDetails', { taskId: job.id })}>
-            <Text style={styles.applyBtnText}>Apply</Text>
+            <Text style={styles.applyBtnText}>{t('home.apply')}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -263,11 +282,11 @@ const ProviderHomeScreen = ({ navigation }) => {
                 <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{firstName}</Text>
                 <View style={styles.levelBadge}>
                   <MaterialCommunityIcons name="star-circle" size={12} color="#0D9488" />
-                  <Text style={styles.levelText}>Lvl {user?.providerProfile?.level || user?.level || 3}</Text>
+                  <Text style={styles.levelText}>{t('home.level', { level: progress.level })}</Text>
                 </View>
               </View>
               <Text style={[styles.jobsNearText, { color: colors.textSecondary }]} numberOfLines={1}>
-                <Text style={{ color: '#22C55E' }}>●</Text> {filteredJobs.length} new jobs available nearby
+                <Text style={{ color: '#22C55E' }}>•</Text> {t('home.newJobsNearby', { count: filteredJobs.length })}
               </Text>
             </View>
           </View>
@@ -296,14 +315,14 @@ const ProviderHomeScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.subPillText, { color: colors.text }]}>🔥 {user?.providerProfile?.streak || user?.streak || 5} day streak</Text>
+            <Text style={[styles.subPillText, { color: colors.text }]}>🔥 {t('home.dayStreak', { count: progress.dailyStreak })}</Text>
           </View>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <MaterialCommunityIcons name="star" size={16} color="#22C55E" />
             <View style={styles.subPillCol}>
               <Text style={[styles.subPillVal, { color: colors.text }]}>{user?.providerProfile?.rating || user?.rating || '4.9'}</Text>
-              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>Trust Score</Text>
+              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>{t('home.trustScore')}</Text>
             </View>
           </View>
 
@@ -311,9 +330,9 @@ const ProviderHomeScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="shield-check" size={16} color="#0D9488" />
             <View style={styles.subPillCol}>
               <Text style={[styles.subPillVal, { color: colors.text }]}>
-                {user?.providerProfile?.experienceLevel || user?.experienceLevel || 'Skilled'}
+                {user?.providerProfile?.experienceLevel || user?.experienceLevel || t('home.skilled')}
               </Text>
-              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>Rank</Text>
+              <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>{t('home.rank')}</Text>
             </View>
           </View>
         </ScrollView>
@@ -326,13 +345,13 @@ const ProviderHomeScreen = ({ navigation }) => {
         >
           {/* Column 1: Coins Balance */}
           <View style={styles.cardCol}>
-            <Text style={styles.cardLabel}>YOUR BALANCE</Text>
-            <Text style={styles.cardValue}>{walletBalance} Coins 🪙</Text>
+            <Text style={styles.cardLabel}>{t('home.yourBalance')}</Text>
+            <Text style={styles.cardValue}>{walletBalance} {t('payments.coins')}</Text>
             <TouchableOpacity
               style={styles.topUpBtn}
               onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}
             >
-              <Text style={styles.topUpText}>Top up</Text>
+              <Text style={styles.topUpText}>{t('home.topUp')}</Text>
               <MaterialCommunityIcons name="plus" size={14} color="#0D9488" />
             </TouchableOpacity>
           </View>
@@ -341,8 +360,8 @@ const ProviderHomeScreen = ({ navigation }) => {
 
           {/* Column 2: Jobs Completed */}
           <View style={[styles.cardCol, styles.jobsCompletedCol]}>
-            <Text style={styles.cardLabel}>JOBS COMPLETED</Text>
-            <Text style={styles.cardValue}>{completedJobsCount} Total</Text>
+            <Text style={styles.cardLabel}>{t('home.jobsCompleted')}</Text>
+            <Text style={styles.cardValue}>{completedJobsCount} {t('home.total')}</Text>
 
             {/* Vertical mini bars */}
             <View style={styles.miniBarRow}>
@@ -354,16 +373,29 @@ const ProviderHomeScreen = ({ navigation }) => {
         </LinearGradient>
 
         {/* ── 4. UNIFIED AVAILABILITY & QUICK NAV CARD ─────────── */}
+        <View style={[styles.levelProgressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.levelProgressTop}>
+            <Text style={[styles.levelProgressTitle, { color: colors.text }]}>{t('home.level', { level: progress.level })}</Text>
+            <Text style={[styles.levelProgressMeta, { color: colors.textSecondary }]}>{t('home.completedToday')}: {progress.completedToday}</Text>
+          </View>
+          <View style={[styles.levelProgressTrack, { backgroundColor: isDarkMode ? '#1E293B' : '#E2E8F0' }]}>
+            <View style={[styles.levelProgressFill, { width: `${Math.round(progress.progress * 100)}%` }]} />
+          </View>
+          <Text style={[styles.levelProgressHint, { color: colors.textSecondary }]}>
+            {t('home.nextLevel', { count: progress.remaining, level: progress.level + 1 })}
+          </Text>
+        </View>
+
         <View style={[styles.unifiedNavCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {/* Top Section: Availability */}
           <View style={[styles.availSection, { borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
             <View style={styles.availTextCol}>
-              <Text style={[styles.availTitle, { color: colors.text }]}>Available for Work</Text>
-              <Text style={[styles.availSubText, { color: colors.textSecondary }]}>You are {isProviderOnline ? 'online and visible' : 'offline'}</Text>
+              <Text style={[styles.availTitle, { color: colors.text }]}>{t('home.availableForWork')}</Text>
+              <Text style={[styles.availSubText, { color: colors.textSecondary }]}>{t('home.availabilityState', { state: isProviderOnline ? t('home.onlineVisible') : t('home.offlineHidden') })}</Text>
               <View style={styles.onlinePillRow}>
                 <View style={[styles.onlinePill, { borderColor: isProviderOnline ? '#10B981' : colors.border, backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
                   <Text style={[styles.onlinePillText, { color: isProviderOnline ? '#10B981' : colors.textSecondary }]}>
-                    {isProviderOnline ? 'Online' : 'Offline'}
+                    {isProviderOnline ? t('home.online') : t('home.offline')}
                   </Text>
                 </View>
               </View>
@@ -383,7 +415,7 @@ const ProviderHomeScreen = ({ navigation }) => {
               <View style={[styles.quickNavIconWrap, { backgroundColor: '#E6FDF3' }]}>
                 <MaterialCommunityIcons name="briefcase" size={24} color="#0D9488" />
               </View>
-              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Find Jobs</Text>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>{t('home.findJobs')}</Text>
             </TouchableOpacity>
 
             {/* Messages */}
@@ -396,7 +428,7 @@ const ProviderHomeScreen = ({ navigation }) => {
                   </View>
                 )}
               </View>
-              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Messages</Text>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>{t('tabs.messages')}</Text>
             </TouchableOpacity>
 
             {/* Wallet */}
@@ -404,7 +436,7 @@ const ProviderHomeScreen = ({ navigation }) => {
               <View style={[styles.quickNavIconWrap, { backgroundColor: '#FEF3C7' }]}>
                 <MaterialCommunityIcons name="wallet" size={24} color="#D97706" />
               </View>
-              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>Wallet</Text>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>{t('home.wallet')}</Text>
             </TouchableOpacity>
 
             {/* My Stats */}
@@ -412,16 +444,16 @@ const ProviderHomeScreen = ({ navigation }) => {
               <View style={[styles.quickNavIconWrap, { backgroundColor: '#DBEAFE' }]}>
                 <MaterialCommunityIcons name="chart-bar" size={24} color="#2563EB" />
               </View>
-              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>My Stats</Text>
+              <Text style={[styles.quickNavCardLabel, { color: colors.text }]}>{t('home.myStats')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* ── 5. "LEARN FIXAM" SLIDER SECTION ─────────── */}
         <View style={styles.learnHeader}>
-          <Text style={[styles.learnTitle, { color: colors.text }]}>Learn Fixam</Text>
+          <Text style={[styles.learnTitle, { color: colors.text }]}>{t('home.learnFixam')}</Text>
           <TouchableOpacity>
-            <Text style={styles.seeAllText}>See all</Text>
+            <Text style={styles.seeAllText}>{t('home.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -435,7 +467,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           scrollEventThrottle={16}
           contentContainerStyle={styles.learnScroll}
         >
-          {LEARN_CARDS.map((card) => (
+          {localizedLearnCards.map((card) => (
             <LinearGradient
               key={card.id}
               colors={card.colors}
@@ -456,7 +488,7 @@ const ProviderHomeScreen = ({ navigation }) => {
 
         {/* Pagination Dots */}
         <View style={styles.dotsRow}>
-          {LEARN_CARDS.map((_, index) => (
+          {localizedLearnCards.map((_, index) => (
             <View
               key={index}
               style={[
@@ -473,7 +505,7 @@ const ProviderHomeScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="magnify" size={22} color={colors.placeholder} />
             <TextInput
               style={[styles.searchInput, { color: colors.text }]}
-              placeholder="Search for jobs..."
+              placeholder={t('home.searchJobs')}
               placeholderTextColor={colors.placeholder}
               value={search}
               onChangeText={setSearch}
@@ -498,7 +530,9 @@ const ProviderHomeScreen = ({ navigation }) => {
                 onPress={() => setActiveCategory(cat.id)}
               >
                 <MaterialCommunityIcons name={cat.icon} size={16} color={active ? '#FFF' : colors.textSecondary} />
-                <Text style={[styles.catText, { color: active ? '#FFF' : colors.text }]}>{cat.label}</Text>
+                <Text style={[styles.catText, { color: active ? '#FFF' : colors.text }]}>
+                  {cat.id === 'all' ? t('notifications.all') : translateService(cat.label)}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -508,11 +542,11 @@ const ProviderHomeScreen = ({ navigation }) => {
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={[styles.liveDot, { backgroundColor: '#22C55E' }]} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Jobs Near You</Text>
-            <Text style={styles.liveCountText}>🟢 {filteredJobs.length} jobs available</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.liveJobsNearYou')}</Text>
+            <Text style={styles.liveCountText}>• {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('FindJobs')}>
-            <Text style={styles.viewAllText}>View all</Text>
+            <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -520,8 +554,8 @@ const ProviderHomeScreen = ({ navigation }) => {
         {filteredJobs.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="briefcase-search-outline" size={60} color={colors.border} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No jobs available</Text>
-            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>New jobs appear here in real-time</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('home.noJobsAvailable')}</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('home.newJobsRealtime')}</Text>
           </View>
         ) : (
           filteredJobs.slice(0, 3).map(item => <JobCard key={item.id} item={item} />)
@@ -784,6 +818,42 @@ const styles = StyleSheet.create({
     width: 8,
     borderRadius: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  levelProgressCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+  },
+  levelProgressTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  levelProgressTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  levelProgressMeta: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  levelProgressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  levelProgressFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#0D9488',
+  },
+  levelProgressHint: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 10,
   },
 
   // 4. Unified Availability & Quick Nav Container

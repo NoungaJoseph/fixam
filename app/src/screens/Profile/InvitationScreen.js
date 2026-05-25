@@ -7,10 +7,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const InvitationScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const referralCode = user?.referralCode || 'NO-CODE-YET';
   const invitedCount = user?.referralStats?.invited || 0;
   const earnedCoins = user?.referralStats?.coinsEarned || 0;
@@ -18,7 +20,7 @@ const InvitationScreen = ({ navigation }) => {
   const onShare = async () => {
     try {
       const result = await Share.share({
-        message: `Join me on Fixam! Use my referral code ${referralCode} so I earn 1 coin when you sign up. Download here: https://fixam.app/download`,
+        message: t('invite.shareMessage', { code: referralCode }),
       });
     } catch (error) {
       Alert.alert(error.message);
@@ -28,7 +30,7 @@ const InvitationScreen = ({ navigation }) => {
   return (
     <View style={[styles.background, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <CustomHeader navigation={navigation} title="Invite Friends" colors={colors} />
+      <CustomHeader navigation={navigation} title={t('drawer.inviteFriends')} colors={colors} />
       
       {/* Internal Header Removed - Relying on Global Menu Bar Header */}
 
@@ -41,19 +43,19 @@ const InvitationScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>Invite Friends & Earn Coins</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('invite.title')}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Invite a friend and earn 1 coin when they join Fixam using your referral code.
+          {t('invite.subtitle')}
         </Text>
 
         {/* Code Box */}
         <View style={[styles.codeBox, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.codeLabel, { color: colors.textSecondary }]}>YOUR REFERRAL CODE</Text>
+          <Text style={[styles.codeLabel, { color: colors.textSecondary }]}>{t('invite.codeLabel')}</Text>
           <View style={styles.codeRow}>
             <Text style={[styles.codeText, { color: colors.text }]}>{referralCode}</Text>
             <TouchableOpacity 
               style={styles.copyBtn}
-              onPress={() => Alert.alert('Copied!', 'Referral code copied to clipboard.')}
+              onPress={() => Alert.alert(t('invite.copied'), t('invite.copiedBody'))}
             >
               <MaterialCommunityIcons name="content-copy" size={20} color={colors.accent} />
             </TouchableOpacity>
@@ -64,11 +66,11 @@ const InvitationScreen = ({ navigation }) => {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderBottomColor: colors.border }]}>
             <Text style={[styles.statVal, { color: colors.text }]}>{invitedCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Friends Invited</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('invite.friendsInvited')}</Text>
           </View>
           <View style={[styles.statCard, { borderBottomColor: colors.border }]}>
             <Text style={[styles.statVal, { color: '#22C55E' }]}>{earnedCoins}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Coins Earned</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('invite.coinsEarned')}</Text>
           </View>
         </View>
 
@@ -77,32 +79,32 @@ const InvitationScreen = ({ navigation }) => {
           onPress={onShare}
         >
           <MaterialCommunityIcons name="share-variant" size={22} color="#FFF" />
-          <Text style={styles.shareBtnText}>Invite Friends Now</Text>
+          <Text style={styles.shareBtnText}>{t('invite.inviteNow')}</Text>
         </TouchableOpacity>
 
         {/* How it works */}
         <View style={styles.howItWorks}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>How it works</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('invite.howItWorks')}</Text>
           
           <View style={styles.step}>
-            <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
+            <View style={[styles.stepNum, { backgroundColor: colors.accent }]}>
               <Text style={styles.stepNumText}>1</Text>
             </View>
-            <Text style={[styles.stepText, { color: colors.textSecondary }]}>Share your code with friends</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>{t('invite.step1')}</Text>
           </View>
 
           <View style={styles.step}>
-            <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
+            <View style={[styles.stepNum, { backgroundColor: colors.accent }]}>
               <Text style={styles.stepNumText}>2</Text>
             </View>
-            <Text style={[styles.stepText, { color: colors.textSecondary }]}>They sign up and verify their account</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>{t('invite.step2')}</Text>
           </View>
 
           <View style={styles.step}>
-            <View style={[styles.stepNum, { backgroundColor: colors.primary }]}>
+            <View style={[styles.stepNum, { backgroundColor: colors.accent }]}>
               <Text style={styles.stepNumText}>3</Text>
             </View>
-            <Text style={[styles.stepText, { color: colors.textSecondary }]}>You receive 1 coin after their signup is confirmed</Text>
+            <Text style={[styles.stepText, { color: colors.textSecondary }]}>{t('invite.step3')}</Text>
           </View>
         </View>
 

@@ -2,11 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useAppContext } from '../../context/AppContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
 
 const NotificationsScreen = ({ navigation }) => {
   const { colors } = useTheme();
+  const { t, currentLanguage } = useLanguage();
   const { notifications } = useAppContext();
 
   const renderItem = ({ item }) => (
@@ -22,7 +24,7 @@ const NotificationsScreen = ({ navigation }) => {
         <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
         <Text style={[styles.body, { color: colors.textSecondary }]}>{item.message}</Text>
         <Text style={[styles.time, { color: colors.textTertiary || '#888' }]}>
-          {new Date(item.createdAt).toLocaleDateString()}
+          {new Date(item.createdAt).toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US')}
         </Text>
       </View>
     </View>
@@ -30,7 +32,7 @@ const NotificationsScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <CustomHeader navigation={navigation} title="Notifications" colors={colors} />
+      <CustomHeader navigation={navigation} title={t('notifications.title')} colors={colors} />
       
       {notifications.length > 0 ? (
         <FlatList
@@ -42,8 +44,8 @@ const NotificationsScreen = ({ navigation }) => {
       ) : (
         <View style={styles.empty}>
           <MaterialCommunityIcons name="bell-off-outline" size={80} color={colors.border} />
-          <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No notifications yet</Text>
-          <Text style={[styles.emptySub, { color: colors.textSecondary }]}>We'll notify you when something important happens.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>{t('notifications.emptyYet')}</Text>
+          <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('notifications.emptySubtitle')}</Text>
         </View>
       )}
     </View>

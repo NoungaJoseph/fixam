@@ -10,7 +10,9 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
+import { translateService, translateStatus } from '../../i18n/translate';
 
 const tasksHeroImage = require('../../../assets/tasks_hero.png');
 
@@ -28,10 +30,10 @@ const TASK_CATS = [
 ];
 
 const PREFERENCES = [
-  { id: 'verified', label: 'Verified Professionals', icon: 'shield-check-outline' },
-  { id: 'fast', label: 'Fast Response', icon: 'lightning-bolt-outline' },
-  { id: 'rated', label: 'Highly Rated', icon: 'star-outline' },
-  { id: 'today', label: 'Available Today', icon: 'clock-outline' },
+  { id: 'verified', labelKey: 'verifiedProfessionals', icon: 'shield-check-outline' },
+  { id: 'fast', labelKey: 'fastResponse', icon: 'lightning-bolt-outline' },
+  { id: 'rated', labelKey: 'highlyRated', icon: 'star-outline' },
+  { id: 'today', labelKey: 'availableToday', icon: 'clock-outline' },
 ];
 
 const FILTERS = [
@@ -44,7 +46,7 @@ const FILTERS = [
 
 const CATEGORY_COLORS = {
   PLUMBING: { text: '#0D9488', bg: '#DFFAF5' },
-  ELECTRICAL: { text: '#1473E6', bg: '#EAF2FF' },
+  ELECTRICAL: { text: '#2563EB', bg: '#EAF2FF' },
   CLEANING: { text: '#8B5CF6', bg: '#F0E8FF' },
   REPAIR: { text: '#F97316', bg: '#FFF1E7' },
   OTHER: { text: '#64748B', bg: '#F1F5F9' },
@@ -53,7 +55,7 @@ const CATEGORY_COLORS = {
 const STATUS_STYLES = {
   PENDING: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
   PENDING_APPROVAL: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
-  IN_PROGRESS: { label: 'IN PROGRESS', icon: 'sync', text: '#1473E6', bg: '#EAF2FF' },
+  IN_PROGRESS: { label: 'IN PROGRESS', icon: 'sync', text: '#2563EB', bg: '#EAF2FF' },
   COMPLETED: { label: 'COMPLETED', icon: 'check-circle-outline', text: '#0D9488', bg: '#E2F8F4' },
   CANCELLED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
   REJECTED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
@@ -85,6 +87,7 @@ const formatCardDate = (job) => {
 const PostTaskScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const { jobs, fetchAppData } = useAppContext();
+  const { t, locale } = useLanguage();
   
   const [step, setStep] = useState('details'); // 'details', 'review', 'success'
   const [taskMode, setTaskMode] = useState(route?.params?.startOnPost ? 'post' : 'tasks');
@@ -94,6 +97,8 @@ const PostTaskScreen = ({ route, navigation }) => {
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [budget, setBudget] = useState('50000');
+  const [budgetMin, setBudgetMin] = useState('5000');
+  const [budgetMax, setBudgetMax] = useState('15000');
   const [loading, setLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [budgetMode, setBudgetMode] = useState('fixed');
@@ -130,6 +135,8 @@ const PostTaskScreen = ({ route, navigation }) => {
     setDescription('');
     setLocation('');
     setBudget('50000');
+    setBudgetMin('5000');
+    setBudgetMax('15000');
     setBudgetMode('fixed');
     setSelectedPhotos([]);
     setCategorySearch('');
@@ -164,8 +171,10 @@ const PostTaskScreen = ({ route, navigation }) => {
     setTitle(job.title || '');
     setDescription(job.description || '');
     setLocation(job.location || '');
-    setBudget(String(job.budget || '50000'));
-    setBudgetMode('fixed');
+    setBudget(String(job.budget || job.budgetMax || '50000'));
+    setBudgetMin(String(job.budgetMin || job.budget || '5000'));
+    setBudgetMax(String(job.budgetMax || job.budget || '15000'));
+    setBudgetMode(job.budgetMin && job.budgetMax && job.budgetMin !== job.budgetMax ? 'range' : 'fixed');
     setSelectedPhotos([]);
     setCategorySearch(job.category || '');
     setWhatNeedsDone(job.whatNeedsDone || '');
@@ -177,6 +186,12 @@ const PostTaskScreen = ({ route, navigation }) => {
     setScheduledDate(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setScheduledTime(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setTaskMode('post');
+    setStep('details');
+  };
+
+  const returnToTaskList = () => {
+    resetForm();
+    setTaskMode('tasks');
     setStep('details');
   };
 
@@ -203,14 +218,14 @@ const PostTaskScreen = ({ route, navigation }) => {
   const applyDateDraft = () => {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateDraft.trim());
     if (!match) {
-      Alert.alert('Invalid Date', 'Please enter the date as YYYY-MM-DD.');
+      Alert.alert(t('jobs.invalidDate'), t('jobs.invalidDateFormat'));
       return;
     }
     const nextDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (Number.isNaN(nextDate.getTime()) || nextDate < today) {
-      Alert.alert('Invalid Date', 'Please choose today or a future date.');
+      Alert.alert(t('jobs.invalidDate'), t('jobs.invalidDateFuture'));
       return;
     }
     setScheduledDate(nextDate);
@@ -220,13 +235,13 @@ const PostTaskScreen = ({ route, navigation }) => {
   const applyTimeDraft = () => {
     const match = /^(\d{1,2}):(\d{2})$/.exec(timeDraft.trim());
     if (!match) {
-      Alert.alert('Invalid Time', 'Please enter the time as HH:MM.');
+      Alert.alert(t('jobs.invalidTime'), t('jobs.invalidTimeFormat'));
       return;
     }
     const hours = Number(match[1]);
     const minutes = Number(match[2]);
     if (hours > 23 || minutes > 59) {
-      Alert.alert('Invalid Time', 'Please enter a valid 24-hour time.');
+      Alert.alert(t('jobs.invalidTime'), t('jobs.invalidTimeValid'));
       return;
     }
     const nextTime = new Date(scheduledTime);
@@ -239,28 +254,31 @@ const PostTaskScreen = ({ route, navigation }) => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need location permission to get your current location.');
+        Alert.alert(t('jobs.permissionDenied'), t('jobs.locationPermissionBody'));
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude, longitude } = loc.coords;
       setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
     } catch (error) {
-      Alert.alert('Error', 'Unable to get your location. Please try again.');
+      Alert.alert(t('common.error'), t('jobs.locationFailed'));
     }
   };
 
   const validateForm = () => {
-    if (!title.trim()) return 'Task title is required';
-    if (!location.trim()) return 'Location is required';
-    if (!budget || parseInt(budget) <= 0) return 'Budget must be greater than 0';
+    if (!title.trim()) return t('jobs.taskTitleRequired');
+    if (!location.trim()) return t('jobs.locationRequired');
+    const min = budgetMode === 'range' ? parseInt(budgetMin) : parseInt(budget);
+    const max = budgetMode === 'range' ? parseInt(budgetMax) : parseInt(budget);
+    if (!min || !max || min <= 0 || max <= 0) return t('jobs.budgetRequired');
+    if (min > max) return t('jobs.budgetMinMax');
     return null;
   };
 
   const handleNext = () => {
     const error = validateForm();
     if (error) {
-      Alert.alert('Validation Error', error);
+      Alert.alert(t('jobs.validationError'), error);
       return;
     }
     setStep('description');
@@ -268,7 +286,7 @@ const PostTaskScreen = ({ route, navigation }) => {
 
   const handleDescriptionNext = () => {
     if (!description.trim()) {
-      Alert.alert('Validation Error', 'Description is required');
+      Alert.alert(t('jobs.validationError'), t('jobs.descriptionRequired'));
       return;
     }
     setStep('review');
@@ -279,7 +297,7 @@ const PostTaskScreen = ({ route, navigation }) => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (permission.status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please allow photo access to upload task images.');
+        Alert.alert(t('jobs.permissionDenied'), t('jobs.photoPermissionBody'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -291,7 +309,7 @@ const PostTaskScreen = ({ route, navigation }) => {
         setSelectedPhotos((prev) => [...prev, result.assets[0].uri].slice(0, 5));
       }
     } catch (error) {
-      Alert.alert('Upload failed', 'Could not add this photo. Please try again.');
+      Alert.alert(t('jobs.uploadFailed'), t('jobs.photoUploadFailed'));
     }
   };
 
@@ -305,13 +323,16 @@ const PostTaskScreen = ({ route, navigation }) => {
     ));
   };
 
+  const getCategoryLabel = (catName) => translateService(catName);
+
   const selectCategory = (cat) => {
     setSelectedCat(cat.name);
-    setCategorySearch(cat.name);
+    setCategorySearch(getCategoryLabel(cat.name));
     setShowCategoryPicker(false);
   };
 
   const filteredCategories = TASK_CATS.filter((cat) => (
+    getCategoryLabel(cat.name).toLowerCase().includes(categorySearch.trim().toLowerCase()) ||
     cat.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
   ));
 
@@ -335,8 +356,10 @@ const PostTaskScreen = ({ route, navigation }) => {
       );
       const payload = {
         title, description, location,
-        budget: parseInt(budget),
-        category: selectedCat,
+        budget: budgetMode === 'range' ? parseInt(budgetMax) : parseInt(budget),
+        budgetMin: budgetMode === 'range' ? parseInt(budgetMin) : parseInt(budget),
+        budgetMax: budgetMode === 'range' ? parseInt(budgetMax) : parseInt(budget),
+        category: locale === 'fr' ? getCategoryLabel(selectedCat) : selectedCat,
         scheduledTime: scheduledDateTime.toISOString(),
         whatNeedsDone,
         importantDetails,
@@ -352,7 +375,7 @@ const PostTaskScreen = ({ route, navigation }) => {
       await fetchAppData?.();
       setStep('success');
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to publish task. Please try again.');
+      Alert.alert(t('common.error'), error.response?.data?.message || t('jobs.publishFailed'));
     } finally {
       setLoading(false);
     }
@@ -362,9 +385,9 @@ const PostTaskScreen = ({ route, navigation }) => {
     try {
       await api.put(`/jobs/${job.id}/status`, { status });
       await fetchAppData?.();
-      Alert.alert('Updated', status === 'COMPLETED' ? 'Task marked as completed.' : 'Task updated.');
+      Alert.alert(t('jobs.updated'), status === 'COMPLETED' ? t('jobs.completedBody') : t('jobs.updatedBody'));
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'Could not update this task.');
+      Alert.alert(t('common.error'), error.response?.data?.message || t('jobs.updateFailedClient'));
     }
   };
 
@@ -372,19 +395,19 @@ const PostTaskScreen = ({ route, navigation }) => {
     const canEdit = job.status !== 'COMPLETED' && job.status !== 'CANCELLED';
     const normalizedStatus = normalizeTaskStatus(job);
     const statusStyle = STATUS_STYLES[normalizedStatus] || STATUS_STYLES.PENDING;
-    const category = String(job.category || 'TASK').toUpperCase();
-    const categoryStyle = CATEGORY_COLORS[category] || CATEGORY_COLORS.OTHER;
+    const category = String(job.category || 'TASK');
+    const categoryStyle = CATEGORY_COLORS[category.toUpperCase()] || CATEGORY_COLORS.OTHER;
     const isComplete = normalizedStatus === 'COMPLETED';
     const isInProgress = normalizedStatus === 'IN_PROGRESS';
-    const description = job.description || 'No description provided yet.';
+    const description = job.description || t('jobs.noDescription');
     const locationText = job.location || '4.1070, 9.7619';
-    const titleText = job.title || 'Untitled task';
+    const titleText = job.title || t('jobs.untitledTask');
 
     return (
       <View key={job.id} style={[styles.taskCard, { backgroundColor: colors.card }]}>
         <View style={styles.taskCardHeader}>
           <View style={[styles.catBadge, { backgroundColor: categoryStyle.bg }]}>
-            <Text style={[styles.catBadgeText, { color: categoryStyle.text }]}>{category}</Text>
+            <Text style={[styles.catBadgeText, { color: categoryStyle.text }]}>{translateService(category).toUpperCase()}</Text>
           </View>
           <View style={styles.cardRightMeta}>
             <MaterialCommunityIcons name="calendar-blank-outline" size={20} color="#64748B" />
@@ -402,7 +425,7 @@ const PostTaskScreen = ({ route, navigation }) => {
           </View>
           <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
             <MaterialCommunityIcons name={statusStyle.icon} size={18} color={statusStyle.text} />
-            <Text style={[styles.statusPillText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+            <Text style={[styles.statusPillText, { color: statusStyle.text }]}>{translateStatus(normalizedStatus).toUpperCase()}</Text>
           </View>
         </View>
         
@@ -414,14 +437,16 @@ const PostTaskScreen = ({ route, navigation }) => {
           <View style={styles.metaDivider} />
           <View style={styles.taskMetaItem}>
             <MaterialCommunityIcons name="currency-usd" size={18} color="#06B85F" />
-            <Text style={styles.budgetValue}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
+            <Text style={styles.budgetValue}>
+              {Number(job.budgetMin || job.budget || 0).toLocaleString()} - {Number(job.budgetMax || job.budget || 0).toLocaleString()} XAF
+            </Text>
           </View>
         </View>
 
         {job.rejectionReason ? (
           <View style={styles.rejectionBox}>
             <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.error} />
-            <Text style={[styles.rejectionText, { color: colors.error }]}>Reason: {job.rejectionReason}</Text>
+            <Text style={[styles.rejectionText, { color: colors.error }]}>{t('jobs.reason')}: {job.rejectionReason}</Text>
           </View>
         ) : null}
 
@@ -431,7 +456,7 @@ const PostTaskScreen = ({ route, navigation }) => {
             onPress={() => navigation.navigate('JobStatus', { job })}
           >
             <MaterialCommunityIcons name="eye" size={22} color="#071936" />
-            <Text style={styles.secondaryActionText}>Details</Text>
+            <Text style={styles.secondaryActionText}>{t('jobs.details')}</Text>
           </TouchableOpacity>
           
           {canEdit && (
@@ -440,25 +465,25 @@ const PostTaskScreen = ({ route, navigation }) => {
               onPress={() => startEditTask(job)}
             >
               <MaterialCommunityIcons name="pencil-outline" size={22} color="#071936" />
-              <Text style={styles.secondaryActionText}>Edit</Text>
+              <Text style={styles.secondaryActionText}>{t('jobs.edit')}</Text>
             </TouchableOpacity>
           )}
 
           {isComplete ? (
             <TouchableOpacity style={[styles.secondaryActionBtn, styles.bookAgainBtn]} onPress={navigateToCreateTask}>
               <MaterialCommunityIcons name="sync" size={22} color="#071936" />
-              <Text style={styles.secondaryActionText}>Book Again</Text>
+              <Text style={styles.secondaryActionText}>{t('jobs.bookAgain')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={[styles.primaryActionBtn, isInProgress && styles.blueActionBtn]}
-              onPress={() => Alert.alert('Complete Task', 'Mark this task as complete?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Complete', onPress: () => updateTaskStatus(job, 'COMPLETED') }
+              onPress={() => Alert.alert(t('jobs.completeTask'), t('jobs.completeTaskBody'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('jobs.complete'), onPress: () => updateTaskStatus(job, 'COMPLETED') }
               ])}
             >
               <MaterialCommunityIcons name="check-circle-outline" size={22} color="#FFF" />
-              <Text style={styles.primaryActionText}>{isInProgress ? 'Mark Completed' : 'Done'}</Text>
+              <Text style={styles.primaryActionText}>{isInProgress ? t('jobs.markCompleted') : t('jobs.done')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -473,27 +498,27 @@ const PostTaskScreen = ({ route, navigation }) => {
 
   const detailEditorConfig = detailEditor === 'what'
     ? {
-      title: 'What needs to be done?',
-      subtitle: 'Describe the specific outcome you expect from the professional.',
+      title: t('jobs.whatNeedsDone'),
+      subtitle: t('jobs.whatNeedsDoneSub'),
       value: whatNeedsDone,
       setter: setWhatNeedsDone,
-      placeholder: 'e.g. Detect the leaking pipe, fix or replace the damaged part, and ensure no more leaks.',
+      placeholder: t('jobs.whatNeedsDonePlaceholder'),
     }
     : detailEditor === 'important'
       ? {
-        title: 'Important details',
-        subtitle: 'Add constraints, access notes, urgency, measurements, or special instructions.',
+        title: t('jobs.importantDetails'),
+        subtitle: t('jobs.importantDetailsSub'),
         value: importantDetails,
         setter: setImportantDetails,
-        placeholder: 'e.g. The leak is under the kitchen sink. Please bring tools and call before arriving.',
+        placeholder: t('jobs.importantDetailsPlaceholder'),
       }
       : detailEditor === 'scope'
         ? {
-          title: 'Task Scope',
-          subtitle: 'Explain how large the job is so providers can quote correctly.',
+          title: t('jobs.taskScope'),
+          subtitle: t('jobs.taskScopeSub'),
           value: taskScope,
           setter: setTaskScope,
-          placeholder: 'e.g. Small repair, one kitchen sink only, should take less than two hours.',
+          placeholder: t('jobs.taskScopePlaceholder'),
         }
         : null;
 
@@ -503,11 +528,11 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'tasks' && (
         <>
-          <View style={styles.tasksHeader}>
-            <TouchableOpacity onPress={openDrawer} style={styles.menuBtn}>
-              <MaterialCommunityIcons name="menu" size={32} color="#071936" />
+          <View style={[styles.tasksHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={openDrawer} style={[styles.menuBtn, { backgroundColor: isDarkMode ? '#111827' : '#F1F5F9' }]}>
+              <MaterialCommunityIcons name="menu" size={32} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.tasksHeaderTitle}>My Tasks</Text>
+            <Text style={[styles.tasksHeaderTitle, { color: colors.text }]}>{t('jobs.myTasks')}</Text>
             <TouchableOpacity onPress={navigateToCreateTask} style={styles.addTaskBtn}>
               <MaterialCommunityIcons name="plus" size={34} color="#FFF" />
             </TouchableOpacity>
@@ -521,8 +546,8 @@ const PostTaskScreen = ({ route, navigation }) => {
               style={styles.tasksHero}
             >
               <View style={styles.tasksHeroText}>
-                <Text style={styles.tasksHeroTitle}>Your posted tasks</Text>
-                <Text style={styles.tasksHeroSubtitle}>Track approval, edit pending work, and manage your service requests.</Text>
+                <Text style={styles.tasksHeroTitle}>{t('jobs.postedTasks')}</Text>
+                <Text style={styles.tasksHeroSubtitle}>{t('jobs.postedTasksSubtitle')}</Text>
               </View>
               <Image source={tasksHeroImage} style={styles.tasksHeroImage} resizeMode="contain" />
             </LinearGradient>
@@ -540,7 +565,7 @@ const PostTaskScreen = ({ route, navigation }) => {
                     <TouchableOpacity key={filter.value} style={styles.filterItem} onPress={() => setActiveFilter(filter.value)}>
                       <View style={styles.filterLabelRow}>
                         <Text style={[styles.filterText, active && { color: filter.color }]}>
-                          {filter.label}
+                          {filter.value === 'ALL' ? t('jobs.allTasks') : translateStatus(filter.value)}
                         </Text>
                         {filter.value !== 'ALL' && <View style={[styles.filterDot, { backgroundColor: filter.color }]} />}
                       </View>
@@ -555,10 +580,10 @@ const PostTaskScreen = ({ route, navigation }) => {
               {visibleJobs.length === 0 ? (
                 <View style={styles.emptyTasks}>
                   <MaterialCommunityIcons name="clipboard-text-outline" size={64} color={colors.border} />
-                  <Text style={[styles.emptyTasksTitle, { color: colors.text }]}>No tasks here</Text>
-                  <Text style={[styles.emptyTasksText, { color: colors.textSecondary }]}>Post your first task and it will appear here for tracking.</Text>
+                  <Text style={[styles.emptyTasksTitle, { color: colors.text }]}>{t('jobs.noTasksHere')}</Text>
+                  <Text style={[styles.emptyTasksText, { color: colors.textSecondary }]}>{t('jobs.firstTaskHint')}</Text>
                   <TouchableOpacity style={[styles.submitBtn, { marginTop: 20, width: '100%', backgroundColor: colors.accent }]} onPress={navigateToCreateTask}>
-                    <Text style={styles.submitBtnText}>Post First Task</Text>
+                    <Text style={styles.submitBtnText}>{t('jobs.postFirstTask')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -571,17 +596,17 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'post' && step === 'details' && (
         <>
-          <View style={styles.createHeader}>
-            <TouchableOpacity onPress={openDrawer} style={styles.createBackBtn}>
-              <MaterialCommunityIcons name="menu" size={32} color="#071936" />
+          <View style={[styles.createHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={editingJob ? returnToTaskList : openDrawer} style={[styles.createBackBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name={editingJob ? 'arrow-left' : 'menu'} size={32} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.createHeaderTitle}>{editingJob ? 'Edit Task' : 'Create Task'}</Text>
+            <Text style={[styles.createHeaderTitle, { color: colors.text }]}>{editingJob ? t('jobs.editTask') : t('jobs.createTask')}</Text>
             <View style={{ width: 52 }} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
             <View style={styles.createStepper}>
-              {['Task Details', 'Description', 'Review'].map((label, index) => {
+              {[t('jobs.taskDetails'), t('jobs.description'), t('jobs.review')].map((label, index) => {
                 const active = index === 0;
                 return (
                   <React.Fragment key={label}>
@@ -604,26 +629,26 @@ const PostTaskScreen = ({ route, navigation }) => {
               style={styles.createHero}
             >
               <View style={styles.createHeroTextWrap}>
-                <Text style={styles.createHeroTitle}>Let's get started!</Text>
-                <Text style={styles.createHeroSub}>Tell us what you need done and we'll help you find the right professional.</Text>
+                <Text style={styles.createHeroTitle}>{t('jobs.createTask')}</Text>
+                <Text style={styles.createHeroSub}>{t('jobs.postedTasksSubtitle')}</Text>
               </View>
               <Image source={tasksHeroImage} style={styles.createHeroImage} resizeMode="contain" />
             </LinearGradient>
 
-            <View style={styles.createFormCard}>
+            <View style={[styles.createFormCard, { backgroundColor: colors.card }]}>
               <View style={styles.sectionTitleRow}>
-                <Text style={styles.createSectionLabel}>Category</Text>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.category')}</Text>
                 <TouchableOpacity onPress={() => setShowCategoryPicker((value) => !value)}>
-                  <Text style={styles.viewAllText}>View all</Text>
+                  <Text style={styles.viewAllText}>{t('jobs.viewAll')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.categorySearchWrap}>
                 <MaterialCommunityIcons name="shape-outline" size={21} color="#0D9488" />
                 <TextInput
                   style={styles.categorySearchInput}
-                  placeholder="Select a category"
+                  placeholder={t('jobs.selectCategory')}
                   placeholderTextColor="#94A3B8"
-                  value={showCategoryPicker ? categorySearch : selectedCat}
+                  value={showCategoryPicker ? categorySearch : getCategoryLabel(selectedCat)}
                   onFocus={() => {
                     setCategorySearch('');
                     setShowCategoryPicker(true);
@@ -644,7 +669,7 @@ const PostTaskScreen = ({ route, navigation }) => {
                         <View style={[styles.categoryResultIcon, active && styles.categoryResultIconActive]}>
                           <MaterialCommunityIcons name={cat.icon} size={18} color={active ? '#FFF' : '#0D9488'} />
                         </View>
-                        <Text style={styles.categoryResultText}>{cat.name}</Text>
+                        <Text style={styles.categoryResultText}>{getCategoryLabel(cat.name)}</Text>
                         {active && <MaterialCommunityIcons name="check-circle" size={20} color="#0D9488" />}
                       </TouchableOpacity>
                     );
@@ -653,10 +678,10 @@ const PostTaskScreen = ({ route, navigation }) => {
               )}
 
               <View style={styles.createFieldGroup}>
-                <Text style={styles.createSectionLabel}>Task Title</Text>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.taskTitle')}</Text>
                 <TextInput
-                  style={styles.createInput}
-                  placeholder="e.g. Fix leaking pipe in kitchen"
+                  style={[styles.createInput, { color: colors.text, borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF' }]}
+                  placeholder={t('jobs.taskTitlePlaceholder')}
                   placeholderTextColor="#94A3B8"
                   value={title}
                   onChangeText={setTitle}
@@ -666,13 +691,13 @@ const PostTaskScreen = ({ route, navigation }) => {
               </View>
 
               <View style={styles.createFieldGroup}>
-                <Text style={styles.createSectionLabel}>Location</Text>
-                <View style={styles.createLocationInput}>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.location')}</Text>
+                <View style={[styles.createLocationInput, { borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF' }]}>
                   <MaterialCommunityIcons name="map-marker-outline" size={21} color="#0D9488" />
                   <TextInput
-                    style={styles.createLocationTextInput}
+                    style={[styles.createLocationTextInput, { color: colors.text }]}
                     placeholder="Douala, Cameroon"
-                    placeholderTextColor="#071936"
+                    placeholderTextColor="#94A3B8"
                     value={location}
                     onChangeText={setLocation}
                   />
@@ -680,44 +705,71 @@ const PostTaskScreen = ({ route, navigation }) => {
                     <MaterialCommunityIcons name="crosshairs-gps" size={22} color="#0D9488" />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.fieldHint}>This helps us show nearby professionals</Text>
+                <Text style={styles.fieldHint}>{t('jobs.locationHint')}</Text>
               </View>
 
               <View style={styles.createFieldGroup}>
-                <Text style={styles.createSectionLabel}>Budget</Text>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.budget')}</Text>
                 <View style={styles.budgetModeRow}>
                   <TouchableOpacity style={[styles.budgetModeBtn, budgetMode === 'fixed' && styles.budgetModeBtnActive]} onPress={() => setBudgetMode('fixed')}>
-                    <Text style={[styles.budgetModeTitle, budgetMode === 'fixed' && styles.budgetModeTitleActive]}>Fixed Price</Text>
-                    <Text style={styles.budgetModeSub}>Set your budget</Text>
+                    <Text style={[styles.budgetModeTitle, budgetMode === 'fixed' && styles.budgetModeTitleActive]}>{t('jobs.fixedPrice')}</Text>
+                    <Text style={styles.budgetModeSub}>{t('jobs.setBudget')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[styles.budgetModeBtn, budgetMode === 'range' && styles.budgetModeBtnActive]} onPress={() => setBudgetMode('range')}>
-                    <Text style={[styles.budgetModeTitle, budgetMode === 'range' && styles.budgetModeTitleActive]}>Price Range</Text>
-                    <Text style={styles.budgetModeSub}>Set min - max budget</Text>
+                    <Text style={[styles.budgetModeTitle, budgetMode === 'range' && styles.budgetModeTitleActive]}>{t('jobs.priceRange')}</Text>
+                    <Text style={styles.budgetModeSub}>{t('jobs.setRange')}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.budgetAmountRow}>
-                  <View style={styles.currencyBox}>
-                    <Text style={styles.currencyBoxText}>FCFA</Text>
+                {budgetMode === 'range' ? (
+                  <View style={styles.budgetRangeRow}>
+                    <View style={[styles.budgetRangeInputWrap, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}>
+                      <Text style={styles.rangeLabel}>{t('jobs.min')} FCFA</Text>
+                      <TextInput
+                        style={[styles.budgetAmountInput, { color: colors.text }]}
+                        value={budgetMin}
+                        onChangeText={setBudgetMin}
+                        keyboardType="numeric"
+                        placeholder="5,000"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                    <View style={[styles.budgetRangeInputWrap, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}>
+                      <Text style={styles.rangeLabel}>{t('jobs.max')} FCFA</Text>
+                      <TextInput
+                        style={[styles.budgetAmountInput, { color: colors.text }]}
+                        value={budgetMax}
+                        onChangeText={setBudgetMax}
+                        keyboardType="numeric"
+                        placeholder="15,000"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
                   </View>
-                  <TextInput
-                    style={styles.budgetAmountInput}
-                    value={budget}
-                    onChangeText={setBudget}
-                    keyboardType="numeric"
-                    placeholder="Enter your budget"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
-                <Text style={styles.fieldHint}>Enter the amount you are willing to pay</Text>
+                ) : (
+                  <View style={[styles.budgetAmountRow, { borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF' }]}>
+                    <View style={[styles.currencyBox, { backgroundColor: isDarkMode ? '#374151' : '#F1F5F9' }]}>
+                      <Text style={[styles.currencyBoxText, { color: colors.text }]}>FCFA</Text>
+                    </View>
+                    <TextInput
+                      style={[styles.budgetAmountInput, { color: colors.text }]}
+                      value={budget}
+                      onChangeText={setBudget}
+                      keyboardType="numeric"
+                      placeholder={t('jobs.enterBudget')}
+                      placeholderTextColor="#94A3B8"
+                    />
+                  </View>
+                )}
+                <Text style={styles.fieldHint}>{t('jobs.budgetHint')}</Text>
               </View>
 
               <View style={styles.createFieldGroup}>
-                <Text style={styles.createSectionLabel}>Upload Photos <Text style={styles.optionalText}>(Optional)</Text></Text>
-                <Text style={styles.fieldHintStrong}>Add photos to help professionals understand better</Text>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.uploadPhotos')} <Text style={styles.optionalText}>({t('jobs.optional')})</Text></Text>
+                <Text style={styles.fieldHintStrong}>{t('jobs.photosHint')}</Text>
                 <View style={styles.photoRow}>
                   <TouchableOpacity style={styles.addPhotoBox} onPress={pickTaskPhoto}>
                     <MaterialCommunityIcons name="image-outline" size={26} color="#0D9488" />
-                    <Text style={styles.addPhotoText}>Add Photo</Text>
+                    <Text style={styles.addPhotoText}>{t('jobs.addPhoto')}</Text>
                   </TouchableOpacity>
                   {selectedPhotos.map((uri) => (
                     <View key={uri} style={styles.photoThumbWrap}>
@@ -728,18 +780,18 @@ const PostTaskScreen = ({ route, navigation }) => {
                     </View>
                   ))}
                 </View>
-                <Text style={styles.fieldHint}>You can add up to 5 photos</Text>
+                <Text style={styles.fieldHint}>{t('jobs.maxPhotosHint', { count: 5 })}</Text>
               </View>
 
               <View style={styles.createFieldGroup}>
-                <Text style={styles.createSectionLabel}>Additional Preferences <Text style={styles.optionalText}>(Optional)</Text></Text>
+                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.additionalPreferences')} <Text style={styles.optionalText}>({t('jobs.optional')})</Text></Text>
                 <View style={styles.preferenceGrid}>
                   {PREFERENCES.map((pref) => {
                     const active = selectedPreferences.includes(pref.id);
                     return (
                       <TouchableOpacity key={pref.id} style={[styles.preferenceChip, active && styles.preferenceChipActive]} onPress={() => togglePreference(pref.id)}>
                         <MaterialCommunityIcons name={pref.icon} size={18} color={active ? '#0D9488' : '#64748B'} />
-                        <Text style={[styles.preferenceText, active && styles.preferenceTextActive]}>{pref.label}</Text>
+                        <Text style={[styles.preferenceText, active && styles.preferenceTextActive]}>{t(`jobs.preferences.${pref.labelKey}`)}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -748,7 +800,7 @@ const PostTaskScreen = ({ route, navigation }) => {
             </View>
 
             <TouchableOpacity style={styles.createPrimaryBtn} onPress={handleNext}>
-              <Text style={styles.createPrimaryText}>Continue to Description</Text>
+              <Text style={styles.createPrimaryText}>{t('jobs.continueToDescription')}</Text>
               <MaterialCommunityIcons name="arrow-right" size={22} color="#FFF" />
             </TouchableOpacity>
           </ScrollView>
@@ -757,17 +809,17 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'post' && step === 'description' && !detailEditorConfig && (
         <>
-          <View style={styles.createHeader}>
-            <TouchableOpacity onPress={() => setStep('details')} style={styles.createBackBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
+          <View style={[styles.createHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={() => setStep('details')} style={[styles.createBackBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.createHeaderTitle}>Task Description</Text>
+            <Text style={[styles.createHeaderTitle, { color: colors.text }]}>{t('jobs.taskDescription')}</Text>
             <View style={{ width: 52 }} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
             <View style={styles.createStepper}>
-              {['Task Details', 'Description', 'Review'].map((label, index) => {
+              {[t('jobs.taskDetails'), t('jobs.description'), t('jobs.review')].map((label, index) => {
                 const active = index === 1;
                 const done = index < 1;
                 return (
@@ -787,17 +839,17 @@ const PostTaskScreen = ({ route, navigation }) => {
             <View style={styles.tipCard}>
               <MaterialCommunityIcons name="lightbulb-outline" size={34} color="#0D9488" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.tipTitle}>Tip</Text>
-                <Text style={styles.tipText}>The more details you provide, the better quotes you'll receive.</Text>
+                <Text style={styles.tipTitle}>{t('jobs.tip')}</Text>
+                <Text style={styles.tipText}>{t('jobs.detailsTip')}</Text>
               </View>
               <MaterialCommunityIcons name="close" size={22} color="#0D9488" />
             </View>
 
-            <Text style={styles.descriptionLabel}>Describe your task</Text>
-            <View style={styles.descriptionInputWrap}>
+            <Text style={[styles.descriptionLabel, { color: colors.text }]}>{t('jobs.describeTask')}</Text>
+            <View style={[styles.descriptionInputWrap, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}>
               <TextInput
-                style={styles.descriptionInput}
-                placeholder="Explain in detail what you need done..."
+                style={[styles.descriptionInput, { color: colors.text }]}
+                placeholder={t('jobs.descriptionPlaceholder')}
                 placeholderTextColor="#94A3B8"
                 value={description}
                 onChangeText={setDescription}
@@ -807,39 +859,39 @@ const PostTaskScreen = ({ route, navigation }) => {
               />
               <Text style={styles.descriptionCounter}>{description.length}/1000</Text>
             </View>
-            <Text style={styles.descriptionHint}>Include as much detail as possible</Text>
+            <Text style={styles.descriptionHint}>{t('jobs.descriptionHint')}</Text>
 
-            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('what')}>
+            <TouchableOpacity style={[styles.descriptionPromptCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => openDetailEditor('what')}>
               <View>
-                <Text style={styles.promptTitle}>What needs to be done?</Text>
+                <Text style={[styles.promptTitle, { color: colors.text }]}>{t('jobs.whatNeedsDone')}</Text>
                 <Text style={styles.promptText} numberOfLines={2}>
-                  {whatNeedsDone || 'e.g. Install a new water heater, Fix broken plumbing, Paint entire living room...'}
+                  {whatNeedsDone || t('jobs.whatNeedsDoneExample')}
                 </Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('important')}>
+            <TouchableOpacity style={[styles.descriptionPromptCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => openDetailEditor('important')}>
               <View>
-                <Text style={styles.promptTitle}>Important details</Text>
+                <Text style={[styles.promptTitle, { color: colors.text }]}>{t('jobs.importantDetails')}</Text>
                 <Text style={styles.promptText} numberOfLines={2}>
-                  {importantDetails || 'Mention the issue, size, urgency, and anything the professional should know.'}
+                  {importantDetails || t('jobs.importantDetailsExample')}
                 </Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.descriptionPromptCard} onPress={() => openDetailEditor('scope')}>
+            <TouchableOpacity style={[styles.descriptionPromptCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => openDetailEditor('scope')}>
               <View>
-                <Text style={styles.promptTitle}>Task Scope</Text>
-                <Text style={styles.promptText}>{taskScope || 'Select the scope of work'}</Text>
+                <Text style={[styles.promptTitle, { color: colors.text }]}>{t('jobs.taskScope')}</Text>
+                <Text style={styles.promptText}>{taskScope || t('jobs.selectScope')}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color="#64748B" />
             </TouchableOpacity>
 
             <View style={styles.materialsCard}>
-              <Text style={styles.promptTitle}>Materials</Text>
-              <Text style={styles.promptText}>Who will provide the materials?</Text>
+              <Text style={styles.promptTitle}>{t('jobs.materials')}</Text>
+              <Text style={styles.promptText}>{t('jobs.materialsQuestion')}</Text>
               <View style={styles.materialsRow}>
                 <TouchableOpacity style={[styles.materialOption, materialsProvider === 'professional' && styles.materialOptionActive]} onPress={() => setMaterialsProvider('professional')}>
                   {materialsProvider === 'professional' && (
@@ -848,8 +900,8 @@ const PostTaskScreen = ({ route, navigation }) => {
                     </View>
                   )}
                   <MaterialCommunityIcons name="briefcase-variant" size={28} color="#0D9488" />
-                  <Text style={styles.materialTitle}>Professional</Text>
-                  <Text style={styles.materialSub}>I want the professional to provide materials</Text>
+                  <Text style={styles.materialTitle}>{t('common.provider')}</Text>
+                  <Text style={styles.materialSub}>{t('jobs.professionalMaterialsSub')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.materialOption, materialsProvider === 'client' && styles.materialOptionActive]} onPress={() => setMaterialsProvider('client')}>
                   {materialsProvider === 'client' && (
@@ -858,8 +910,8 @@ const PostTaskScreen = ({ route, navigation }) => {
                     </View>
                   )}
                   <MaterialCommunityIcons name="account-outline" size={30} color="#475569" />
-                  <Text style={styles.materialTitle}>I Will Provide</Text>
-                  <Text style={styles.materialSub}>I will provide the materials</Text>
+                  <Text style={styles.materialTitle}>{t('jobs.iWillProvide')}</Text>
+                  <Text style={styles.materialSub}>{t('jobs.clientMaterialsSub')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -867,17 +919,17 @@ const PostTaskScreen = ({ route, navigation }) => {
             <View style={styles.descriptionActions}>
               <TouchableOpacity style={styles.descriptionBackBtn} onPress={() => setStep('details')}>
                 <MaterialCommunityIcons name="arrow-left" size={22} color="#071936" />
-                <Text style={styles.descriptionBackText}>Back</Text>
+                <Text style={styles.descriptionBackText}>{t('common.back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.descriptionNextBtn} onPress={handleDescriptionNext}>
-                <Text style={styles.descriptionNextText}>Continue to Review</Text>
+                <Text style={styles.descriptionNextText}>{t('jobs.continueToReview')}</Text>
                 <MaterialCommunityIcons name="arrow-right" size={22} color="#FFF" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.secureRow}>
               <MaterialCommunityIcons name="shield-check-outline" size={18} color="#0D9488" />
-              <Text style={styles.secureText}>Your information is secure and private</Text>
+              <Text style={styles.secureText}>{t('jobs.infoSecure')}</Text>
             </View>
           </ScrollView>
         </>
@@ -885,20 +937,20 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'post' && step === 'description' && detailEditorConfig && (
         <>
-          <View style={styles.createHeader}>
-            <TouchableOpacity onPress={closeDetailEditor} style={styles.createBackBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
+          <View style={[styles.createHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={closeDetailEditor} style={[styles.createBackBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.createHeaderTitle}>{detailEditorConfig.title}</Text>
+            <Text style={[styles.createHeaderTitle, { color: colors.text }]}>{detailEditorConfig.title}</Text>
             <View style={{ width: 52 }} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
-            <View style={styles.detailEditorCard}>
-              <Text style={styles.detailEditorTitle}>{detailEditorConfig.title}</Text>
-              <Text style={styles.detailEditorSub}>{detailEditorConfig.subtitle}</Text>
+            <View style={[styles.detailEditorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.detailEditorTitle, { color: colors.text }]}>{detailEditorConfig.title}</Text>
+              <Text style={[styles.detailEditorSub, { color: colors.textSecondary }]}>{detailEditorConfig.subtitle}</Text>
               <TextInput
-                style={styles.detailEditorInput}
+                style={[styles.detailEditorInput, { color: colors.text, backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}
                 value={detailEditorConfig.value}
                 onChangeText={detailEditorConfig.setter}
                 placeholder={detailEditorConfig.placeholder}
@@ -908,7 +960,7 @@ const PostTaskScreen = ({ route, navigation }) => {
               />
             </View>
             <TouchableOpacity style={styles.createPrimaryBtn} onPress={closeDetailEditor}>
-              <Text style={styles.createPrimaryText}>Save Details</Text>
+              <Text style={styles.createPrimaryText}>{t('jobs.saveDetails')}</Text>
               <MaterialCommunityIcons name="check" size={22} color="#FFF" />
             </TouchableOpacity>
           </ScrollView>
@@ -917,17 +969,17 @@ const PostTaskScreen = ({ route, navigation }) => {
 
       {taskMode === 'post' && step === 'review' && (
         <>
-          <View style={styles.createHeader}>
-            <TouchableOpacity onPress={() => setStep('description')} style={styles.createBackBtn}>
-              <MaterialCommunityIcons name="chevron-left" size={30} color="#071936" />
+          <View style={[styles.createHeader, { backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={() => setStep('description')} style={[styles.createBackBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <MaterialCommunityIcons name="chevron-left" size={30} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.createHeaderTitle}>Review Task</Text>
+            <Text style={[styles.createHeaderTitle, { color: colors.text }]}>{t('jobs.reviewTask')}</Text>
             <View style={{ width: 52 }} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.createScrollContent}>
             <View style={styles.createStepper}>
-              {['Task Details', 'Description', 'Review'].map((label, index) => (
+              {[t('jobs.taskDetails'), t('jobs.description'), t('jobs.review')].map((label, index) => (
                 <React.Fragment key={label}>
                   <View style={styles.createStepUnit}>
                     <View style={styles.createStepCircleActive}>
@@ -940,60 +992,64 @@ const PostTaskScreen = ({ route, navigation }) => {
               ))}
             </View>
 
-            <Text style={[styles.mainTitle, { color: colors.text }]}>Review Your Task</Text>
+            <Text style={[styles.mainTitle, { color: colors.text }]}>{t('jobs.reviewYourTask')}</Text>
 
             <View style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.catBadge, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : colors.accentSoft }]}>
-                <Text style={[styles.catBadgeText, { color: colors.accent }]}>{selectedCat}</Text>
+                <Text style={[styles.catBadgeText, { color: colors.accent }]}>{getCategoryLabel(selectedCat)}</Text>
               </View>
               <Text style={[styles.reviewTitle, { color: colors.text }]}>{title}</Text>
               <Text style={[styles.reviewDescription, { color: colors.textSecondary }]}>{description}</Text>
 
               <View style={styles.reviewGrid}>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📍 Location</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📍 {t('jobs.location')}</Text>
                   <Text style={[styles.reviewValue, { color: colors.text }]}>{location}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>💰 Budget</Text>
-                  <Text style={[styles.reviewValue, { color: colors.text }]}>{parseInt(budget).toLocaleString()} XAF</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>💰 {t('jobs.budget')}</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>
+                    {budgetMode === 'range'
+                      ? `${parseInt(budgetMin).toLocaleString()} - ${parseInt(budgetMax).toLocaleString()} XAF`
+                      : `${parseInt(budget).toLocaleString()} XAF`}
+                  </Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📅 Date</Text>
-                  <Text style={[styles.reviewValue, { color: colors.text }]}>{scheduledDate.toLocaleDateString()}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>📅 {t('jobs.date')}</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{scheduledDate.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>⏰ Time</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>⏰ {t('jobs.time')}</Text>
                   <Text style={[styles.reviewValue, { color: colors.text }]}>{scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
               </View>
 
               {whatNeedsDone ? (
                 <View style={styles.reviewFullItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>What needs to be done</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>{t('jobs.whatNeedsDone')}</Text>
                   <Text style={[styles.reviewValue, { color: colors.text }]}>{whatNeedsDone}</Text>
                 </View>
               ) : null}
 
               {importantDetails ? (
                 <View style={styles.reviewFullItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Important details</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>{t('jobs.importantDetails')}</Text>
                   <Text style={[styles.reviewValue, { color: colors.text }]}>{importantDetails}</Text>
                 </View>
               ) : null}
 
               <View style={styles.reviewGrid}>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Scope</Text>
-                  <Text style={[styles.reviewValue, { color: colors.text }]}>{taskScope || 'Not specified'}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>{t('jobs.scope')}</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{taskScope || t('common.notAvailable')}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Materials</Text>
-                  <Text style={[styles.reviewValue, { color: colors.text }]}>{materialsProvider === 'professional' ? 'Professional will provide' : 'Client will provide'}</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>{t('jobs.materials')}</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{materialsProvider === 'professional' ? t('jobs.professionalWillProvide') : t('jobs.clientWillProvide')}</Text>
                 </View>
                 <View style={styles.reviewItem}>
-                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Photos</Text>
-                  <Text style={[styles.reviewValue, { color: colors.text }]}>{selectedPhotos.length} uploaded</Text>
+                  <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>{t('jobs.photos')}</Text>
+                  <Text style={[styles.reviewValue, { color: colors.text }]}>{t('jobs.photosUploaded', { count: selectedPhotos.length })}</Text>
                 </View>
               </View>
 
@@ -1007,17 +1063,17 @@ const PostTaskScreen = ({ route, navigation }) => {
 
               <View style={[styles.infoBox, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : colors.accentSoft, borderColor: colors.accent }]}>
                 <MaterialCommunityIcons name="information-outline" size={20} color={colors.accent} />
-                <Text style={[styles.infoText, { color: colors.accent }]}>Your task will be sent to our admin team for verification before being shown to professionals.</Text>
+                <Text style={[styles.infoText, { color: colors.accent }]}>{t('jobs.taskApprovalNotification')}</Text>
               </View>
             </View>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity style={[styles.backBtn2, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setStep('description')}>
                 <MaterialCommunityIcons name="chevron-left" size={20} color={colors.text} />
-                <Text style={[styles.backBtnText, { color: colors.text }]}>Back</Text>
+                <Text style={[styles.backBtnText, { color: colors.text }]}>{t('jobs.back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.submitBtn, { flex: 1, backgroundColor: colors.accent }]} onPress={handlePublish} disabled={loading}>
-                <Text style={styles.submitBtnText}>{loading ? 'Saving...' : editingJob ? 'Save Changes' : 'Publish Task'}</Text>
+                <Text style={styles.submitBtnText}>{loading ? t('jobs.saving') : editingJob ? t('jobs.saveChanges') : t('jobs.publishTask')}</Text>
                 <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
               </TouchableOpacity>
             </View>
@@ -1030,21 +1086,18 @@ const PostTaskScreen = ({ route, navigation }) => {
           <View style={[styles.iconWrap, { backgroundColor: colors.success + '15', padding: 25, borderRadius: 50 }]}>
             <MaterialCommunityIcons name="check-decagram" size={90} color={colors.success} />
           </View>
-          <Text style={[styles.successTitle, { color: colors.text }]}>{editingJob ? 'Task Updated!' : 'Task Posted!'}</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>{editingJob ? t('jobs.taskUpdated') : t('jobs.taskPosted')}</Text>
           <Text style={[styles.successSubtitle, { color: colors.textSecondary }]}>
-            Your task has been sent to our admin team for verification. Professionals will see it once approved.
+            {t('jobs.successSubtitle')}
           </Text>
 
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.accent }]} onPress={() => {
-            setTaskMode('tasks');
-            setStep('details');
-          }}>
-            <Text style={styles.primaryBtnText}>View My Tasks</Text>
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: colors.accent }]} onPress={returnToTaskList}>
+            <Text style={styles.primaryBtnText}>{t('jobs.viewMyTasks')}</Text>
             <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.secondaryBtn, { borderColor: colors.accent }]} onPress={startNewTask}>
-            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Post Another Task</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>{t('jobs.postAnotherTask')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1364,6 +1417,25 @@ const styles = StyleSheet.create({
     borderColor: '#DCE4EE',
     flexDirection: 'row',
     overflow: 'hidden',
+  },
+  budgetRangeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  budgetRangeInputWrap: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: '#FFF',
+  },
+  rangeLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '800',
+    marginBottom: 2,
   },
   currencyBox: {
     width: 70,

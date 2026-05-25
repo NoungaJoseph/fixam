@@ -64,8 +64,8 @@ const FirstRunNotice = ({ role, colors, isDarkMode }) => {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(2,6,23,0.62)', justifyContent: 'center', padding: 22 },
-  card: { borderRadius: 28, padding: 22, borderWidth: 1 },
-  topIcon: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
+  card: { borderRadius: 10, padding: 22, borderWidth: 1 },
+  topIcon: { width: 58, height: 58, borderRadius: 10, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
   title: { fontSize: 22, fontWeight: '900', textAlign: 'center' },
   subtitle: { fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 8, marginBottom: 20 },
   noticeRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
@@ -75,10 +75,10 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 22 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   actions: { flexDirection: 'row', gap: 12 },
-  secondaryBtn: { flex: 1, height: 54, borderRadius: 17, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  secondaryBtn: { flex: 1, height: 54, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   secondaryText: { fontSize: 15, fontWeight: '900' },
-  primaryBtn: { flex: 1, height: 54, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  okBtn: { width: '100%', height: 54, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  primaryBtn: { flex: 1, height: 54, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  okBtn: { width: '100%', height: 54, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFF', fontSize: 15, fontWeight: '900' },
 });
 

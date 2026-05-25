@@ -45,6 +45,7 @@ import TopUpPaymentScreen from '../screens/Wallet/TopUpPaymentScreen';
 import TopUpSuccessScreen from '../screens/Wallet/TopUpSuccessScreen';
 import CoinPaymentFormScreen from '../screens/Wallet/CoinPaymentFormScreen';
 import CoinPaymentSuccessScreen from '../screens/Wallet/CoinPaymentSuccessScreen';
+import BookingFormScreen from '../screens/Bookings/BookingFormScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -58,6 +59,7 @@ const HomeStack = () => (
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="FindJobs" component={FindJobsScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
@@ -78,6 +80,7 @@ const JobsStack = () => (
     <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="ReviewTask" component={ReviewTaskScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
   </Stack.Navigator>
@@ -107,6 +110,7 @@ const MessagesStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ChatList" component={ChatListScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
+    <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
   </Stack.Navigator>
@@ -182,6 +186,7 @@ const BottomTabNavigator = () => {
         name="Home"
         component={HomeStack}
         options={{
+          title: t('tabs.home'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "home" : "home-outline"} size={22} color={color} />
           )
@@ -201,7 +206,7 @@ const BottomTabNavigator = () => {
         name="Find Jobs"
         component={FindJobsStack}
         options={{
-          title: 'Find Jobs',
+          title: t('tabs.findJobs'),
           tabBarIcon: ({ focused }) => (
             <View style={{
               width: 52,
@@ -209,7 +214,7 @@ const BottomTabNavigator = () => {
               borderRadius: 26,
               backgroundColor: '#0D9488',
               borderWidth: 3,
-              borderColor: isDarkMode ? '#0F172A' : '#FFF',
+              borderColor: isDarkMode ? '#0B1120' : '#FFF',
               alignItems: 'center',
               justifyContent: 'center',
               marginTop: -22,
@@ -229,7 +234,7 @@ const BottomTabNavigator = () => {
         name="Messages"
         component={MessagesStack}
         options={{
-          title: 'Messages',
+          title: t('tabs.messages'),
           tabBarBadge: unreadCount > 0 ? unreadCount : null,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
@@ -240,7 +245,7 @@ const BottomTabNavigator = () => {
         name="Settings"
         component={ProfileStack}
         options={{
-          title: 'Settings',
+          title: t('tabs.settings'),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "settings" : "settings-outline"} size={22} color={color} />
           )
@@ -252,6 +257,7 @@ const BottomTabNavigator = () => {
 
 const ProviderTabNavigator = () => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -264,23 +270,23 @@ const ProviderTabNavigator = () => {
         drawerItemStyle: { borderRadius: 14, marginHorizontal: 8, paddingVertical: 2 },
         drawerStyle: { 
           width: '78%', 
-          backgroundColor: 'transparent',
-          elevation: 8,
+          backgroundColor: isDarkMode ? '#111827' : '#FFFFFF',
+          elevation: 18,
           shadowColor: '#000',
           shadowOffset: { width: 4, height: 0 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
+          shadowOpacity: 0.12,
+          shadowRadius: 18,
         },
-        drawerContentStyle: { backgroundColor: 'transparent' },
-        overlayColor: 'rgba(15, 23, 42, 0.42)',
-        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0F172A' : '#FFF' },
+        drawerContentStyle: { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' },
+        overlayColor: 'rgba(255, 255, 255, 0.10)',
+        sceneContainerStyle: { backgroundColor: isDarkMode ? '#0B1120' : '#FFF' },
       }}
     >
       <Drawer.Screen
         name="MainTabs"
         component={BottomTabNavigator}
         options={{
-          drawerLabel: 'Home',
+          drawerLabel: t('drawer.home'),
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="home-variant-outline" size={24} color={color} />
         }}
       />
@@ -289,7 +295,7 @@ const ProviderTabNavigator = () => {
         name="Wallet"
         component={WalletStack}
         options={{
-          drawerLabel: 'Coin Balance',
+          drawerLabel: t('drawer.coinBalance'),
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="database-outline" size={24} color={color} />,
         }}
       />
@@ -297,7 +303,7 @@ const ProviderTabNavigator = () => {
         name="Invitation"
         component={InvitationScreen}
         options={{
-          drawerLabel: 'Invite Friends',
+          drawerLabel: t('drawer.inviteFriends'),
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="gift-outline" size={24} color={color} />,
         }}
       />
@@ -305,7 +311,7 @@ const ProviderTabNavigator = () => {
         name="Stats"
         component={StatsScreen}
         options={{
-          drawerLabel: 'My Stats',
+          drawerLabel: t('drawer.myStats'),
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="chart-bar" size={24} color={color} />,
         }}
       />
@@ -313,7 +319,7 @@ const ProviderTabNavigator = () => {
         name="Reports"
         component={ReportsScreen}
         options={{
-          drawerLabel: 'Reports',
+          drawerLabel: t('drawer.reports'),
           drawerIcon: ({ color }) => <MaterialCommunityIcons name="file-chart-outline" size={24} color={color} />,
         }}
       />
