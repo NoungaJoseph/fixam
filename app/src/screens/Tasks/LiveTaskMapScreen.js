@@ -62,7 +62,7 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
 
   if (Platform.OS === 'web') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
         <StatusBar barStyle="dark-content" />
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}>
           <TouchableOpacity style={[styles.circleBtn, { backgroundColor: colors.card }]} onPress={() => navigation.goBack()}>
@@ -88,7 +88,7 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <MapView
         style={{ width, height }}
@@ -109,7 +109,7 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
         ) : null}
       </MapView>
 
-      <SafeAreaView style={styles.overlay}>
+      <View style={styles.overlay}>
         <View style={styles.topBar}>
           <TouchableOpacity style={[styles.circleBtn, { backgroundColor: colors.card }]} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
@@ -126,7 +126,7 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
             <MaterialCommunityIcons name="directions" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
 
       <View style={[styles.bottomSheet, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Text style={[styles.sheetTitle, { color: colors.text }]}>{task.title || 'Accepted task'}</Text>
@@ -142,7 +142,7 @@ const LiveTaskMapScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -60,10 +60,11 @@ const mergeMessage = (list, incoming) => {
 };
 
 const ChatScreen = ({ route, navigation }) => {
-  const { conversationId, userName, receiverId, avatar, task } = route.params || {};
+  const { conversationId, userName, receiverId, avatar, task, otherParticipant, isSupportConversation = false } = route.params || {};
   const avatarUri = getMediaUrl(avatar);
   console.log('[ChatScreen] Params:', { conversationId, userName, receiverId });
   const { user, uploadFile } = useAuth();
+  const currentUser = user || {};
   const { fetchConversations, fetchNotifications } = useAppContext();
   const { isDarkMode, colors } = useTheme();
   const { t } = useLanguage();
@@ -343,15 +344,19 @@ const ChatScreen = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity
-          style={[styles.bookCompact, { backgroundColor: colors.accent }]}
-          onPress={openBookingForm}
-          accessibilityRole="button"
-          accessibilityLabel="Book service"
-        >
-          <MaterialCommunityIcons name="calendar-plus" size={18} color="#FFFFFF" />
-          <Text style={styles.bookCompactText}>Book</Text>
-        </TouchableOpacity>
+        {currentUser.role === 'CLIENT' &&
+         otherParticipant?.role === 'PROVIDER' &&
+         !isSupportConversation && (
+          <TouchableOpacity
+            style={[styles.bookCompact, { backgroundColor: colors.accent }]}
+            onPress={openBookingForm}
+            accessibilityRole="button"
+            accessibilityLabel="Book service"
+          >
+            <MaterialCommunityIcons name="calendar-plus" size={18} color="#FFFFFF" />
+            <Text style={styles.bookCompactText}>Book</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <KeyboardAvoidingView

@@ -18,6 +18,16 @@
     "dayStreak": "{{count}} jour de série",
     "trustScore": "Score de confiance",
     "rank": "Rang",
+    "rankGuideTitle": "Rangs de compétence",
+    "ranks": {
+      "Newcomer": { "name": "Nouveau", "description": "Nouveau : 0 mission terminée. Terminez des missions pour progresser." },
+      "Beginner": { "name": "Débutant", "description": "Débutant : 1 à 4 missions terminées et score de confiance d'au moins 1,0." },
+      "Rising Star": { "name": "Étoile montante", "description": "Étoile montante : 5 à 14 missions terminées et score de confiance d'au moins 2,0." },
+      "Skilled": { "name": "Qualifié", "description": "Qualifié : 15 à 29 missions terminées et score de confiance d'au moins 2,5." },
+      "Expert": { "name": "Expert", "description": "Expert : 30 à 49 missions terminées et score de confiance d'au moins 3,0." },
+      "Master": { "name": "Maître", "description": "Maître : 50 à 99 missions terminées et score de confiance d'au moins 3,5." },
+      "Elite": { "name": "Élite", "description": "Élite : 100 missions terminées ou plus et score de confiance d'au moins 4,0." }
+    },
     "skilled": "Qualifié",
     "yourBalance": "VOTRE SOLDE",
     "jobsCompleted": "MISSIONS TERMINÉES",

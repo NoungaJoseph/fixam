@@ -18,6 +18,16 @@
     "dayStreak": "{{count}} day streak",
     "trustScore": "Trust Score",
     "rank": "Rank",
+    "rankGuideTitle": "Skill ranks",
+    "ranks": {
+      "Newcomer": { "name": "Newcomer", "description": "Newcomer: 0 completed jobs. Start completing tasks to level up." },
+      "Beginner": { "name": "Beginner", "description": "Beginner: 1-4 completed jobs and trust score of at least 1.0." },
+      "Rising Star": { "name": "Rising Star", "description": "Rising Star: 5-14 completed jobs and trust score of at least 2.0." },
+      "Skilled": { "name": "Skilled", "description": "Skilled: 15-29 completed jobs and trust score of at least 2.5." },
+      "Expert": { "name": "Expert", "description": "Expert: 30-49 completed jobs and trust score of at least 3.0." },
+      "Master": { "name": "Master", "description": "Master: 50-99 completed jobs and trust score of at least 3.5." },
+      "Elite": { "name": "Elite", "description": "Elite: 100+ completed jobs and trust score of at least 4.0." }
+    },
     "skilled": "Skilled",
     "yourBalance": "YOUR BALANCE",
     "jobsCompleted": "JOBS COMPLETED",

@@ -229,6 +229,8 @@ const ChatListScreen = ({ navigation }) => {
           userName: displayName,
           receiverId: other.id,
           avatar: avatarUri,
+          otherParticipant: other,
+          isSupportConversation: isSupport || item.isSystem,
           task: item.activeTask || item.task || item.job || item.activeJob,
         })}
         onLongPress={() => {

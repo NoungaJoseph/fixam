@@ -17,7 +17,7 @@ const JobStatusScreen = ({ route, navigation }) => {
 
   const normalizedStatus = String(job.status || 'PENDING').toUpperCase();
   const displayStatus = translateStatus(normalizedStatus);
-  const selectedAssignment = job.assignments?.find((assignment) => assignment.status === 'ACCEPTED');
+  const selectedAssignment = job.assignments?.find((assignment) => assignment.id === job.selectedAssignmentId) || job.assignments?.find((assignment) => assignment.status === 'ACCEPTED');
   const assignedProviderUser = job.provider || selectedAssignment?.provider?.user;
   const assignedProvider = assignedProviderUser ? {
     name: assignedProviderUser.fullName || assignedProviderUser.name || t('jobs.assignedProfessional'),
@@ -26,6 +26,8 @@ const JobStatusScreen = ({ route, navigation }) => {
   } : null;
   const steps = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
   const currentStep = Math.max(0, steps.indexOf(normalizedStatus));
+  const hasLocationCoords = job.latitude != null && job.longitude != null;
+  const canViewLocation = Boolean(job.selectedAssignmentId && hasLocationCoords);
 
   React.useEffect(() => {
     if (!route.params?.job?.id) return;
@@ -196,10 +198,10 @@ const JobStatusScreen = ({ route, navigation }) => {
           </View>
 
           <View style={styles.actions}>
-            {assignedProvider && (
-              <TouchableOpacity style={[styles.mainActionBtn, { backgroundColor: colors.accent }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
-                <MaterialCommunityIcons name="map-marker-path" size={22} color="#FFF" />
-                <Text style={styles.mainActionText}>{t('jobs.trackProviderOnMap')}</Text>
+            {canViewLocation && (
+              <TouchableOpacity style={[styles.secondaryActionBtn, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
+                <MaterialCommunityIcons name="map-marker" size={22} color={colors.accent} />
+                <Text style={[styles.secondaryActionText, { color: colors.text }]}>{t('jobs.viewLocation')}</Text>
               </TouchableOpacity>
             )}
 
@@ -301,6 +303,8 @@ const styles = StyleSheet.create({
   actions: { paddingHorizontal: 25, gap: 15 },
   mainActionBtn: { height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 12, elevation: 4 },
   mainActionText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  secondaryActionBtn: { height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 12, borderWidth: 1 },
+  secondaryActionText: { fontSize: 16, fontWeight: '800' },
   cancelBtn: { height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
   cancelBtnText: { fontSize: 16, fontWeight: '800' },
 });

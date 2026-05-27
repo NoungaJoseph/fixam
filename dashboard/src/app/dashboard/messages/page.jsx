@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Send, Loader2, MessagesSquare, RefreshCcw } from "lucide-react"
 import { dashboardService } from "@/services/api"
 import { toast } from "sonner"
@@ -15,6 +16,14 @@ const getAdminUser = () => {
   }
 }
 
+const normalizeDashboardConversation = (conversation) => {
+  const participant = conversation.user || conversation.participants?.[0] || {}
+  return {
+    ...conversation,
+    user: participant,
+  }
+}
+
 export default function MessagesPage() {
   const [conversations, setConversations] = useState([])
   const [selected, setSelected] = useState(null)
@@ -23,13 +32,14 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [admin] = useState(getAdminUser)
+  const searchParams = useSearchParams()
   const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null
   const { on, emit } = useSocket(token)
 
   const loadConversations = async () => {
     try {
-      const res = await dashboardService.getSupportConversations()
-      const list = res.data.data || []
+      const res = await dashboardService.getConversations()
+      const list = (res.data.data || []).map(normalizeDashboardConversation)
       setConversations(list)
       if (!selected && list[0]) setSelected(list[0])
     } catch (error) {
@@ -53,11 +63,13 @@ export default function MessagesPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await dashboardService.getSupportConversations()
+        const res = await dashboardService.getConversations()
         if (cancelled) return
-        const list = res.data.data || []
+        const list = (res.data.data || []).map(normalizeDashboardConversation)
         setConversations(list)
-        if (list[0]) setSelected(list[0])
+        const conversationId = searchParams.get("conversation")
+        const match = conversationId ? list.find((item) => item.id === conversationId) : null
+        if (match || list[0]) setSelected(match || list[0])
       } catch {
         if (!cancelled) toast.error("Could not load support conversations")
       } finally {
@@ -67,7 +79,7 @@ export default function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!selected?.id) return

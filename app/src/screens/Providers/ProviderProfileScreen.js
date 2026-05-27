@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, StatusBar, Linking, Share, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, StatusBar, Linking, Share, Platform, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -78,6 +78,27 @@ const ProviderProfileScreen = ({ route, navigation }) => {
     } catch (_) {}
   };
 
+  const handleMessageProvider = async () => {
+    try {
+      const res = await api.post('/chat/conversations', { participantId: provider.user?.id });
+      const conversation = res.data.data;
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        receiverId: provider.user?.id,
+        userName: fullName,
+        avatar: avatarUri,
+        otherParticipant: conversation.participants?.[0] || { id: provider.user?.id, role: 'PROVIDER' },
+        isSupportConversation: conversation.isSystem,
+      });
+    } catch (error) {
+      if (error.response?.status === 403) {
+        Alert.alert(t('common.error'), t('profile.bookBeforeMessaging'));
+        return;
+      }
+      Alert.alert(t('common.error'), error.response?.data?.message || t('common.tryAgain'));
+    }
+  };
+
   // Expertise styling
   const getSkillStyles = (skill) => {
     const s = skill.toLowerCase();
@@ -94,7 +115,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#FAFAFA' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#FAFAFA' }]} edges={['top']}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -107,7 +128,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <SafeAreaView style={styles.headerSafeArea}>
+            <View style={styles.headerSafeArea}>
               <View style={styles.headerActions}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
                   <MaterialCommunityIcons name="arrow-left" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
@@ -120,7 +141,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                   <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={21} color={isFavorite ? '#EF4444' : (isDarkMode ? '#FFF' : '#0F172A')} />
                 </TouchableOpacity>
               </View>
-            </SafeAreaView>
+            </View>
           </LinearGradient>
 
           {/* Hanging Avatar */}
@@ -455,7 +476,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         <View style={styles.bookingBar}>
           <TouchableOpacity 
             style={[styles.chatButton, { backgroundColor: isDarkMode ? '#0B1120' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#E2E8F0' }]}
-            onPress={() => navigation.navigate('Chat', { receiverId: provider.user?.id, userName: fullName, avatar: avatarUri })}
+            onPress={handleMessageProvider}
           >
             <MaterialCommunityIcons name="message-text-outline" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
@@ -469,7 +490,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -498,7 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 10 : 35,
+    paddingTop: 10,
+    height: 64,
     gap: 10,
   },
   headerBtn: {
@@ -524,9 +546,10 @@ const styles = StyleSheet.create({
   // Hanging Avatar Styles
   avatarWrapper: {
     position: 'absolute',
-    bottom: 0,
+    top: 92,
     left: '50%',
     marginLeft: -55,
+    marginTop: 16,
     zIndex: 10,
   },
   avatarBorderShadow: {

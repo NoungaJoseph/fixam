@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, StatusBar, Platform, Image, Dimensions, Switch
+  TextInput, StatusBar, Platform, Image, Dimensions, Switch, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -76,6 +76,7 @@ const ProviderHomeScreen = ({ navigation }) => {
 
   const [favorites, setFavorites] = useState([]);
   const [dismissed, setDismissed] = useState([]);
+  const [rankModalVisible, setRankModalVisible] = useState(false);
 
   useEffect(() => {
     const loadPreferences = async () => {
@@ -173,6 +174,18 @@ const ProviderHomeScreen = ({ navigation }) => {
   const greeting = hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
   const progress = getProviderProgress(user, []);
   const completedJobsCount = progress.completedCount;
+  const providerStats = user?.providerProfile || {};
+  const trustScore = Number(providerStats.rating || 0).toFixed(1);
+  const skillRank = providerStats.skillRank || 'Newcomer';
+  const rankStyle = {
+    Newcomer: { bg: '#F1F5F9', color: '#64748B', icon: 'account-outline' },
+    Beginner: { bg: '#ECFDF5', color: '#059669', icon: 'leaf' },
+    'Rising Star': { bg: '#EFF6FF', color: '#2563EB', icon: 'star-outline' },
+    Skilled: { bg: '#F3E8FF', color: '#7C3AED', icon: 'shield-check' },
+    Expert: { bg: '#FFF7ED', color: '#EA580C', icon: 'medal-outline' },
+    Master: { bg: '#FEF2F2', color: '#DC2626', icon: 'trophy-outline' },
+    Elite: { bg: '#FEF3C7', color: '#B45309', icon: 'crown-outline' },
+  }[skillRank] || { bg: '#F1F5F9', color: '#64748B', icon: 'account-outline' };
   const localizedLearnCards = LEARN_CARDS.map((card) => {
     const copy = {
       '1': [t('home.learn.step1'), t('home.learn.completeProfileTitle'), t('home.learn.completeProfileDesc')],
@@ -322,20 +335,19 @@ const ProviderHomeScreen = ({ navigation }) => {
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <MaterialCommunityIcons name="star" size={16} color="#22C55E" />
             <View style={styles.subPillCol}>
-              <Text style={[styles.subPillVal, { color: colors.text }]}>{user?.providerProfile?.rating || user?.rating || '4.9'}</Text>
+              <Text style={[styles.subPillVal, { color: colors.text }]}>{trustScore}</Text>
               <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>{t('home.trustScore')}</Text>
             </View>
           </View>
 
-          <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="shield-check" size={16} color="#0D9488" />
+          <TouchableOpacity style={[styles.subPill, { backgroundColor: rankStyle.bg, borderColor: colors.border }]} onPress={() => setRankModalVisible(true)}>
+            <MaterialCommunityIcons name={rankStyle.icon} size={16} color={rankStyle.color} />
             <View style={styles.subPillCol}>
-              <Text style={[styles.subPillVal, { color: colors.text }]}>
-                {user?.providerProfile?.experienceLevel || user?.experienceLevel || t('home.skilled')}
-              </Text>
+              <Text style={[styles.subPillVal, { color: rankStyle.color }]}>{t(`home.ranks.${skillRank}.name`)}</Text>
               <Text style={[styles.subPillSub, { color: colors.textSecondary }]}>{t('home.rank')}</Text>
             </View>
-          </View>
+            <MaterialCommunityIcons name="information-outline" size={14} color={rankStyle.color} />
+          </TouchableOpacity>
         </ScrollView>
 
         {/* ── 3. PREMIUM BALANCE STATS CARD ───────────── */}
@@ -565,6 +577,21 @@ const ProviderHomeScreen = ({ navigation }) => {
         {/* Space at the bottom to avoid tabbar overlap */}
         <View style={{ height: 120 }} />
       </ScrollView>
+      <Modal visible={rankModalVisible} transparent animationType="fade" onRequestClose={() => setRankModalVisible(false)}>
+        <View style={styles.rankModalOverlay}>
+          <View style={[styles.rankModalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.rankModalTitle, { color: colors.text }]}>{t('home.rankGuideTitle')}</Text>
+            {['Newcomer', 'Beginner', 'Rising Star', 'Skilled', 'Expert', 'Master', 'Elite'].map((rank) => (
+              <Text key={rank} style={[styles.rankModalText, { color: colors.textSecondary }]}>
+                {t(`home.ranks.${rank}.description`)}
+              </Text>
+            ))}
+            <TouchableOpacity style={[styles.rankModalClose, { backgroundColor: colors.accent }]} onPress={() => setRankModalVisible(false)}>
+              <Text style={styles.rankModalCloseText}>{t('common.close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -711,6 +738,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  rankModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
+  rankModalCard: { borderRadius: 18, padding: 20 },
+  rankModalTitle: { fontSize: 18, fontWeight: '900', marginBottom: 12 },
+  rankModalText: { fontSize: 13, lineHeight: 20, fontWeight: '600', marginBottom: 8 },
+  rankModalClose: { height: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  rankModalCloseText: { color: '#FFF', fontSize: 14, fontWeight: '900' },
 
   // 3. Premium Stats Dashboard Card
   statsCard: {

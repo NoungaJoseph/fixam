@@ -38,6 +38,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const clientName = typeof task.client === 'object' ? (task.client?.fullName || t('common.client')) : (task.client || t('common.client'));
   const clientId = typeof task.client === 'object' ? task.client?.id : task.clientId;
   const clientAvatar = getMediaUrl(typeof task.client === 'object' ? task.client?.avatar : null);
+  const isClientVerified = task.client?.isVerified === true || task.clientVerified === true || task.client?.providerProfile?.verification === 'VERIFIED';
   const budgetMin = Number(task.budgetMin || task.budget || 0);
   const budgetMax = Number(task.budgetMax || task.budget || 0);
   const budget = budgetMax;
@@ -52,6 +53,16 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     assignment.provider?.userId === user?.id ||
     assignment.provider?.user?.id === user?.id
   ));
+  const providerAssignment = task.assignments?.find((assignment) => (
+    assignment.providerId === user?.providerProfile?.id ||
+    assignment.provider?.userId === user?.id ||
+    assignment.provider?.user?.id === user?.id ||
+    assignment.id === task.assignmentId
+  ));
+  const assignmentStatus = String(task.assignmentStatus || providerAssignment?.status || '').toUpperCase();
+  const canMessageClient = assignmentStatus === 'ACCEPTED';
+  const hasLocationCoords = task.latitude != null && task.longitude != null;
+  const canViewLocation = canMessageClient && ['ASSIGNED', 'IN_PROGRESS'].includes(String(task.status || '').toUpperCase()) && hasLocationCoords;
 
   React.useEffect(() => {
     const off = on('job:application-count', ({ jobId, applicationCount: count }) => {
@@ -87,13 +98,41 @@ const TaskDetailsScreen = ({ route, navigation }) => {
       await markJobApplied?.(task.id);
       setApplicationCount(res.data.applicationCount || applicationCount + 1);
       Alert.alert(t('jobs.proposalSent'), t('jobs.proposalSentBody'), [
-        { text: t('jobs.goToChat'), onPress: () => navigation.navigate('Chat', { receiverId: clientId, userName: clientName, avatar: clientAvatar, task }) },
         { text: t('common.close') }
       ]);
     } catch (error) {
       const message = error.response?.data?.message || t('common.tryAgain');
       Alert.alert(t('jobs.couldNotApply'), message);
     }
+  };
+
+  const openClientChat = async () => {
+    try {
+      const res = await api.post('/chat/conversations', { participantId: clientId });
+      const conversation = res.data.data;
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        receiverId: clientId,
+        userName: clientName,
+        avatar: clientAvatar,
+        otherParticipant: conversation.participants?.[0] || { id: clientId, role: 'CLIENT' },
+        isSupportConversation: conversation.isSystem,
+        task,
+      });
+    } catch (error) {
+      Alert.alert(t('common.error'), error.response?.data?.message || t('messages.sendFailed'));
+    }
+  };
+
+  const openJobLocation = () => {
+    navigation.navigate('LiveTaskMap', {
+      task: {
+        ...task,
+        latitude: task.latitude,
+        longitude: task.longitude,
+        location: task.location,
+      },
+    });
   };
 
   return (
@@ -150,14 +189,16 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             <Text style={[styles.clientRole, { color: colors.textSecondary }]}>{t('common.client')}</Text>
             <View style={styles.clientNameRow}>
               <Text style={[styles.clientName, { color: colors.text }]} numberOfLines={1}>{clientName}</Text>
-              <MaterialCommunityIcons name="check-decagram" size={20} color="#0D9488" />
+              {isClientVerified && <MaterialCommunityIcons name="check-decagram" size={20} color="#0D9488" />}
             </View>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t('jobs.taskOwner')}</Text>
           </View>
-          <TouchableOpacity style={styles.clientAction} onPress={() => navigation.navigate('Chat', { receiverId: clientId, userName: clientName, avatar: clientAvatar, task })}>
-            <MaterialCommunityIcons name="message-text-outline" size={23} color={colors.text} />
-            <Text style={[styles.clientActionText, { color: colors.text }]}>{t('tabs.messages')}</Text>
-          </TouchableOpacity>
+          {canMessageClient && (
+            <TouchableOpacity style={styles.clientAction} onPress={openClientChat}>
+              <MaterialCommunityIcons name="message-text-outline" size={23} color={colors.text} />
+              <Text style={[styles.clientActionText, { color: colors.text }]}>{t('tabs.messages')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.overviewCard}>
@@ -208,13 +249,21 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             {task.materialsProvider ? <DetailLine label={t('jobs.materials')} value={task.materialsProvider === 'client' ? t('jobs.clientWillProvide') : t('jobs.professionalWillProvide')} colors={colors} /> : null}
             {task.duration ? <DetailLine label={t('jobs.duration')} value={task.duration} colors={colors} /> : null}
           </View>
+          {canViewLocation && (
+            <TouchableOpacity style={[styles.viewLocationBtn, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={openJobLocation}>
+              <MaterialCommunityIcons name="map-marker" size={21} color={colors.accent} />
+              <Text style={[styles.viewLocationText, { color: colors.text }]}>{t('jobs.viewLocation')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { bottom: Math.max(insets.bottom, 12) + 25 }]}>
-        <TouchableOpacity style={styles.footerIcon} onPress={() => navigation.navigate('Chat', { receiverId: clientId, userName: clientName, avatar: clientAvatar, task })}>
-          <MaterialCommunityIcons name="message-text-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
+        {canMessageClient && (
+          <TouchableOpacity style={styles.footerIcon} onPress={openClientChat}>
+            <MaterialCommunityIcons name="message-text-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={[styles.proposalBtn, hasApplied && styles.proposalBtnDisabled]} onPress={handleAccept} disabled={hasApplied}>
           <Text style={styles.proposalTitle}>{hasApplied ? t('jobs.alreadyApplied') : t('jobs.sendProposal')}</Text>
           <Text style={styles.proposalSub}>{t('wallet.coinCount', { count: coinCost })}</Text>
@@ -317,6 +366,8 @@ const styles = StyleSheet.create({
   detailLine: { minHeight: 48, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14 },
   detailLabel: { color: '#071936', fontSize: 13, fontWeight: '800' },
   detailValue: { color: '#334155', fontSize: 14, fontWeight: '800', flex: 1, textAlign: 'right' },
+  viewLocationBtn: { minHeight: 54, borderRadius: 8, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, marginBottom: 18 },
+  viewLocationText: { fontSize: 15, fontWeight: '900' },
   prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   prefChip: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingHorizontal: 12, height: 42, flexDirection: 'row', alignItems: 'center', gap: 7 },
   prefText: { color: '#334155', fontSize: 12, fontWeight: '900' },

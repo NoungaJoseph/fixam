@@ -6,12 +6,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import i18n from '../../i18n';
 import UserAvatar from '../../components/UserAvatar';
 
 const DashboardScreen = ({ navigation }) => {
   const { user, updateProfile, uploadFile } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
+  const [, forceUpdate] = useState(0);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
@@ -60,6 +62,12 @@ const DashboardScreen = ({ navigation }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    const handler = () => forceUpdate((value) => value + 1);
+    i18n.on('languageChanged', handler);
+    return () => i18n.off('languageChanged', handler);
+  }, []);
+
   const handleImagePick = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,7 +81,7 @@ const DashboardScreen = ({ navigation }) => {
         uploadAvatar(result.assets[0].uri);
       }
     } catch (err) {
-      Alert.alert("Permission Error", "Please allow access to your gallery.");
+      Alert.alert(t('profileDetail.permissionError'), t('profileDetail.galleryPermission'));
     }
   };
 
@@ -95,10 +103,10 @@ const DashboardScreen = ({ navigation }) => {
 
       const res = await uploadFile(formData, '/upload/profile');
       await updateProfile({ avatar: res.url });
-      Alert.alert("Success", "Profile picture updated!");
+      Alert.alert(t('common.success'), t('profileDetail.pictureUpdated'));
     } catch (error) {
       console.log('Upload error:', error);
-      Alert.alert("Upload Failed", "Could not upload image. Please try again.");
+      Alert.alert(t('profileDetail.uploadFailed'), t('profileDetail.imageUploadFailed'));
     } finally {
       setLoading(false);
     }
@@ -107,16 +115,16 @@ const DashboardScreen = ({ navigation }) => {
   const save = async () => {
     if (form.fullName !== user.fullName || form.password) {
       const msg = [];
-      if (form.fullName !== user.fullName) msg.push("name");
-      if (form.password) msg.push("password");
+      if (form.fullName !== user.fullName) msg.push(t('profileDetail.nameField'));
+      if (form.password) msg.push(t('profileDetail.passwordField'));
       
       const confirm = await new Promise(resolve => {
         Alert.alert(
-          "Profile Change",
-          `You are changing your ${msg.join(' and ')}. These can only be changed once every 30 days. Name changes also require manual verification. Continue?`,
+          t('profileDetail.profileChange'),
+          t('profileDetail.profileChangeBody', { fields: msg.join(` ${t('common.and') || 'and'} `) }),
           [
-            { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
-            { text: "Continue", onPress: () => resolve(true) }
+            { text: t('common.cancel'), onPress: () => resolve(false), style: "cancel" },
+            { text: t('common.continue'), onPress: () => resolve(true) }
           ]
         );
       });
@@ -150,9 +158,9 @@ const DashboardScreen = ({ navigation }) => {
 
       await updateProfile(updates);
       setEditing(false);
-      Alert.alert("Success", "Profile updated successfully!");
+      Alert.alert(t('common.success'), t('profileDetail.profileUpdated'));
     } catch (error) {
-      Alert.alert("Error", error.response?.data?.message || "Could not update profile.");
+      Alert.alert(t('common.error'), error.response?.data?.message || t('profileDetail.profileUpdateFailed'));
     } finally {
       setLoading(false);
     }
@@ -162,30 +170,30 @@ const DashboardScreen = ({ navigation }) => {
 
   const switchToProvider = () => {
     Alert.alert(
-      'Become a Provider',
-      'Switch your account to provider mode and start receiving tasks from clients. Your existing information will be used automatically.',
+      t('profileDetail.becomeProvider'),
+      t('profileDetail.becomeProviderBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Switch to Provider',
+          text: t('profileDetail.switchToProvider'),
           onPress: async () => {
             try {
               await updateProfile({ profileMode: 'WORK' });
               const isProfileIncomplete = !user?.providerProfile?.bio || (user?.providerProfile?.skills || []).length === 0;
               if (isProfileIncomplete) {
                 Alert.alert(
-                  'Welcome to Work Mode!',
-                  'You are now in provider mode. To start receiving jobs, please complete your professional details.',
+                  t('profileDetail.welcomeWorkMode'),
+                  t('profileDetail.welcomeWorkModeBody'),
                   [
-                    { text: 'Later' },
-                    { text: 'Complete Profile', onPress: () => navigation.navigate('ProviderProfileSectionEdit', { section: 'about' }) }
+                    { text: t('common.later') },
+                    { text: t('profileDetail.completeProfile'), onPress: () => navigation.navigate('ProviderProfileSectionEdit', { section: 'about' }) }
                   ]
                 );
               } else {
-                Alert.alert('Done!', 'You are now in provider mode. Your profile is live for clients to discover.');
+                Alert.alert(t('common.done'), t('profileDetail.providerModeDone'));
               }
             } catch (error) {
-              Alert.alert('Could not switch', error.response?.data?.message || 'Please try again.');
+              Alert.alert(t('profileDetail.couldNotSwitch'), error.response?.data?.message || t('common.tryAgain'));
             }
           }
         }
@@ -195,18 +203,18 @@ const DashboardScreen = ({ navigation }) => {
 
   const switchToClient = () => {
     Alert.alert(
-      'Switch to Client mode',
-      'Your provider profile will be hidden from the marketplace, but you can switch back anytime.',
+      t('profileDetail.switchToClientMode'),
+      t('profileDetail.switchToClientBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Switch to Client',
+          text: t('profileDetail.switchToClient'),
           onPress: async () => {
             try {
               await updateProfile({ profileMode: 'PERSONAL' });
-              Alert.alert('Done!', 'You are now browsing as a client. Your provider profile is saved and can be reactivated at any time.');
+              Alert.alert(t('common.done'), t('profileDetail.clientModeDone'));
             } catch (error) {
-              Alert.alert('Could not switch', error.response?.data?.message || 'Please try again.');
+              Alert.alert(t('profileDetail.couldNotSwitch'), error.response?.data?.message || t('common.tryAgain'));
             }
           }
         }
@@ -231,14 +239,14 @@ const DashboardScreen = ({ navigation }) => {
     const portfolio = user.providerProfile?.portfolio || [];
     const certificates = user.providerProfile?.certificates || [];
     const skills = user.providerProfile?.skills || [];
-    const rate = user.providerProfile?.rate ? `${Number(user.providerProfile.rate).toLocaleString()} XAF/hr` : 'Rate not set';
+    const rate = user.providerProfile?.rate ? `${Number(user.providerProfile.rate).toLocaleString()} XAF/hr` : t('profileDetail.rateNotSet');
     const employmentHistory = user.providerProfile?.employmentHistory || [];
 
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>Professional Dashboard</Text>
+          <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>{t('profileDetail.professionalDashboard')}</Text>
           <TouchableOpacity 
             style={[styles.headerIconBtn, { backgroundColor: colors.accent + '15', borderRadius: 21 }]}
             onPress={switchToClient}
@@ -252,12 +260,12 @@ const DashboardScreen = ({ navigation }) => {
             <TouchableOpacity style={styles.panelClose}>
               <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.integrationTitle, { color: colors.text }]}>Introducing profile integrations</Text>
+            <Text style={[styles.integrationTitle, { color: colors.text }]}>{t('profileDetail.profileIntegrations')}</Text>
             <Text style={[styles.integrationBody, { color: colors.textSecondary }]}>
-              Link your work accounts and show clients more proof of your experience.
+              {t('profileDetail.profileIntegrationsBody')}
             </Text>
             <TouchableOpacity style={[styles.integrationButton, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]} onPress={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'links' })}>
-              <Text style={[styles.integrationButtonText, { color: colors.text }]}>View linked accounts</Text>
+              <Text style={[styles.integrationButtonText, { color: colors.text }]}>{t('profileDetail.viewLinkedAccounts')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -271,10 +279,10 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.nameLine}>
-                <Text style={[styles.freelancerName, { color: colors.text }]}>{user?.fullName || 'Your name'}</Text>
+                <Text style={[styles.freelancerName, { color: colors.text }]}>{user?.fullName || t('settings.yourName')}</Text>
               </View>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user.providerProfile?.serviceArea || 'Service area not set'}</Text>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>Local time available in app</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user.providerProfile?.serviceArea || t('profileDetail.serviceAreaNotSet')}</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{t('profileDetail.localTimeAvailable')}</Text>
             </View>
             <TouchableOpacity onPress={async () => {
               try {
@@ -294,40 +302,40 @@ const DashboardScreen = ({ navigation }) => {
 
           <ProfileModeDropdown colors={colors} user={user} isProviderMode={isProviderMode} switchToClient={switchToClient} switchToProvider={switchToProvider} navigation={navigation} />
 
-          <Section colors={colors} title={form.experienceLevel || 'Professional profile'} actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'about' })}>
+          <Section colors={colors} title={form.experienceLevel || t('profileDetail.professionalProfile')} actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'about' })}>
             <Text style={[styles.rateText, { color: colors.text }]}>{rate}</Text>
             <Text style={[styles.bioText, { color: colors.text }]} numberOfLines={6}>
-              {user.providerProfile?.bio || 'Add a strong bio that explains your experience, the services you offer, and why clients should choose you.'}
+              {user.providerProfile?.bio || t('profileDetail.bioPrompt')}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'about' })}>
-              <Text style={[styles.moreText, { color: colors.accent }]}>more</Text>
+              <Text style={[styles.moreText, { color: colors.accent }]}>{t('home.more')}</Text>
             </TouchableOpacity>
           </Section>
 
-          <Section colors={colors} title="Portfolio" actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'project' })}>
+          <Section colors={colors} title={t('profileDetail.portfolio')} actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'project' })}>
             {portfolio.length === 0 ? (
-              <EmptyProfileBlock icon="image-plus" title="Showcase your best work" action="Add a project" colors={colors} onActionPress={() => navigation.navigate('ProviderProfileEditItem', { type: 'project' })} />
+              <EmptyProfileBlock icon="image-plus" title={t('profileDetail.showcaseWork')} action={t('profileDetail.addProject')} colors={colors} onActionPress={() => navigation.navigate('ProviderProfileEditItem', { type: 'project' })} />
             ) : (
               <View style={styles.portfolioGrid}>
                 {portfolio.map((item, index) => (
                   <View key={`${item.title}-${index}`} style={styles.portfolioItem}>
                     {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.portfolioPreview} /> : <View style={[styles.portfolioPreview, { backgroundColor: colors.border }]} />}
-                    <Text style={[styles.portfolioItemTitle, { color: colors.accent }]}>{item.title || 'Project'}</Text>
+                    <Text style={[styles.portfolioItemTitle, { color: colors.accent }]}>{item.title || t('profileDetail.project')}</Text>
                   </View>
                 ))}
               </View>
             )}
           </Section>
 
-          <Section colors={colors} title="Work history">
-            <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>No items</Text>
+          <Section colors={colors} title={t('profileDetail.workHistory')}>
+            <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>{t('profileDetail.noItems')}</Text>
           </Section>
 
-          <Section colors={colors} title="Skills" actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'skills' })}>
-            <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>Self-reported</Text>
+          <Section colors={colors} title={t('profileDetail.skills')} actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'skills' })}>
+            <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{t('profileDetail.selfReported')}</Text>
             <View style={styles.profileChips}>
               {skills.length === 0 ? (
-                <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>No skills added yet</Text>
+                <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>{t('profileDetail.noSkillsAdded')}</Text>
               ) : skills.map(skill => (
                 <View key={skill} style={[styles.profileChip, { backgroundColor: isDarkMode ? '#303030' : '#EEF2F7' }]}>
                   <Text style={[styles.profileChipText, { color: colors.text }]}>{skill}</Text>
@@ -336,45 +344,45 @@ const DashboardScreen = ({ navigation }) => {
             </View>
           </Section>
 
-          <Section colors={colors} title="Certifications" actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'certificate' })}>
+          <Section colors={colors} title={t('profileDetail.certifications')} actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'certificate' })}>
             {certificates.length === 0 ? (
-              <EmptyProfileBlock icon="trophy-outline" title="Listing certifications can help prove your knowledge." action="Add certification" colors={colors} onActionPress={() => navigation.navigate('ProviderProfileEditItem', { type: 'certificate' })} />
+              <EmptyProfileBlock icon="trophy-outline" title={t('profileDetail.certificationsHelp')} action={t('profileDetail.addCertification')} colors={colors} onActionPress={() => navigation.navigate('ProviderProfileEditItem', { type: 'certificate' })} />
             ) : certificates.map((cert, index) => (
               <View key={`${cert.title}-${index}`} style={styles.profileLineItem}>
-                <Text style={[styles.lineItemTitle, { color: colors.text }]}>{cert.title || 'Certificate'}</Text>
-                <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{cert.issuer || 'Issuer'}{cert.year ? ` | ${cert.year}` : ''}</Text>
+                <Text style={[styles.lineItemTitle, { color: colors.text }]}>{cert.title || t('profileDetail.certificate')}</Text>
+                <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{cert.issuer || t('profileDetail.issuer')}{cert.year ? ` | ${cert.year}` : ''}</Text>
               </View>
             ))}
           </Section>
 
-          <Section colors={colors} title="Employment history" actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'employment' })}>
+          <Section colors={colors} title={t('profileDetail.employmentHistory')} actionIcon="plus-circle-outline" onAction={() => navigation.navigate('ProviderProfileEditItem', { type: 'employment' })}>
             {employmentHistory.length === 0 ? (
               <>
-                <Text style={[styles.lineItemTitle, { color: colors.text }]}>Add past work experience</Text>
-                <Text style={[styles.bioText, { color: colors.textSecondary }]}>Describe relevant work that helps clients trust your profile.</Text>
+                <Text style={[styles.lineItemTitle, { color: colors.text }]}>{t('profileDetail.addPastWork')}</Text>
+                <Text style={[styles.bioText, { color: colors.textSecondary }]}>{t('profileDetail.describeWork')}</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderProfileEditItem', { type: 'employment' })}>
-                  <Text style={[styles.moreText, { color: colors.accent }]}>Add employment</Text>
+                  <Text style={[styles.moreText, { color: colors.accent }]}>{t('profileDetail.addEmployment')}</Text>
                 </TouchableOpacity>
               </>
             ) : employmentHistory.map((item, index) => (
               <View key={`${item.title}-${index}`} style={styles.profileLineItem}>
-                <Text style={[styles.lineItemTitle, { color: colors.text }]}>{item.title || 'Employment'}</Text>
-                <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{item.company || 'Company'}{item.period ? ` | ${item.period}` : ''}</Text>
+                <Text style={[styles.lineItemTitle, { color: colors.text }]}>{item.title || t('profileDetail.employment')}</Text>
+                <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{item.company || t('profileDetail.company')}{item.period ? ` | ${item.period}` : ''}</Text>
                 {item.description ? <Text style={[styles.bioText, { color: colors.textSecondary }]}>{item.description}</Text> : null}
               </View>
             ))}
           </Section>
 
-          <Section colors={colors} title="Testimonials" actionIcon="plus-circle-outline" onAction={() => navigation.navigate('Feedback', { testimonialPreset: true })}>
-            <EmptyProfileBlock icon="comment-quote-outline" title="Endorsements from past clients" action="Request a testimonial" colors={colors} onActionPress={() => navigation.navigate('Feedback', { testimonialPreset: true })} />
+          <Section colors={colors} title={t('profileDetail.testimonials')} actionIcon="plus-circle-outline" onAction={() => navigation.navigate('Feedback', { testimonialPreset: true })}>
+            <EmptyProfileBlock icon="comment-quote-outline" title={t('profileDetail.endorsements')} action={t('profileDetail.requestTestimonial')} colors={colors} onActionPress={() => navigation.navigate('Feedback', { testimonialPreset: true })} />
           </Section>
 
-          <Section colors={colors} title="Linked accounts" actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'links' })}>
+          <Section colors={colors} title={t('profileDetail.linkedAccounts')} actionIcon="pencil-outline" onAction={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'links' })}>
             {['LinkedIn', 'Facebook', 'Instagram', 'TikTok'].map((name) => (
               <View key={name} style={[styles.socialRow, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.lineItemTitle, { color: colors.text }]}>{name}</Text>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'links' })}>
-                  <Text style={[styles.moreText, { color: colors.accent }]}>{user.providerProfile?.socialLinks?.[name.toLowerCase()] ? 'Edit link' : 'Link profile'}</Text>
+                  <Text style={[styles.moreText, { color: colors.accent }]}>{user.providerProfile?.socialLinks?.[name.toLowerCase()] ? t('profileDetail.editLink') : t('profileDetail.linkProfile')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -390,7 +398,7 @@ const DashboardScreen = ({ navigation }) => {
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
         <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>Personal Profile</Text>
+          <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>{t('profileDetail.personalProfile')}</Text>
           {user?.role === 'PROVIDER' && (
             <TouchableOpacity 
               style={[styles.headerIconBtn, { backgroundColor: colors.accent + '15', borderRadius: 21 }]}
@@ -411,16 +419,16 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.nameLine}>
-                <Text style={[styles.freelancerName, { color: colors.text }]}>{user?.fullName || 'Client'}</Text>
+                <Text style={[styles.freelancerName, { color: colors.text }]}>{user?.fullName || t('common.client')}</Text>
               </View>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.email || user?.phone || 'Contact not added'}</Text>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>Personal account</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.email || user?.phone || t('profileDetail.contactNotAdded')}</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{t('profileDetail.personalAccount')}</Text>
             </View>
           </View>
 
-          <Section colors={colors} title="Profile overview" actionIcon="pencil-outline" onAction={() => setEditing(true)}>
+          <Section colors={colors} title={t('profileDetail.profileOverview')} actionIcon="pencil-outline" onAction={() => setEditing(true)}>
             <Text style={[styles.bioText, { color: colors.text }]}>
-              {user?.bio || 'This profile helps providers know who they are working with. Add your location, contact details, and a short note about the type of services you usually need.'}
+              {user?.bio || t('profileDetail.personalProfileHelp')}
             </Text>
           </Section>
 
@@ -428,35 +436,35 @@ const DashboardScreen = ({ navigation }) => {
             <ProfileModeDropdown colors={colors} user={user} isProviderMode={isProviderMode} switchToClient={switchToClient} switchToProvider={switchToProvider} navigation={navigation} defaultMode="PERSONAL" />
           )}
 
-          <Section colors={colors} title="Trust and verification">
+          <Section colors={colors} title={t('profileDetail.trustVerification')}>
             <View style={styles.profileLineItem}>
-              <Text style={[styles.lineItemTitle, { color: colors.text }]}>Phone</Text>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.phone || 'Not added'}</Text>
+              <Text style={[styles.lineItemTitle, { color: colors.text }]}>{t('profileDetail.phone')}</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.phone || t('profileDetail.notAdded')}</Text>
             </View>
             <View style={styles.profileLineItem}>
-              <Text style={[styles.lineItemTitle, { color: colors.text }]}>Email</Text>
-              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.email || 'Not added'}</Text>
+              <Text style={[styles.lineItemTitle, { color: colors.text }]}>{t('profileDetail.email')}</Text>
+              <Text style={[styles.profileMeta, { color: colors.textSecondary }]}>{user?.email || t('profileDetail.notAdded')}</Text>
             </View>
           </Section>
 
-          <Section colors={colors} title="Posted tasks">
-            <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>Your active and completed tasks appear in My Tasks.</Text>
+          <Section colors={colors} title={t('profileDetail.postedTasks')}>
+            <Text style={[styles.mutedLarge, { color: colors.textSecondary }]}>{t('profileDetail.postedTasksHelp')}</Text>
           </Section>
 
-          <Section colors={colors} title="Reviews and ratings">
-            <EmptyProfileBlock icon="star-outline" title="Real reviews from completed tasks will appear here." action="No reviews yet" colors={colors} />
+          <Section colors={colors} title={t('profileDetail.reviewsRatings')}>
+            <EmptyProfileBlock icon="star-outline" title={t('profileDetail.realReviewsHelp')} action={t('profileDetail.noReviewsYet')} colors={colors} />
           </Section>
 
-          <Section colors={colors} title="Account preferences">
+          <Section colors={colors} title={t('profileDetail.accountPreferences')}>
             <View style={styles.profileChips}>
               <View style={[styles.profileChip, { backgroundColor: isDarkMode ? '#303030' : '#EEF2F7' }]}>
-                <Text style={[styles.profileChipText, { color: colors.text }]}>Local providers</Text>
+                <Text style={[styles.profileChipText, { color: colors.text }]}>{t('profileDetail.localProviders')}</Text>
               </View>
               <View style={[styles.profileChip, { backgroundColor: isDarkMode ? '#303030' : '#EEF2F7' }]}>
-                <Text style={[styles.profileChipText, { color: colors.text }]}>Secure chat</Text>
+                <Text style={[styles.profileChipText, { color: colors.text }]}>{t('profileDetail.secureChat')}</Text>
               </View>
               <View style={[styles.profileChip, { backgroundColor: isDarkMode ? '#303030' : '#EEF2F7' }]}>
-                <Text style={[styles.profileChipText, { color: colors.text }]}>Task tracking</Text>
+                <Text style={[styles.profileChipText, { color: colors.text }]}>{t('profileDetail.taskTracking')}</Text>
               </View>
             </View>
           </Section>
@@ -481,7 +489,7 @@ const DashboardScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <Text style={[styles.userName, { color: colors.text }]}>
-            {user?.pendingName ? `(Pending: ${user.pendingName})` : user?.fullName || 'User'}
+            {user?.pendingName ? t('profileDetail.pendingName', { name: user.pendingName }) : user?.fullName || t('common.user')}
           </Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || user?.phone}</Text>
           
@@ -497,25 +505,25 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.formSection}>
-          <ProfileField label="Full Name" value={form.fullName} onChangeText={(v) => setForm({...form, fullName: v})} editable={editing} style={inputStyle} colors={colors} />
-          <ProfileField label="Email" value={form.email} onChangeText={(v) => setForm({...form, email: v})} editable={editing} style={inputStyle} colors={colors} />
-          <ProfileField label="Date of Birth (YYYY-MM-DD)" value={form.dob} onChangeText={(v) => setForm({...form, dob: v})} editable={editing} style={inputStyle} colors={colors} placeholder="1995-01-01" />
+          <ProfileField label={t('profileDetail.fullName')} value={form.fullName} onChangeText={(v) => setForm({...form, fullName: v})} editable={editing} style={inputStyle} colors={colors} />
+          <ProfileField label={t('profileDetail.email')} value={form.email} onChangeText={(v) => setForm({...form, email: v})} editable={editing} style={inputStyle} colors={colors} />
+          <ProfileField label={t('profileDetail.dateOfBirth')} value={form.dob} onChangeText={(v) => setForm({...form, dob: v})} editable={editing} style={inputStyle} colors={colors} placeholder="1995-01-01" />
           
           {editing && (
-            <ProfileField label="New Password (Leave blank to keep same)" value={form.password} onChangeText={(v) => setForm({...form, password: v})} editable={editing} style={inputStyle} colors={colors} secureTextEntry />
+            <ProfileField label={t('profileDetail.newPasswordOptional')} value={form.password} onChangeText={(v) => setForm({...form, password: v})} editable={editing} style={inputStyle} colors={colors} secureTextEntry />
           )}
 
-          <ProfileField label="Phone" value={form.phone} editable={false} style={[inputStyle, {opacity: 0.5}]} colors={colors} />
+          <ProfileField label={t('profileDetail.phone')} value={form.phone} editable={false} style={[inputStyle, {opacity: 0.5}]} colors={colors} />
 
           {user?.role === 'PROVIDER' && (
             <>
-              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Professional Profile</Text>
-              <ProfileField label="Bio" value={form.bio} onChangeText={(v) => setForm({...form, bio: v})} editable={editing} style={inputStyle} colors={colors} multiline />
-              <ProfileField label="Service Area" value={form.serviceArea} onChangeText={(v) => setForm({...form, serviceArea: v})} editable={editing} style={inputStyle} colors={colors} placeholder="Douala, Bonaberi, Akwa..." />
-              <ProfileField label="Experience Level" value={form.experienceLevel} onChangeText={(v) => setForm({...form, experienceLevel: v})} editable={editing} style={inputStyle} colors={colors} placeholder="Beginner, Intermediate, Expert" />
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.professionalProfile')}</Text>
+              <ProfileField label={t('profileDetail.bio')} value={form.bio} onChangeText={(v) => setForm({...form, bio: v})} editable={editing} style={inputStyle} colors={colors} multiline />
+              <ProfileField label={t('profileDetail.serviceArea')} value={form.serviceArea} onChangeText={(v) => setForm({...form, serviceArea: v})} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.serviceAreaPlaceholder')} />
+              <ProfileField label={t('profileDetail.experienceLevel')} value={form.experienceLevel} onChangeText={(v) => setForm({...form, experienceLevel: v})} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.experienceLevelPlaceholder')} />
               
               <View style={styles.fieldWrap}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Skills</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('profileDetail.skills')}</Text>
                 <View style={styles.skillsContainer}>
                   {form.skills.map(skill => (
                     <View key={skill} style={[styles.skillChip, { backgroundColor: colors.accent }]}>
@@ -533,24 +541,24 @@ const DashboardScreen = ({ navigation }) => {
                       onPress={() => setShowSkillPicker(true)}
                     >
                       <MaterialCommunityIcons name="plus" size={18} color={colors.accent} />
-                      <Text style={{ color: colors.accent, fontWeight: '700' }}>Add Skill</Text>
+                      <Text style={{ color: colors.accent, fontWeight: '700' }}>{t('profileDetail.addSkill')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
-              <ProfileField label="Hourly Rate (XAF)" value={form.rate} onChangeText={(v) => setForm({...form, rate: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
+              <ProfileField label={t('profileDetail.hourlyRate')} value={form.rate} onChangeText={(v) => setForm({...form, rate: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
 
-              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Previous Work</Text>
-              <ProfileField label="Project Title" value={form.portfolioTitle} onChangeText={(v) => setForm({...form, portfolioTitle: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label="Project Description" value={form.portfolioDescription} onChangeText={(v) => setForm({...form, portfolioDescription: v})} editable={editing} style={inputStyle} colors={colors} multiline />
-              <ProfileField label="Project Image URL" value={form.portfolioImageUrl} onChangeText={(v) => setForm({...form, portfolioImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.previousWork')}</Text>
+              <ProfileField label={t('profileDetail.projectTitle')} value={form.portfolioTitle} onChangeText={(v) => setForm({...form, portfolioTitle: v})} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.projectDescription')} value={form.portfolioDescription} onChangeText={(v) => setForm({...form, portfolioDescription: v})} editable={editing} style={inputStyle} colors={colors} multiline />
+              <ProfileField label={t('profileDetail.projectImageUrl')} value={form.portfolioImageUrl} onChangeText={(v) => setForm({...form, portfolioImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
 
-              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Certificate</Text>
-              <ProfileField label="Certificate Name" value={form.certificateTitle} onChangeText={(v) => setForm({...form, certificateTitle: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label="Issuer" value={form.certificateIssuer} onChangeText={(v) => setForm({...form, certificateIssuer: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label="Year" value={form.certificateYear} onChangeText={(v) => setForm({...form, certificateYear: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
-              <ProfileField label="Certificate Image URL" value={form.certificateImageUrl} onChangeText={(v) => setForm({...form, certificateImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.certificate')}</Text>
+              <ProfileField label={t('profileDetail.certificateName')} value={form.certificateTitle} onChangeText={(v) => setForm({...form, certificateTitle: v})} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.issuer')} value={form.certificateIssuer} onChangeText={(v) => setForm({...form, certificateIssuer: v})} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.year')} value={form.certificateYear} onChangeText={(v) => setForm({...form, certificateYear: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
+              <ProfileField label={t('profileDetail.certificateImageUrl')} value={form.certificateImageUrl} onChangeText={(v) => setForm({...form, certificateImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
             </>
           )}
         </View>
@@ -563,7 +571,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Skills</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('profileDetail.chooseSkills')}</Text>
               <TouchableOpacity onPress={() => setShowSkillPicker(false)}>
                 <MaterialCommunityIcons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -580,7 +588,7 @@ const DashboardScreen = ({ navigation }) => {
                     style={[styles.pickerItem, { backgroundColor: isSelected ? colors.accent : colors.background, borderColor: colors.border }]} 
                     onPress={() => toggleSkill(skill)}
                   >
-                    <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: '700' }}>{skill}</Text>
+              <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: '700' }}>{skill}</Text>
                     {isSelected && <MaterialCommunityIcons name="check" size={18} color="#FFF" />}
                   </TouchableOpacity>
                 );
@@ -590,7 +598,7 @@ const DashboardScreen = ({ navigation }) => {
               style={[styles.modalDoneBtn, { backgroundColor: colors.accent }]} 
               onPress={() => setShowSkillPicker(false)}
             >
-              <Text style={styles.modalDoneText}>Done</Text>
+              <Text style={styles.modalDoneText}>{t('common.done')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -617,12 +625,11 @@ const ProfileField = ({ label, value, onChangeText, editable, style, colors, mul
 );
 
 const ProfileModeDropdown = ({ colors, isProviderMode, switchToClient, switchToProvider, navigation }) => {
-  const label = isProviderMode ? 'Switch to Client mode' : 'Switch to Provider mode';
-
+  const { t } = useLanguage();
   return (
     <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
       <View style={styles.profileSectionHeader}>
-        <Text style={[styles.profileSectionTitle, { color: colors.text }]}>Account Mode</Text>
+        <Text style={[styles.profileSectionTitle, { color: colors.text }]}>{t('profileDetail.accountMode')}</Text>
       </View>
       
       <TouchableOpacity
@@ -639,10 +646,10 @@ const ProfileModeDropdown = ({ colors, isProviderMode, switchToClient, switchToP
           </View>
           <View>
             <Text style={[styles.dropdownLabel, { color: colors.text }]}>
-              {isProviderMode ? 'Provider Mode' : 'Client Mode'}
+              {isProviderMode ? t('profileDetail.providerMode') : t('profileDetail.clientMode')}
             </Text>
             <Text style={[styles.dropdownSubtext, { color: colors.textSecondary }]}>
-              {isProviderMode ? 'Switch to personal browsing' : 'Switch to work profile'}
+              {isProviderMode ? t('profileDetail.switchToPersonalBrowsing') : t('profileDetail.switchToWorkProfile')}
             </Text>
           </View>
         </View>
@@ -651,7 +658,7 @@ const ProfileModeDropdown = ({ colors, isProviderMode, switchToClient, switchToP
 
       {isProviderMode && (
         <TouchableOpacity onPress={() => navigation.navigate('ProviderProfileSectionEdit', { section: 'mode' })} style={{ marginTop: 15 }}>
-          <Text style={[styles.linkMuted, { color: colors.textSecondary }]}>Advanced profile settings</Text>
+          <Text style={[styles.linkMuted, { color: colors.textSecondary }]}>{t('profileDetail.advancedProfileSettings')}</Text>
         </TouchableOpacity>
       )}
     </View>
