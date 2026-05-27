@@ -1,12 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import {
-  StyleSheet, View, Text, TextInput, TouchableOpacity,
-  FlatList, Image, StatusBar, ScrollView, SafeAreaView
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, StatusBar, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getMediaUrl } from '../../services/api';
+import UserAvatar from '../../components/UserAvatar';
 
 
 const FILTERS = ['Rating', 'Price', 'Distance', 'Availability'];
@@ -81,9 +80,12 @@ const ProviderListScreen = ({ route, navigation }) => {
       activeOpacity={0.85}
     >
       <View style={styles.cardTop}>
-        <Image 
-          source={avatarUri ? { uri: avatarUri } : { uri: `https://ui-avatars.com/api/?name=${item.user?.fullName || 'User'}&background=random` }} 
-          style={[styles.avatar, { backgroundColor: isDarkMode ? '#1e293b' : '#f3f4f6' }]} 
+        <UserAvatar
+          uri={avatarUri}
+          name={item.user?.fullName || 'User'}
+          size={60}
+          radius={18}
+          style={[styles.avatar, { backgroundColor: isDarkMode ? '#1e293b' : '#f3f4f6' }]}
         />
         <View style={styles.cardInfo}>
           <Text style={[styles.provName, { color: colors.text }]}>{item.user?.fullName || 'No Name'}</Text>

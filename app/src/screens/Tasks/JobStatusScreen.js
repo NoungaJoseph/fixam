@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  Image, StatusBar, SafeAreaView, Alert
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import api, { getMediaUrl } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateStatus } from '../../i18n/translate';
+import UserAvatar from '../../components/UserAvatar';
 
 const JobStatusScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
@@ -141,10 +140,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                       style={styles.applicationInfoRow}
                       onPress={() => navigation.navigate('ProviderProfile', { provider })}
                     >
-                      <Image
-                        source={getMediaUrl(providerUser.avatar) ? { uri: getMediaUrl(providerUser.avatar) } : { uri: `https://ui-avatars.com/api/?name=${providerUser.fullName || 'Provider'}&background=random` }}
-                        style={styles.applicationAvatar}
-                      />
+                      <UserAvatar uri={providerUser.avatar} name={providerUser.fullName || t('common.provider')} size={56} radius={18} style={styles.applicationAvatar} />
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.applicationName, { color: colors.text }]}>{providerUser.fullName || 'Provider'}</Text>
                         <View style={styles.ratingRow}>

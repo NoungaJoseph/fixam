@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity,
-  StatusBar, SafeAreaView, Alert, Image, ScrollView, Platform, ActivityIndicator
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, StatusBar, Alert, Image, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import * as ImagePicker from 'expo-image-picker';

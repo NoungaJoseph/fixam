@@ -5,6 +5,9 @@ const { sendOTP } = require('../services/email.service');
 const { registerSchema } = require('../validators/auth.validator');
 
 const otpCache = new Map();
+const debugLog = (...args) => {
+  if (process.env.NODE_ENV !== 'production') console.log(...args);
+};
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -12,7 +15,7 @@ const generateToken = (id, role) => {
 
 const register = async (req, res, next) => {
   try {
-    console.log('Registering user:', req.body);
+    debugLog('Registering user:', { email: req.body.email, phone: req.body.phone, role: req.body.role });
     let { fullName, email, phone, password, role, referralCode, referral, providerProfile } = req.body;
     referralCode = referralCode || referral;
     
@@ -28,7 +31,7 @@ const register = async (req, res, next) => {
     });
 
     if (existing) {
-      console.log('User already exists:', email, phone);
+      debugLog('User already exists:', email, phone);
       return res.status(400).json({ success: false, message: 'User with this email or phone already exists' });
     }
 
@@ -56,16 +59,16 @@ const register = async (req, res, next) => {
           ...(role === 'PROVIDER' ? { 
             providerProfile: { 
               create: {
-                skills: providerProfile.skills || [],
-                bio: providerProfile.bio || '',
-                rate: parseFloat(providerProfile.rate) || 0,
-                serviceArea: providerProfile.serviceArea || '',
-                experienceLevel: providerProfile.experienceLevel || '',
-                availability: providerProfile.availability || {},
-                birthDay: String(providerProfile.birthDay || ''),
-                birthMonth: String(providerProfile.birthMonth || ''),
-                birthYear: String(providerProfile.birthYear || ''),
-                age: String(providerProfile.age || '')
+                skills: providerProfile?.skills || [],
+                bio: providerProfile?.bio || '',
+                rate: parseFloat(providerProfile?.rate) || 0,
+                serviceArea: providerProfile?.serviceArea || '',
+                experienceLevel: providerProfile?.experienceLevel || '',
+                availability: providerProfile?.availability || {},
+                birthDay: String(providerProfile?.birthDay || ''),
+                birthMonth: String(providerProfile?.birthMonth || ''),
+                birthYear: String(providerProfile?.birthYear || ''),
+                age: String(providerProfile?.age || '')
               } 
             } 
           } : {})
@@ -125,7 +128,7 @@ const register = async (req, res, next) => {
       include: { wallet: true, providerProfile: true }
     });
     const token = generateToken(freshUser.id, freshUser.role);
-    console.log('User registered successfully:', freshUser.id);
+    debugLog('User registered successfully:', freshUser.id);
     res.status(201).json({ success: true, token, user: freshUser });
   } catch (error) {
     console.error('Registration error details:', error);
@@ -135,7 +138,7 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    console.log('Login attempt:', req.body);
+    debugLog('Login attempt:', { email: req.body.email, phone: req.body.phone });
     let { email, phone, password } = req.body;
     
     if (email) email = email.trim().toLowerCase();
@@ -147,7 +150,7 @@ const login = async (req, res, next) => {
     });
 
     if (!user) {
-      console.log('User not found for:', email || phone);
+      debugLog('User not found for:', email || phone);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
@@ -156,15 +159,37 @@ const login = async (req, res, next) => {
     }
 
     if (!user.password) {
-      console.log('User has no password set (OTP only account):', user.id);
+      debugLog('User has no password set (OTP only account):', user.id);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Password match result:', isMatch);
+    debugLog('Password match result:', isMatch);
     
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (user.twoFactorEnabled) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedOTP = await bcrypt.hash(otp, 10);
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorCode: hashedOTP,
+          twoFactorExpiry: new Date(Date.now() + 10 * 60 * 1000)
+        }
+      });
+
+      if (user.email) {
+        await sendOTP(user.email, otp);
+      } else {
+        debugLog(`[SMS MOCK] Login OTP generated for ${user.phone}: ${otp}`);
+      }
+
+      const tempToken = jwt.sign({ id: user.id, role: user.role, type: '2fa' }, process.env.JWT_SECRET, { expiresIn: '10m' });
+      return res.status(200).json({ success: true, requiresTwoFactor: true, tempToken });
     }
 
     const token = generateToken(user.id, user.role);
@@ -191,7 +216,7 @@ const requestOTP = async (req, res, next) => {
       await sendOTP(email, otp);
       return res.status(200).json({ success: true, message: 'OTP sent to email' });
     } else {
-      console.log(`[SMS MOCK] OTP generated for ${phone}`);
+      debugLog(`[SMS MOCK] OTP generated for ${phone}`);
       return res.status(200).json({ success: true, message: 'OTP sent via SMS' });
     }
   } catch (error) {
@@ -231,9 +256,179 @@ const verifyOTP = async (req, res, next) => {
   }
 };
 
+const enableTwoFactorOTP = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const identifier = user.email || user.phone;
+    
+    if (!identifier) {
+      return res.status(400).json({ success: false, message: 'Email or phone is required' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOTP = await bcrypt.hash(otp, 10);
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorCode: hashedOTP,
+        twoFactorExpiry: new Date(Date.now() + 10 * 60 * 1000)
+      }
+    });
+
+    if (user.email) {
+      await sendOTP(user.email, otp);
+      return res.status(200).json({ success: true, message: 'OTP sent to your email' });
+    } else {
+      debugLog(`[SMS MOCK] OTP generated for ${user.phone}: ${otp}`);
+      return res.status(200).json({ success: true, message: 'OTP sent to your phone' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+const enableTwoFactor = async (req, res, next) => {
+  try {
+    const { otp } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    
+    if (!user.twoFactorCode || !user.twoFactorExpiry || user.twoFactorExpiry < new Date()) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.twoFactorCode);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorEnabled: true,
+        twoFactorCode: null,
+        twoFactorExpiry: null
+      }
+    });
+
+    res.status(200).json({ success: true, message: 'Two-step verification enabled' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const disableTwoFactor = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    
+    const isMatch = await bcrypt.compare(password, user.password || '');
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Incorrect password' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: false }
+    });
+
+    res.status(200).json({ success: true, message: 'Two-step verification disabled' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyLoginTwoFactor = async (req, res, next) => {
+  try {
+    const { tempToken, otp } = req.body;
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+      if (decoded.type !== '2fa') throw new Error('Invalid token type');
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: { wallet: true, providerProfile: true }
+    });
+
+    if (!user || !user.twoFactorCode || !user.twoFactorExpiry || user.twoFactorExpiry < new Date()) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.twoFactorCode);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorCode: null,
+        twoFactorExpiry: null
+      }
+    });
+
+    const token = generateToken(user.id, user.role);
+    res.status(200).json({ success: true, token, user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resendLoginOTP = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+    const tempToken = authHeader.split(' ')[1];
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+      if (decoded.type !== '2fa') throw new Error('Invalid token type');
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOTP = await bcrypt.hash(otp, 10);
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorCode: hashedOTP,
+        twoFactorExpiry: new Date(Date.now() + 10 * 60 * 1000)
+      }
+    });
+
+    if (user.email) {
+      await sendOTP(user.email, otp);
+      return res.status(200).json({ success: true, message: 'OTP sent to your email' });
+    } else {
+      debugLog(`[SMS MOCK] Login OTP generated for ${user.phone}: ${otp}`);
+      return res.status(200).json({ success: true, message: 'OTP sent to your phone' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   requestOTP,
-  verifyOTP
+  verifyOTP,
+  enableTwoFactorOTP,
+  enableTwoFactor,
+  disableTwoFactor,
+  verifyLoginTwoFactor,
+  resendLoginOTP
 };

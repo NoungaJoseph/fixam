@@ -45,15 +45,17 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.NOTIFICATIONS",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
     "plugins": [
+      "expo-dev-client",
       "expo-localization",
+      "expo-local-authentication",
+      "expo-secure-store",
       [
         "expo-image-picker",
         {
@@ -69,7 +71,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

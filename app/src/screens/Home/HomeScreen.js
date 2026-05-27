@@ -9,8 +9,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { getMediaUrl } from '../../services/api';
 import { translateService } from '../../i18n/translate';
+import UserAvatar from '../../components/UserAvatar';
 
 const { width } = Dimensions.get('window');
 
@@ -434,10 +434,7 @@ const HomeScreen = ({ navigation }) => {
                   activeOpacity={0.8}
                 >
                   <View style={styles.proImgWrap}>
-                    <Image
-                      source={getMediaUrl(p.user?.avatar) ? { uri: getMediaUrl(p.user.avatar) } : { uri: `https://ui-avatars.com/api/?name=${p.user?.fullName || 'U'}&background=random&size=120` }}
-                      style={styles.proImg}
-                    />
+                    <UserAvatar uri={p.user?.avatar} name={p.user?.fullName || t('common.provider')} size={64} style={styles.proImg} />
                     {p.verification === 'VERIFIED' && (
                       <View style={styles.proVerified}>
                         <MaterialCommunityIcons name="check-decagram" size={18} color="#22C55E" />

@@ -1,14 +1,13 @@
 import React from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  Image, StatusBar, SafeAreaView, Linking, Share, Platform
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, StatusBar, Linking, Share, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAppContext } from '../../context/AppContext';
 import api, { getMediaUrl } from '../../services/api';
+import UserAvatar from '../../components/UserAvatar';
 
 const ProviderProfileScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
@@ -41,9 +40,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
 
   // Pure dynamic data binding from DB
   const fullName = provider.user?.fullName || t('common.provider');
-  const avatarUri = getMediaUrl(provider.user?.avatar)
-    ? getMediaUrl(provider.user.avatar)
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=0D9488&color=fff&size=200`;
+  const avatarUri = getMediaUrl(provider.user?.avatar);
 
   const ratingVal = provider.rating ? parseFloat(provider.rating).toFixed(1) : '0.0';
   const reviewCountVal = provider.reviewCount || reviews.length || 0;
@@ -129,7 +126,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           {/* Hanging Avatar */}
           <View style={styles.avatarWrapper}>
             <View style={[styles.avatarBorderShadow, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
-              <Image source={{ uri: avatarUri }} style={styles.heroAvatar} />
+              <UserAvatar uri={avatarUri} name={fullName} size={102} />
               {provider.verification === 'VERIFIED' && (
                 <View style={styles.verifiedOverlay}>
                   <MaterialCommunityIcons name="check" size={16} color="#FFF" />
@@ -391,9 +388,6 @@ const ProviderProfileScreen = ({ route, navigation }) => {
             reviews.slice(0, 3).map((review, i) => {
               const reviewerName = review.job?.client?.fullName || t('profile.verifiedClient');
               const reviewerAvatarUri = getMediaUrl(review.job?.client?.avatar);
-              const reviewerAvatar = reviewerAvatarUri
-                ? { uri: reviewerAvatarUri } 
-                : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&background=0D9488&color=fff` };
               const reviewDateText = review.createdAt 
                 ? new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 : t('common.recent');
@@ -404,7 +398,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                   style={[styles.reviewCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9', marginBottom: 12 }]}
                 >
                   <View style={styles.reviewTopRow}>
-                    <Image source={reviewerAvatar} style={styles.reviewAvatar} />
+                    <UserAvatar uri={reviewerAvatarUri} name={reviewerName} size={44} radius={14} style={styles.reviewAvatar} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <View style={styles.reviewerNameRow}>
                         <Text style={[styles.reviewerName, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{reviewerName}</Text>

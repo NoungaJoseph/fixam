@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, FlatList,
-  StatusBar, SafeAreaView, Image, TextInput, Platform, ActivityIndicator, ScrollView, Alert
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, StatusBar, TextInput, Platform, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,6 +11,7 @@ import api, { getMediaUrl } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
 import { useAppContext } from '../../context/AppContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import UserAvatar from '../../components/UserAvatar';
 
 const chatCacheKey = (userId) => `fixam:chat-conversations:${userId || 'guest'}`;
 
@@ -235,12 +234,12 @@ const ChatListScreen = ({ navigation }) => {
         onLongPress={() => {
           const isArchived = archivedIds.includes(item.id);
           Alert.alert(
-            'Conversation Options',
-            `Would you like to ${isArchived ? 'unarchive' : 'archive'} this conversation with ${displayName}?`,
+            t('messages.conversationOptions'),
+            t(isArchived ? 'messages.unarchiveQuestion' : 'messages.archiveQuestion', { name: displayName }),
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: t('common.cancel'), style: 'cancel' },
               {
-                text: isArchived ? 'Move to Inbox' : 'Archive Conversation',
+                text: isArchived ? t('messages.moveToInbox') : t('messages.archiveConversation'),
                 onPress: () => toggleArchiveConversation(item.id)
               }
             ]
@@ -250,13 +249,7 @@ const ChatListScreen = ({ navigation }) => {
       >
         {/* Avatar */}
         <View style={styles.avatarWrap}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatarFallback, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
-              <Text style={[styles.avatarInitial, { color: colors.accent }]}>{(other.fullName || '?').charAt(0)}</Text>
-            </View>
-          )}
+          <UserAvatar uri={avatarUri} name={other.fullName || displayName} size={54} style={styles.avatar} />
           {other.isOnline && <View style={styles.onlineDot} />}
         </View>
 
@@ -275,12 +268,12 @@ const ChatListScreen = ({ navigation }) => {
                 onPress={() => {
                   const isArchived = archivedIds.includes(item.id);
                   Alert.alert(
-                    isArchived ? 'Unarchive Chat' : 'Archive Chat',
-                    `Move this conversation with ${displayName} to the ${isArchived ? 'Inbox' : 'Archive'}?`,
+                    isArchived ? t('messages.unarchiveChat') : t('messages.archiveChat'),
+                    t(isArchived ? 'messages.moveToInboxQuestion' : 'messages.moveToArchiveQuestion', { name: displayName }),
                     [
-                      { text: 'Cancel', style: 'cancel' },
+                      { text: t('common.cancel'), style: 'cancel' },
                       {
-                        text: isArchived ? 'Move to Inbox' : 'Archive',
+                        text: isArchived ? t('messages.moveToInbox') : t('messages.archive'),
                         onPress: () => toggleArchiveConversation(item.id)
                       }
                     ]
@@ -327,11 +320,11 @@ const ChatListScreen = ({ navigation }) => {
 
           {/* Title Area */}
           <View style={styles.titleArea}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
-            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Stay connected, get more jobs</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('messages.title')}</Text>
+            <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{t('messages.subtitle')}</Text>
             <View style={styles.onlineRow}>
               <View style={styles.onlineIndicator} />
-              <Text style={[styles.onlineText, { color: colors.accent }]}>You're Online</Text>
+              <Text style={[styles.onlineText, { color: colors.accent }]}>{t('messages.youAreOnline')}</Text>
             </View>
           </View>
 
@@ -345,7 +338,7 @@ const ChatListScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="magnify" size={20} color={colors.placeholder} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search messages..."
+            placeholder={t('messages.searchMessages')}
             placeholderTextColor={colors.placeholder}
             value={search}
             onChangeText={setSearch}
@@ -426,8 +419,8 @@ const ChatListScreen = ({ navigation }) => {
             ListEmptyComponent={
               <View style={styles.empty}>
                 <MaterialCommunityIcons name="message-text-outline" size={64} color={colors.border} />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>No conversations yet</Text>
-                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Your chats with clients will appear here</Text>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('messages.noConversationsYet')}</Text>
+                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('messages.conversationsAppearHere')}</Text>
               </View>
             }
           />

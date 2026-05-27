@@ -31,6 +31,17 @@ web-build/
 .DS_Store
 Thumbs.db
 
+# Firebase / Secrets
+firebase-service-account.json
+service-account*.json
+**/firebase-service-account.json
+**/service-account*.json
+google-services.json
+!app/android/app/google-services.json
+firebase/
+*.pem
+*.key
+
 # Backend specific
 backend/.env
 backend/prisma/dev.db

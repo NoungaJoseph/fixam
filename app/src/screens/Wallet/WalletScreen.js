@@ -2,6 +2,7 @@ import React from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,7 +16,7 @@ const WalletScreen = ({ navigation }) => {
   const { t } = useLanguage();
   
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -105,7 +106,7 @@ const WalletScreen = ({ navigation }) => {
         </TouchableOpacity>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

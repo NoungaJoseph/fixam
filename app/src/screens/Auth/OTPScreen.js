@@ -5,10 +5,12 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const OTPScreen = ({ route, navigation }) => {
   const { contact, method, role } = route.params || { contact: '', method: 'phone', role: 'CLIENT' };
   const { loginWithOTP, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [otp, setOtp] = useState('');
   const [timer, setTimer] = useState(59);
   const inputRef = useRef(null);
@@ -50,8 +52,8 @@ const OTPScreen = ({ route, navigation }) => {
       await loginWithOTP(email, phone, code);
       // AuthContext will update user state and trigger navigation to Home
     } catch (error) {
-      const msg = error.response?.data?.message || "Invalid code. Please try again.";
-      Alert.alert("Verification Failed", msg);
+      const msg = error.response?.data?.message || t('otp.invalidCode');
+      Alert.alert(t('otp.failed'), msg);
       setOtp('');
       // Refocus after error
       setTimeout(() => inputRef.current?.focus(), 500);
@@ -69,7 +71,7 @@ const OTPScreen = ({ route, navigation }) => {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <MaterialCommunityIcons name="chevron-left" size={28} color="#0F172A" />
-          <Text style={styles.logo}>Verification</Text>
+          <Text style={styles.logo}>{t('otp.verification')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -83,10 +85,10 @@ const OTPScreen = ({ route, navigation }) => {
         </View>
 
         <Text style={styles.verifyTitle}>
-          {method === 'phone' ? "Check your SMS" : "Check your Email"}
+          {method === 'phone' ? t('otp.checkSms') : t('otp.checkEmail')}
         </Text>
         <Text style={styles.verifySubtitle}>
-          We sent a 6-digit code to {maskedContact}.
+          {t('otp.sentCode', { contact: maskedContact })}
         </Text>
 
         {/* Hidden TextInput for native keyboard - Fixed for Android focus */}
@@ -117,11 +119,11 @@ const OTPScreen = ({ route, navigation }) => {
 
         <View style={styles.resendContainer}>
           <Text style={styles.timerText}>
-            Resend code in {`${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}`}
+            {t('otp.resendIn', { time: `${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}` })}
           </Text>
           {timer === 0 && (
             <TouchableOpacity onPress={() => setTimer(60)}>
-              <Text style={styles.resendLink}>Resend Now</Text>
+              <Text style={styles.resendLink}>{t('otp.resendNow')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -134,7 +136,7 @@ const OTPScreen = ({ route, navigation }) => {
           {isLoading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.verifyBtnText}>Verify & Continue</Text>
+            <Text style={styles.verifyBtnText}>{t('otp.verifyContinue')}</Text>
           )}
         </TouchableOpacity>
       </View>

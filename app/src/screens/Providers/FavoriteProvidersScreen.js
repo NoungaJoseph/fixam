@@ -1,11 +1,11 @@
 import React from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, FlatList, Image, SafeAreaView, StatusBar
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getMediaUrl } from '../../services/api';
+import UserAvatar from '../../components/UserAvatar';
 
 const FavoriteProvidersScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
@@ -22,10 +22,7 @@ const FavoriteProvidersScreen = ({ navigation }) => {
         onPress={() => navigation.navigate('ProviderProfile', { provider: item })}
         activeOpacity={0.85}
       >
-        <Image
-          source={avatarUri ? { uri: avatarUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D9488&color=fff` }}
-          style={styles.avatar}
-        />
+        <UserAvatar uri={avatarUri} name={name} size={58} radius={8} style={styles.avatar} />
         <View style={styles.cardBody}>
           <View style={styles.nameRow}>
             <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{name}</Text>

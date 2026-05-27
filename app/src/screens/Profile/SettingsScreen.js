@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, Switch, Alert, Platform, Image
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Switch, Alert, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { translateStatus } from '../../i18n/translate';
+import UserAvatar from '../../components/UserAvatar';
 
 const SettingsScreen = ({ navigation, route }) => {
   const { isDarkMode, colors, toggleTheme } = useTheme();
@@ -121,13 +120,12 @@ const SettingsScreen = ({ navigation, route }) => {
 
               <View style={styles.heroLeft}>
                 <View style={styles.heroAvatarWrap}>
-                  {user?.avatar ? (
-                    <Image source={{ uri: user.avatar }} style={styles.heroAvatar} />
-                  ) : (
-                    <View style={[styles.heroAvatarFallback, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
-                      <Text style={styles.heroInitial}>{(user?.fullName || 'U').charAt(0)}</Text>
-                    </View>
-                  )}
+                  <UserAvatar
+                    uri={user?.avatar}
+                    name={user?.fullName || t('settings.yourName')}
+                    size={66}
+                    style={styles.heroAvatar}
+                  />
                   <View style={[styles.editDot, { backgroundColor: colors.accent }]}>
                     <MaterialCommunityIcons name="pencil" size={10} color="#FFF" />
                   </View>

@@ -68,12 +68,11 @@ export const AppProvider = ({ children }) => {
       setIsProviderOnline(Boolean(user?.isOnline));
     }
 
-    // Fetch providers always (public)
-    fetchProviders();
-    
     if (token) {
       fetchAppData();
       fetchNotifications();
+    } else {
+      fetchProviders();
     }
   }, [token, user?.role]);
 
@@ -197,7 +196,8 @@ export const AppProvider = ({ children }) => {
     try {
       // These routes require authentication
       const jobsEndpoint = user?.role === 'PROVIDER' ? '/jobs/available?limit=10&sortBy=newest' : '/jobs/client';
-      const [jobsRes, walletRes, chatRes, transRes, bookingsRes] = await Promise.all([
+      const [providersRes, jobsRes, walletRes, chatRes, transRes, bookingsRes] = await Promise.all([
+        api.get('/providers').catch(() => ({ data: { data: [] } })),
         api.get(jobsEndpoint).catch(() => ({ data: { data: [] } })),
         api.get('/wallet/balance').catch(() => ({ data: { data: { balance: 0 } } })),
         api.get('/chat/conversations').catch(() => ({ data: { data: [] } })),
@@ -205,9 +205,9 @@ export const AppProvider = ({ children }) => {
         user?.role?.toUpperCase() === 'CLIENT'
           ? api.get('/bookings/mine?role=CLIENT').catch(() => ({ data: { data: [] } }))
           : Promise.resolve({ data: { data: [] } }),
-        fetchProviders()
       ]);
 
+      setProviders((providersRes.data.data || []).map(normalizeProvider));
       const bookingJobs = (bookingsRes.data.data || []).map((booking) => normalizeJob({
         id: booking.id,
         clientId: booking.clientId,

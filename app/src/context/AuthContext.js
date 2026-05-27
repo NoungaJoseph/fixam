@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import api, { getMediaUrl, setAuthToken } from '../services/api';
 import { requestStartupPermissions } from '../services/permissions';
 
@@ -12,8 +13,10 @@ const storeToken = async (key, value) => {
   try {
     if (value) {
       await AsyncStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+      await SecureStore.setItemAsync(key, typeof value === 'string' ? value : JSON.stringify(value));
     } else {
       await AsyncStorage.removeItem(key);
+      await SecureStore.deleteItemAsync(key);
     }
   } catch (error) {
     // Fallback to memory storage
@@ -27,9 +30,13 @@ const storeToken = async (key, value) => {
 
 const getStoredToken = async (key) => {
   try {
-    return await AsyncStorage.getItem(key);
+    return await SecureStore.getItemAsync(key) || await AsyncStorage.getItem(key);
   } catch (error) {
-    return fallbackStorage[key] || null;
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (_) {
+      return fallbackStorage[key] || null;
+    }
   }
 };
 
@@ -64,9 +71,15 @@ export const AuthProvider = ({ children }) => {
           setToken(storedToken);
           setUser(normalizeUser(storedUser));
           setAuthToken(storedToken);
+          api.get('/users/me')
+            .then((res) => {
+              const freshUser = normalizeUser(res.data.data || res.data.user);
+              if (freshUser) setUser(freshUser);
+            })
+            .catch(() => {});
         }
       } catch (error) {
-        console.log('Error restoring token:', error);
+        if (__DEV__) console.log('Error restoring token:', error);
       } finally {
         setIsRestoring(false);
       }
@@ -81,9 +94,17 @@ export const AuthProvider = ({ children }) => {
       storeToken('authToken', token);
       storeToken('authUser', user);
       setAuthToken(token);
-      requestStartupPermissions().catch((error) => {
-        console.log('Startup permissions skipped:', error.message);
-      });
+      requestStartupPermissions()
+        .then((pushToken) => {
+          if (pushToken && pushToken !== user.fcmToken) {
+            return api.put('/users/profile', { fcmToken: pushToken })
+              .then((res) => setUser(normalizeUser(res.data.data || res.data.user)));
+          }
+          return null;
+        })
+        .catch((error) => {
+          if (__DEV__) console.log('Startup permissions skipped:', error.message);
+        });
     } else if (!token && !user && !isRestoring) {
       storeToken('authToken', null);
       storeToken('authUser', null);
@@ -129,6 +150,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    const res = await api.get('/users/me');
+    const freshUser = normalizeUser(res.data.data || res.data.user);
+    if (freshUser) setUser(freshUser);
+    return freshUser;
+  };
+
   const uploadFile = async (formData, endpoint = '/upload') => {
     try {
       const res = await api.post(endpoint, formData, {
@@ -150,6 +178,7 @@ export const AuthProvider = ({ children }) => {
       loginDirect,
       logout, 
       updateProfile, 
+      refreshUser,
       uploadFile,
       hasLoggedOut 
     }}>

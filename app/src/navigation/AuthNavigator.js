@@ -29,6 +29,7 @@ const AuthNavigator = () => {
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="TermsPolicy" component={TermsPolicyScreen} />
       <Stack.Screen name="OTP" component={OTPScreen} />
+      <Stack.Screen name="TwoFactorLoginScreen" component={require('../screens/Auth/TwoFactorLoginScreen').default} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );

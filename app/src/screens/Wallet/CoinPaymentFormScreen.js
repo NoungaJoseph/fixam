@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, TextInput, ActivityIndicator,
-  Alert
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';

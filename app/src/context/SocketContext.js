@@ -12,11 +12,13 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const socketInitializedRef = React.useRef(false);
+  const socketRef = React.useRef(null);
 
   useEffect(() => {
     if (!token) {
-      if (socket) {
-        socket.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
         setSocket(null);
         setIsConnected(false);
       }
@@ -33,11 +35,13 @@ export const SocketProvider = ({ children }) => {
 
     const socketInstance = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      reconnectionAttempts: Infinity
+      randomizationFactor: 0.5,
+      reconnectionDelay: 1500,
+      reconnectionDelayMax: 15000,
+      reconnectionAttempts: 20,
+      timeout: 20000
     });
 
     socketInstance.on('connect', () => {
@@ -54,10 +58,12 @@ export const SocketProvider = ({ children }) => {
       console.log('Socket Connection Error:', err.message);
     });
 
+    socketRef.current = socketInstance;
     setSocket(socketInstance);
 
     return () => {
       socketInitializedRef.current = false;
+      socketRef.current = null;
       socketInstance.disconnect();
     };
   }, [token]);

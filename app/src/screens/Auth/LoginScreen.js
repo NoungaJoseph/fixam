@@ -24,7 +24,7 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!contact.trim() || !password.trim()) {
-      Alert.alert("Required", `Please enter your ${loginMethod === 'phone' ? 'phone number' : 'email address'} and password`);
+      Alert.alert(t('common.required'), t(loginMethod === 'phone' ? 'login.phonePasswordRequired' : 'login.emailPasswordRequired'));
       return;
     }
 
@@ -40,12 +40,18 @@ const LoginScreen = ({ navigation }) => {
       
       if (res.data.otpRequired) {
         navigation.navigate('OTP', { contact, method: loginMethod, role: res.data.user.role });
+      } else if (res.data.requiresTwoFactor) {
+        navigation.navigate('TwoFactorLoginScreen', {
+          contact,
+          method: loginMethod,
+          tempToken: res.data.tempToken
+        });
       } else {
         loginDirect(res.data.user, res.data.token);
       }
     } catch (error) {
-      const msg = error.response?.data?.message || "Invalid credentials. Please try again.";
-      Alert.alert("Login Failed", msg);
+      const msg = error.response?.data?.message || t('login.invalidCredentials');
+      Alert.alert(t('login.failed'), msg);
     } finally {
       setLoading(false);
     }
@@ -92,7 +98,7 @@ const LoginScreen = ({ navigation }) => {
               style={[styles.methodBtn, loginMethod === 'email' && { backgroundColor: isDarkMode ? colors.accent : '#FFF' }]}
               onPress={() => { setLoginMethod('email'); setContact(''); }}
             >
-              <Text style={[styles.methodText, loginMethod === 'email' && { color: isDarkMode ? '#FFF' : colors.primary, fontWeight: '700' }]}>Email</Text>
+              <Text style={[styles.methodText, loginMethod === 'email' && { color: isDarkMode ? '#FFF' : colors.primary, fontWeight: '700' }]}>{t('register.email')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -106,7 +112,7 @@ const LoginScreen = ({ navigation }) => {
               />
               <TextInput
                 style={[styles.textInput, { color: colors.text }]}
-                placeholder={loginMethod === 'phone' ? t('login.placeholder') : "Email Address"}
+                placeholder={loginMethod === 'phone' ? t('login.placeholder') : t('register.emailPlaceholder')}
                 placeholderTextColor={colors.placeholder}
                 value={contact}
                 onChangeText={setContact}
@@ -119,7 +125,7 @@ const LoginScreen = ({ navigation }) => {
               <MaterialIcons name="lock-outline" size={22} color={colors.primary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.textInput, { color: colors.text }]}
-                placeholder="Password"
+                placeholder={t('register.password')}
                 placeholderTextColor={colors.placeholder}
                 value={password}
                 onChangeText={setPassword}
@@ -145,7 +151,7 @@ const LoginScreen = ({ navigation }) => {
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <>
-                  <Text style={styles.loginButtonText}>Login</Text>
+                  <Text style={styles.loginButtonText}>{t('roleSelection.login')}</Text>
                   <MaterialIcons name="arrow-forward" size={18} color="#FFF" />
                 </>
               )}
@@ -156,7 +162,7 @@ const LoginScreen = ({ navigation }) => {
                 <Text style={[styles.registerLink, { color: colors.accent }]}>{t('login.registerLink')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                <Text style={[styles.forgotText, { color: colors.textSecondary }]}>Forgot password?</Text>
+                <Text style={[styles.forgotText, { color: colors.textSecondary }]}>{t('login.forgotPassword')}</Text>
               </TouchableOpacity>
             </View>
           </View>

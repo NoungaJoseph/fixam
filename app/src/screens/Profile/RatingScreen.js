@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
-  Image, StatusBar, ScrollView, Alert, ActivityIndicator, Platform,
+  StatusBar, ScrollView, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import UserAvatar from '../../components/UserAvatar';
 
 import api from '../../services/api';
 
@@ -96,15 +97,7 @@ const RatingScreen = ({ route, navigation }) => {
         {/* Target Hero */}
         <View style={styles.providerHero}>
           <View style={styles.avatarContainer}>
-            {displayAvatar ? (
-              <Image source={{ uri: displayAvatar }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback, { backgroundColor: colors.accent + '20' }]}>
-                <Text style={[styles.avatarInitial, { color: colors.accent }]}>
-                  {displayName?.charAt(0)?.toUpperCase() || '?'}
-                </Text>
-              </View>
-            )}
+            <UserAvatar uri={displayAvatar} name={displayName} size={100} style={styles.avatar} />
             {isVerified && !isRatingClient && (
               <View style={styles.verifiedBadge}>
                 <MaterialCommunityIcons name="check-decagram" size={20} color="#FFF" />

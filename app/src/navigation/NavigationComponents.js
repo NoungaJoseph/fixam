@@ -1,17 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Platform, StatusBar, Switch } from 'react-native';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { DrawerContentScrollView } from '@react-navigation/drawer';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getMediaUrl } from '../services/api';
+import UserAvatar from '../components/UserAvatar';
 
 export const CustomHeader = ({ navigation, title, colors }) => {
   const { user } = useAuth();
   const { notificationCount } = useAppContext();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
 
   const ROOT_SCREENS = ['Dashboard', 'Home', 'My Wallet', 'My Tasks', 'Coin Balance', 'Messages', 'Settings', 'Invite Friends', 'My Stats', 'Reports'];
   const LOCALIZED_ROOT_SCREENS = [
@@ -37,7 +40,16 @@ export const CustomHeader = ({ navigation, title, colors }) => {
     : title;
 
   return (
-    <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: isRootScreen ? 'transparent' : colors.border, borderBottomWidth: isRootScreen ? 0 : 1 }]}>
+    <View style={[
+      styles.header,
+      {
+        backgroundColor: colors.background,
+        borderBottomColor: isRootScreen ? 'transparent' : colors.border,
+        borderBottomWidth: isRootScreen ? 0 : 1,
+        paddingTop: insets.top + 8,
+        height: insets.top + 64,
+      }
+    ]}>
       <TouchableOpacity
         onPress={() => isRootScreen ? navigation.openDrawer() : navigation.canGoBack() ? navigation.goBack() : navigation.openDrawer()}
         style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -76,6 +88,7 @@ export const CustomDrawerContent = (props) => {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const avatarUri = getMediaUrl(user?.avatar);
   const isProvider = user?.role?.toUpperCase() === 'PROVIDER' && user?.providerProfile?.profileMode !== 'PERSONAL';
 
@@ -148,15 +161,14 @@ export const CustomDrawerContent = (props) => {
         overflow: 'hidden'
       }}>
       {/* Profile Header */}
-      <View style={[styles.drawerHeader, { backgroundColor: isDarkMode ? '#111827' : '#FFF' }]}>
+      <View style={[styles.drawerHeader, { backgroundColor: isDarkMode ? '#111827' : '#FFF', paddingTop: insets.top + 20 }]}>
         <View style={styles.drawerAvatarWrap}>
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={[styles.drawerAvatar, { borderColor: isDarkMode ? '#1F2937' : '#FFF' }]} />
-          ) : (
-            <View style={[styles.drawerAvatarFallback, { backgroundColor: isDarkMode ? '#0B1120' : '#E2E8F0', borderColor: isDarkMode ? '#1F2937' : '#FFF' }]}>
-              <Text style={[styles.drawerAvatarInitial, { color: isDarkMode ? '#14B8A6' : '#0D9488' }]}>{(user?.fullName || t('common.user')).charAt(0)}</Text>
-            </View>
-          )}
+          <UserAvatar
+            uri={avatarUri}
+            name={user?.fullName || t('common.user')}
+            size={76}
+            style={[styles.drawerAvatar, { borderColor: isDarkMode ? '#1F2937' : '#FFF' }]}
+          />
           <View style={[styles.drawerOnlineDot, { borderColor: isDarkMode ? '#111827' : '#FFF' }]} />
         </View>
         <Text style={[styles.drawerName, { color: colors.text }]}>{user?.fullName || t('common.user')}</Text>
@@ -226,8 +238,7 @@ export const CustomDrawerContent = (props) => {
 const styles = StyleSheet.create({
   // Header
   header: {
-    height: Platform.OS === 'ios' ? 100 : 80 + (StatusBar.currentHeight || 0),
-    paddingTop: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 20) + 8,
+    minHeight: 64,
     paddingHorizontal: 16,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
@@ -240,7 +251,6 @@ const styles = StyleSheet.create({
   // Drawer Header
   drawerHeader: {
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 20 : 60,
     paddingBottom: 20,
   },
   drawerAvatarWrap: { 

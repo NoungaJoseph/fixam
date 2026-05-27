@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+limport { useEffect, useState } from 'react'
 import './App.css'
 
 type Page = 'home' | 'services' | 'about' | 'login' | 'dashboard'
@@ -716,18 +716,12 @@ function AppTrust({ simple = false }: { simple?: boolean }) {
     <section className={simple ? 'app-trust simple' : 'app-trust'}>
       <div>
         <h2>Trusted by Thousands</h2>
-        <div className="brand-cloud">
-          <strong className="mtn-logo">MTN</strong>
-          <strong className="orange-logo">orange</strong>
-        </div>
+        <div className="brand-cloud"><strong>MTN</strong><strong>VISA</strong><strong>orange</strong><strong>MoMo</strong><strong>PayPal</strong></div>
       </div>
       <div>
         <h2>Get the Fixam App</h2>
         <p>Manage tasks, chat with pros and more from your mobile device.</p>
-        <div className="store-row">
-          <button><span className="apple-mark">Apple</span> App Store</button>
-          <button><span className="play-mark" /> Google Play</button>
-        </div>
+        <div className="store-row"><button>App Store</button><button>Google Play</button></div>
       </div>
       {!simple && <ImageSlot className="app-phone-preview" src={images.appHomeScreen} alt="Fixam app preview" label="Fixam app" />}
     </section>

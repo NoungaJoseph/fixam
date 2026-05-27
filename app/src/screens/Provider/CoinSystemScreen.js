@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, Image, Platform
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Image, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 

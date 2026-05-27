@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, StatusBar, TextInput, ActivityIndicator, Alert, Modal, Platform, Share, ActionSheetIOS } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import UserAvatar from '../../components/UserAvatar';
 
 const DashboardScreen = ({ navigation }) => {
   const { user, updateProfile, uploadFile } = useAuth();
@@ -233,7 +235,7 @@ const DashboardScreen = ({ navigation }) => {
     const employmentHistory = user.providerProfile?.employmentHistory || [];
 
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>Professional Dashboard</Text>
@@ -261,13 +263,7 @@ const DashboardScreen = ({ navigation }) => {
 
           <View style={[styles.identityBlock, { borderBottomColor: colors.border }]}>
             <View style={styles.profilePhotoWrap}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.profilePhoto} />
-              ) : (
-                <View style={[styles.profilePhoto, { backgroundColor: colors.accent + '25', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ fontSize: 34, fontWeight: '900', color: colors.accent }}>{user?.fullName?.charAt(0) || 'U'}</Text>
-                </View>
-              )}
+              <UserAvatar uri={user?.avatar} name={user?.fullName} size={94} style={styles.profilePhoto} />
               <View style={styles.onlineDot} />
               <TouchableOpacity style={[styles.photoEdit, { backgroundColor: colors.background, borderColor: colors.accent }]} onPress={handleImagePick}>
                 <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.accent} />
@@ -384,7 +380,7 @@ const DashboardScreen = ({ navigation }) => {
             ))}
           </Section>
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -408,13 +404,7 @@ const DashboardScreen = ({ navigation }) => {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.freelancerScroll}>
           <View style={[styles.identityBlock, { borderBottomColor: colors.border }]}>
             <View style={styles.profilePhotoWrap}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.profilePhoto} />
-              ) : (
-                <View style={[styles.profilePhoto, { backgroundColor: colors.accent + '25', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Text style={{ fontSize: 34, fontWeight: '900', color: colors.accent }}>{user?.fullName?.charAt(0) || 'U'}</Text>
-                </View>
-              )}
+              <UserAvatar uri={user?.avatar} name={user?.fullName} size={94} style={styles.profilePhoto} />
               <TouchableOpacity style={[styles.photoEdit, { backgroundColor: colors.background, borderColor: colors.accent }]} onPress={handleImagePick}>
                 <MaterialCommunityIcons name="pencil-outline" size={20} color={colors.accent} />
               </TouchableOpacity>
@@ -476,18 +466,12 @@ const DashboardScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileHeader}>
           <View style={[styles.avatarWrap, { backgroundColor: colors.card }]}>
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent + '20' }]}>
-                <Text style={{ fontSize: 32, fontWeight: '800', color: colors.accent }}>{user?.fullName?.charAt(0)}</Text>
-              </View>
-            )}
+            <UserAvatar uri={user?.avatar} name={user?.fullName} size={94} />
             <TouchableOpacity 
               style={[styles.editAvatarBtn, { backgroundColor: colors.accent }]}
               onPress={handleImagePick}
@@ -611,7 +595,7 @@ const DashboardScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -3,6 +3,7 @@ import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
   Image, StatusBar, Modal, Alert
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAppContext } from '../../context/AppContext';
@@ -12,6 +13,7 @@ import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateService } from '../../i18n/translate';
+import UserAvatar from '../../components/UserAvatar';
 
 const formatDate = (value, locale = 'en') => {
   if (!value) return null;
@@ -27,6 +29,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const { on } = useSocket();
   const { t, locale } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [showConfirm, setShowConfirm] = useState(false);
   const [applicationCount, setApplicationCount] = useState(task.assignments?.length || task.proposals || 0);
   const [applied, setApplied] = useState(false);
@@ -94,7 +97,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
       <View style={styles.header}>
@@ -142,7 +145,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         </View>
 
         <View style={[styles.clientCard, { borderColor: colors.border }]}>
-          <Image source={clientAvatar ? { uri: clientAvatar } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(clientName)}&background=0D9488&color=fff` }} style={styles.clientAvatar} />
+          <UserAvatar uri={clientAvatar} name={clientName} size={58} radius={8} style={styles.clientAvatar} />
           <View style={styles.clientInfo}>
             <Text style={[styles.clientRole, { color: colors.textSecondary }]}>{t('common.client')}</Text>
             <View style={styles.clientNameRow}>
@@ -208,7 +211,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { bottom: Math.max(insets.bottom, 12) + 25 }]}>
         <TouchableOpacity style={styles.footerIcon} onPress={() => navigation.navigate('Chat', { receiverId: clientId, userName: clientName, avatar: clientAvatar, task })}>
           <MaterialCommunityIcons name="message-text-outline" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -220,7 +223,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
           <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={25} color={isFavorite ? '#EF4444' : colors.text} />
         </TouchableOpacity>
       </View>
-      <View style={styles.secureFooter}>
+      <View style={[styles.secureFooter, { bottom: Math.max(insets.bottom, 8) }]}>
         <MaterialCommunityIcons name="lock" size={18} color="#64748B" />
         <Text style={[styles.secureText, { color: colors.textSecondary }]}>{t('jobs.proposalSecure')}</Text>
       </View>
@@ -241,7 +244,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -317,13 +320,13 @@ const styles = StyleSheet.create({
   prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   prefChip: { backgroundColor: '#F8FAFC', borderRadius: 8, paddingHorizontal: 12, height: 42, flexDirection: 'row', alignItems: 'center', gap: 7 },
   prefText: { color: '#334155', fontSize: 12, fontWeight: '900' },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 38, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  footer: { position: 'absolute', left: 0, right: 0, paddingHorizontal: 22, flexDirection: 'row', alignItems: 'center', gap: 12 },
   footerIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
   proposalBtn: { flex: 1, height: 56, borderRadius: 8, backgroundColor: '#0D9488', alignItems: 'center', justifyContent: 'center' },
   proposalBtnDisabled: { backgroundColor: '#94A3B8' },
   proposalTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   proposalSub: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 3 },
-  secureFooter: { position: 'absolute', bottom: 13, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  secureFooter: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   secureText: { color: '#64748B', fontSize: 13, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 30 },
   modalContent: { width: '100%', borderRadius: 24, padding: 26, alignItems: 'center', backgroundColor: '#FFFFFF' },

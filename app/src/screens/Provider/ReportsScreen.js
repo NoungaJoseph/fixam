@@ -3,6 +3,7 @@ import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
@@ -15,7 +16,7 @@ const ReportsScreen = ({ navigation }) => {
   const reports = [];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
       <CustomHeader navigation={navigation} title={t('home.reports')} colors={colors} />
       
@@ -55,7 +56,7 @@ const ReportsScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#FFF" />
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

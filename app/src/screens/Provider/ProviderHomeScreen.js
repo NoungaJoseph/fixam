@@ -3,6 +3,7 @@ import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
   TextInput, StatusBar, Platform, Image, Dimensions, Switch
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -261,7 +262,7 @@ const ProviderHomeScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       {/* Scrollable Dashboard */}
@@ -564,7 +565,7 @@ const ProviderHomeScreen = ({ navigation }) => {
         {/* Space at the bottom to avoid tabbar overlap */}
         <View style={{ height: 120 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -578,7 +579,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 50,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   menuBtn: {

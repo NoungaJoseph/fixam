@@ -13,6 +13,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 import api, { getMediaUrl } from '../../services/api';
 import { useAppContext } from '../../context/AppContext';
+import UserAvatar from '../../components/UserAvatar';
 
 const SUPPORTED_MESSAGE_TYPES = new Set(['TEXT', 'IMAGE', 'FILE']);
 
@@ -327,11 +328,7 @@ const ChatScreen = ({ route, navigation }) => {
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       <View style={[styles.header, { backgroundColor: isDarkMode ? 'transparent' : '#FFF', borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}><MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} /></TouchableOpacity>
-        {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.headerAvatar} />
-        ) : (
-          <View style={[styles.headerAvatar, { backgroundColor: colors.accent + '20', justifyContent: 'center', alignItems: 'center' }]}><Text style={{ color: colors.accent, fontWeight: '800' }}>{userName?.charAt(0)}</Text></View>
-        )}
+        <UserAvatar uri={avatarUri} name={userName} size={40} radius={12} style={styles.headerAvatar} />
         <View style={{ flex: 1 }}><Text style={[styles.headerName, { color: colors.text }]}>{userName}</Text><Text style={styles.headerStatus}>{isTyping ? t('messages.typing') : t('messages.online')}</Text></View>
         {hasAcceptedWork ? (
           <TouchableOpacity

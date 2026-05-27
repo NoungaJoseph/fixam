@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -31,7 +32,7 @@ const NotificationsScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
       <CustomHeader navigation={navigation} title={t('notifications.title')} colors={colors} />
       
       {notifications.length > 0 ? (
@@ -48,7 +49,7 @@ const NotificationsScreen = ({ navigation }) => {
           <Text style={[styles.emptySub, { color: colors.textSecondary }]}>{t('notifications.emptySubtitle')}</Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -13,6 +13,7 @@
     "sent": "Réservation envoyée",
     "sentBody": "Le prestataire la verra dans Mes missions > Réservations.",
     "failed": "Réservation échouée",
-    "status": "Statut de la réservation"
+    "status": "Statut de la réservation",
+    "bookNow": "Réserver"
   }
 }

@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, FlatList,
-  Image, StatusBar, SafeAreaView, Platform, Alert, ScrollView
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image, StatusBar, Platform, Alert, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -233,7 +231,7 @@ const MyJobsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
       {/* Header Top Row */}
@@ -323,7 +321,7 @@ const MyJobsScreen = ({ navigation }) => {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 50,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   menuBtn: {

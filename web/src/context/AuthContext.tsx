@@ -7,7 +7,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isRestoring: boolean;
-  login: (email: string, phone: string, password: string) => Promise<any>;
+  login: (identifier: string, password: string) => Promise<any>;
   register: (payload: Record<string, unknown>) => Promise<any>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => Promise<any>;
@@ -53,10 +53,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [token]);
 
-  const login = async (email: string, phone: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     setIsLoading(true);
     try {
-      const payload = email ? { email, password } : { phone, password };
+      const value = identifier.trim();
+      const payload = value.includes('@') ? { email: value, password } : { phone: value, password };
       const res = await api.post('/auth/login', payload);
       setUser(res.data.user);
       setToken(res.data.token);

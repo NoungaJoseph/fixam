@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  StatusBar, SafeAreaView, Switch, Image
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Switch } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import UserAvatar from '../../components/UserAvatar';
 
 const HiddenProfileScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
@@ -29,13 +28,7 @@ const HiddenProfileScreen = ({ navigation }) => {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Preview card */}
           <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: isHidden ? 0.4 : 1 }]}>
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, { backgroundColor: colors.accent + '25', justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ fontSize: 24, fontWeight: '900', color: colors.accent }}>{user?.fullName?.charAt(0) || 'U'}</Text>
-              </View>
-            )}
+            <UserAvatar uri={user?.avatar} name={user?.fullName || 'Fixam User'} size={52} radius={16} style={styles.avatar} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.userName, { color: colors.text }]}>{user?.fullName || 'Fixam User'}</Text>
               <Text style={[styles.userRole, { color: colors.textSecondary }]}>{user?.role?.toLowerCase() === 'provider' ? 'Professional' : 'Client'}</Text>

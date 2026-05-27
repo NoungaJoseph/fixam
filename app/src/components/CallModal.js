@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Modal, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
+import UserAvatar from './UserAvatar';
 
 const CallModal = () => {
   const { on, emit } = useSocket();
@@ -73,9 +74,10 @@ const CallModal = () => {
 
         <View style={styles.center}>
           <View style={[styles.avatarWrap, { borderColor: colors.accent }]}>
-            <Image 
-              source={{ uri: 'https://i.pravatar.cc/150' }} 
-              style={styles.avatar} 
+            <UserAvatar
+              uri={incomingCall?.callerAvatar || activeCall?.callerAvatar}
+              name={incomingCall?.callerName || activeCall?.callerName || 'Fixam User'}
+              size={132}
             />
           </View>
           <Text style={[styles.name, { color: colors.text }]}>
