@@ -31,7 +31,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
+firebase-service-account.json
+service-account*.json
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +44,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+!/android/
+!/android/app/
+!/android/app/google-services.json

@@ -39,6 +39,11 @@ service-account*.json
 google-services.json
 
 firebase/
+!app/firebase/
+!app/firebase/google-services.json
+!app/android/
+!app/android/app/
+!app/android/app/google-services.json
 *.pem
 *.key
 
