@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/fixam.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#14B8A6"
     },
     "ios": {
       "supportsTablet": true
@@ -20,7 +20,7 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#14B8A6"
       },
       "intentFilters": [
         {
