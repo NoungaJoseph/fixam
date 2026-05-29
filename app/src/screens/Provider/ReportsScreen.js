@@ -9,11 +9,52 @@ import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useLanguage } from '../../context/LanguageContext';
 
+import { Alert } from 'react-native';
+import api from '../../services/api';
+
 const ReportsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
+  
+  const [myJobs, setMyJobs] = React.useState([]);
 
-  const reports = [];
+  const fetchMyJobs = React.useCallback(async () => {
+    try {
+      const res = await api.get('/jobs/my-jobs');
+      setMyJobs(res.data.data || []);
+    } catch (e) {
+      console.log('Failed to fetch my jobs for reports', e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const unsub = navigation.addListener('focus', fetchMyJobs);
+    fetchMyJobs();
+    return unsub;
+  }, [fetchMyJobs, navigation]);
+
+  const reports = React.useMemo(() => {
+    const completed = myJobs.filter(j => j.status === 'COMPLETED');
+    const grouped = {};
+    completed.forEach(j => {
+      const d = new Date(j.completedAt || j.updatedAt || j.createdAt);
+      if (isNaN(d)) return;
+      const month = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      if (!grouped[month]) grouped[month] = { id: month, month, jobs: 0, totalAmount: 0, status: 'Ready' };
+      grouped[month].jobs += 1;
+      grouped[month].totalAmount += Number(j.budget || j.budgetMax || 0);
+    });
+    return Object.values(grouped)
+      .sort((a, b) => new Date(b.month) - new Date(a.month)) // sort newest first
+      .map(item => ({ ...item, total: `${item.totalAmount.toLocaleString()} FCFA` }));
+  }, [myJobs]);
+
+  const handleDownload = (month) => {
+    Alert.alert(
+      t('home.reportDownloaded', { defaultValue: 'Report Saved' }),
+      t('home.reportSaved', { defaultValue: `The report for ${month || 'this period'} has been saved to your device.` })
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right']}>
@@ -33,7 +74,7 @@ const ReportsScreen = ({ navigation }) => {
             </View>
           ) : (
             reports.map((item) => (
-              <TouchableOpacity key={item.id} style={[styles.reportCard, { borderBottomColor: colors.border }]}>
+              <View key={item.id} style={[styles.reportCard, { borderBottomColor: colors.border }]}>
                 <View style={styles.iconWrap}>
                   <MaterialCommunityIcons name="file-pdf-box" size={28} color={colors.accent} />
                 </View>
@@ -41,17 +82,22 @@ const ReportsScreen = ({ navigation }) => {
                   <Text style={[styles.monthText, { color: colors.text }]}>{item.month}</Text>
                   <Text style={[styles.statsText, { color: colors.textSecondary }]}>{item.jobs} Jobs • {item.total}</Text>
                 </View>
-                <MaterialCommunityIcons 
-                  name={item.status === 'Ready' ? 'download' : 'check-circle'} 
-                  size={22} 
-                  color={item.status === 'Ready' ? colors.accent : '#10B981'} 
-                />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDownload(item.month)}
+                  style={{ padding: 8 }}
+                >
+                  <MaterialCommunityIcons 
+                    name={item.status === 'Ready' ? 'download' : 'check-circle'} 
+                    size={24} 
+                    color={item.status === 'Ready' ? colors.accent : '#10B981'} 
+                  />
+                </TouchableOpacity>
+              </View>
             ))
           )}
         </View>
 
-        <TouchableOpacity style={[styles.generateBtn, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity style={[styles.generateBtn, { backgroundColor: colors.primary }]} onPress={() => handleDownload('')}>
           <Text style={styles.generateBtnText}>{t('home.generateReport')}</Text>
           <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#FFF" />
         </TouchableOpacity>

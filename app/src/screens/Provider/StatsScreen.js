@@ -8,18 +8,43 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const { width } = Dimensions.get('window');
 
 const StatsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  
+  const [myJobs, setMyJobs] = React.useState([]);
+
+  const fetchMyJobs = React.useCallback(async () => {
+    try {
+      const res = await api.get('/jobs/my-jobs');
+      setMyJobs(res.data.data || []);
+    } catch (e) {
+      console.log('Failed to fetch my jobs in stats', e);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const unsub = navigation.addListener('focus', fetchMyJobs);
+    fetchMyJobs();
+    return unsub;
+  }, [fetchMyJobs, navigation]);
+
+  const completedJobs = myJobs.filter(j => j.status === 'COMPLETED').length;
+  const totalEarnings = myJobs.filter(j => j.status === 'COMPLETED').reduce((sum, j) => sum + Number(j.budget || j.budgetMax || 0), 0);
+  const avgRating = Number(user?.providerProfile?.rating || 0).toFixed(1);
+  const successRate = myJobs.length > 0 ? Math.round((completedJobs / myJobs.length) * 100) : 0;
 
   const stats = [
-    { label: t('home.completedJobs'), value: '0', icon: 'check-circle-outline', color: '#10B981' },
-    { label: t('home.totalEarnings'), value: '0 XAF', icon: 'cash-multiple', color: '#2563EB' },
-    { label: t('home.avgRating'), value: '0.0', icon: 'star-outline', color: '#FBBF24' },
-    { label: t('home.successRate'), value: '0%', icon: 'trending-up', color: '#8B5CF6' },
+    { label: t('home.completedJobs'), value: String(completedJobs), icon: 'check-circle-outline', color: '#10B981' },
+    { label: t('home.totalEarnings'), value: `${totalEarnings.toLocaleString()} FCFA`, icon: 'cash-multiple', color: '#2563EB' },
+    { label: t('home.avgRating'), value: String(avgRating), icon: 'star-outline', color: '#FBBF24' },
+    { label: t('home.successRate'), value: `${successRate}%`, icon: 'trending-up', color: '#8B5CF6' },
   ];
 
   return (

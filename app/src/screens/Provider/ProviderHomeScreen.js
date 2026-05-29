@@ -19,8 +19,8 @@ const { width } = Dimensions.get('window');
 const CATEGORIES = [
   { id: 'all', label: 'All', icon: 'view-grid' },
   { id: 'plumbing', label: 'Plumbing', aliases: ['plumbing', 'plomberie'], icon: 'water-pump' },
-  { id: 'electrical', label: 'Electrical', aliases: ['electrical', 'electrician', 'electricite', 'électricité'], icon: 'lightning-bolt' },
-  { id: 'cleaning', label: 'Cleaning', aliases: ['cleaning', 'house cleaning', 'office cleaning', 'nettoyage', 'menage', 'ménage'], icon: 'broom' },
+  { id: 'electrical', label: 'Electrical', aliases: ['electrical', 'electrician', 'electricite', '├®lectricit├®'], icon: 'lightning-bolt' },
+  { id: 'cleaning', label: 'Cleaning', aliases: ['cleaning', 'house cleaning', 'office cleaning', 'nettoyage', 'menage', 'm├®nage'], icon: 'broom' },
   { id: 'delivery', label: 'Delivery Driver', aliases: ['delivery', 'delivery driver', 'livraison', 'coursier'], icon: 'bike' },
 ];
 
@@ -77,6 +77,26 @@ const ProviderHomeScreen = ({ navigation }) => {
   const [favorites, setFavorites] = useState([]);
   const [dismissed, setDismissed] = useState([]);
   const [rankModalVisible, setRankModalVisible] = useState(false);
+  
+  const [myJobs, setMyJobs] = useState([]);
+
+  const fetchMyJobs = React.useCallback(async () => {
+    try {
+      // Need to import api, so let's just do an inline require or assume api isn't imported yet. 
+      // Actually, api is NOT imported at the top of ProviderHomeScreen.js! Let me fix that by importing it.
+      const { default: api } = await import('../../services/api');
+      const res = await api.get('/jobs/my-jobs');
+      setMyJobs(res.data.data || []);
+    } catch (e) {
+      console.log('Failed to fetch my jobs for level progress', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const unsub = navigation.addListener('focus', fetchMyJobs);
+    fetchMyJobs();
+    return unsub;
+  }, [fetchMyJobs, navigation]);
 
   useEffect(() => {
     const loadPreferences = async () => {
@@ -172,7 +192,7 @@ const ProviderHomeScreen = ({ navigation }) => {
   const firstName = user?.fullName?.split(' ')[0] || t('common.provider');
   const hour = new Date().getHours();
   const greeting = hour < 12 ? t('home.goodMorning') : hour < 17 ? t('home.goodAfternoon') : t('home.goodEvening');
-  const progress = getProviderProgress(user, []);
+  const progress = getProviderProgress(user, myJobs);
   const completedJobsCount = progress.completedCount;
   const providerStats = user?.providerProfile || {};
   const trustScore = Number(providerStats.rating || 0).toFixed(1);
@@ -281,7 +301,7 @@ const ProviderHomeScreen = ({ navigation }) => {
       {/* Scrollable Dashboard */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { backgroundColor: colors.background }]}>
 
-        {/* ── 1. PREMIUM HEADER SECTION ──────────────── */}
+        {/* ÔöÇÔöÇ 1. PREMIUM HEADER SECTION ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={styles.headerTop}>
           {/* Hamburger circular menu */}
           <TouchableOpacity style={[styles.menuBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.openDrawer()}>
@@ -291,7 +311,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           {/* Profile & Greeting Section */}
           <View style={styles.profileSection}>
             <View style={styles.profileInfo}>
-              <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{greeting} 👋</Text>
+              <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{greeting} ­ƒæï</Text>
               <View style={styles.nameRow}>
                 <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{firstName}</Text>
                 <View style={styles.levelBadge}>
@@ -300,7 +320,7 @@ const ProviderHomeScreen = ({ navigation }) => {
                 </View>
               </View>
               <Text style={[styles.jobsNearText, { color: colors.textSecondary }]} numberOfLines={1}>
-                <Text style={{ color: '#22C55E' }}>•</Text> {t('home.newJobsNearby', { count: filteredJobs.length })}
+                <Text style={{ color: '#22C55E' }}>ÔÇó</Text> {t('home.newJobsNearby', { count: filteredJobs.length })}
               </Text>
             </View>
           </View>
@@ -316,7 +336,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. SUB-HEADER PILLS ROW ─────────────────── */}
+        {/* ÔöÇÔöÇ 2. SUB-HEADER PILLS ROW ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -324,12 +344,12 @@ const ProviderHomeScreen = ({ navigation }) => {
           style={{ flexGrow: 0, marginBottom: 16 }}
         >
           <TouchableOpacity style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.subPillText, { color: colors.text }]}>📍 Douala, Cameroon</Text>
+            <Text style={[styles.subPillText, { color: colors.text }]}>­ƒôì Douala, Cameroon</Text>
             <MaterialCommunityIcons name="chevron-down" size={14} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.subPillText, { color: colors.text }]}>🔥 {t('home.dayStreak', { count: progress.dailyStreak })}</Text>
+            <Text style={[styles.subPillText, { color: colors.text }]}>­ƒöÑ {t('home.dayStreak', { count: progress.dailyStreak })}</Text>
           </View>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -350,7 +370,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* ── 3. PREMIUM BALANCE STATS CARD ───────────── */}
+        {/* ÔöÇÔöÇ 3. PREMIUM BALANCE STATS CARD ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <LinearGradient
           colors={['#1D4ED8', '#0D9488']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -385,7 +405,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           </View>
         </LinearGradient>
 
-        {/* ── 4. UNIFIED AVAILABILITY & QUICK NAV CARD ─────────── */}
+        {/* ÔöÇÔöÇ 4. UNIFIED AVAILABILITY & QUICK NAV CARD ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={[styles.levelProgressCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.levelProgressTop}>
             <Text style={[styles.levelProgressTitle, { color: colors.text }]}>{t('home.level', { level: progress.level })}</Text>
@@ -462,7 +482,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ── 5. "LEARN FIXAM" SLIDER SECTION ─────────── */}
+        {/* ÔöÇÔöÇ 5. "LEARN FIXAM" SLIDER SECTION ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={styles.learnHeader}>
           <Text style={[styles.learnTitle, { color: colors.text }]}>{t('home.learnFixam')}</Text>
           <TouchableOpacity>
@@ -512,7 +532,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           ))}
         </View>
 
-        {/* ── 6. SEARCH BAR & CATEGORIES ──────────────── */}
+        {/* ÔöÇÔöÇ 6. SEARCH BAR & CATEGORIES ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={styles.searchRow}>
           <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <MaterialCommunityIcons name="magnify" size={22} color={colors.placeholder} />
@@ -551,12 +571,12 @@ const ProviderHomeScreen = ({ navigation }) => {
           })}
         </ScrollView>
 
-        {/* ── 7. "LIVE JOBS NEAR YOU" SECTION ─────────── */}
+        {/* ÔöÇÔöÇ 7. "LIVE JOBS NEAR YOU" SECTION ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
             <View style={[styles.liveDot, { backgroundColor: '#22C55E' }]} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.liveJobsNearYou')}</Text>
-            <Text style={styles.liveCountText}>• {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
+            <Text style={styles.liveCountText}>ÔÇó {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('FindJobs')}>
             <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
