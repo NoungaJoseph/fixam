@@ -118,16 +118,20 @@ const MyJobsScreen = ({ navigation }) => {
     }
   };
 
-  const StatCard = ({ icon, value, label, sub, color, bg }) => (
-    <View style={[styles.statCard, { backgroundColor: colors.card, shadowColor: isDarkMode ? 'transparent' : '#000' }]}>
-      <View style={[styles.statIcon, { backgroundColor: bg || '#F0FDFA' }]}>
-        <MaterialCommunityIcons name={icon} size={22} color={color || colors.accent} />
+  const StatCard = ({ icon, value, label, sub, color, bg }) => {
+    // Use a dark-mode-aware icon background
+    const iconBg = isDarkMode ? 'rgba(255,255,255,0.08)' : (bg || '#F0FDFA');
+    return (
+      <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: isDarkMode ? 'transparent' : '#000' }]}>
+        <View style={[styles.statIcon, { backgroundColor: iconBg }]}>
+          <MaterialCommunityIcons name={icon} size={22} color={color || colors.accent} />
+        </View>
+        <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
+        <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+        {sub && <Text style={[styles.statSub, { color: color || colors.accent }]}>{sub}</Text>}
       </View>
-      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
-      {sub && <Text style={[styles.statSub, { color: color || colors.accent }]}>{sub}</Text>}
-    </View>
-  );
+    );
+  };
 
   const renderJob = ({ item }) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Requests;
@@ -272,7 +276,7 @@ const MyJobsScreen = ({ navigation }) => {
       </View>
 
       {/* Tabs Row */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { borderBottomColor: colors.border }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
           {TABS.map(tab => {
             const active = activeTab === tab.key;
@@ -294,7 +298,7 @@ const MyJobsScreen = ({ navigation }) => {
             return (
               <TouchableOpacity
                 key={tab.key}
-                style={styles.tab}
+                style={[styles.tab, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setActiveTab(tab.key)}
               >
                 <View style={styles.tabContent}>
@@ -409,7 +413,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
     borderWidth: 0.5,
-    borderColor: '#E2E8F0',
   },
   statIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   statValue: { fontSize: 16, fontWeight: '900', marginTop: 8 },
@@ -420,7 +423,6 @@ const styles = StyleSheet.create({
   tabsContainer: {
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
   tabsScroll: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   tab: {
@@ -428,8 +430,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFF',
   },
   tabActive: {
     paddingHorizontal: 12,

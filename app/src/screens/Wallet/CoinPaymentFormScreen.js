@@ -236,11 +236,9 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             </View>
           </View>
 
-          <View style={{ height: 20 }} />
-        </ScrollView>
+          <View style={{ height: 16 }} />
 
-        {/* Submit Button */}
-        <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {/* Submit Button — inside scroll flow so it's always accessible */}
           <TouchableOpacity
             onPress={handleSubmitPayment}
             disabled={loading}
@@ -258,7 +256,9 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
               </>
             )}
           </TouchableOpacity>
-        </View>
+
+          <View style={{ height: 32 }} />
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 120
+    paddingBottom: 24
   },
   packageCard: {
     borderBottomWidth: 1,
@@ -508,22 +508,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900'
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopWidth: 1
-  },
   submitBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 14,
-    borderRadius: 8
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginHorizontal: 0
   },
   submitText: {
     color: '#FFF',

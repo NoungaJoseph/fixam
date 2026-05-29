@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -50,30 +50,39 @@ const BookingFormScreen = ({ route, navigation }) => {
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
-            <MaterialCommunityIcons name="chevron-left" size={28} color={colors.accent} />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: colors.text }]}>{t('bookings.title')}</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{providerName || t('common.provider')}</Text>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
+              <MaterialCommunityIcons name="chevron-left" size={28} color={colors.accent} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.title, { color: colors.text }]}>{t('bookings.title')}</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{providerName || t('common.provider')}</Text>
+            </View>
           </View>
-        </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
-          <Input label={t('bookings.date')} placeholder="YYYY-MM-DD" value={form.bookingDate} onChangeText={(bookingDate) => setForm({ ...form, bookingDate })} colors={colors} />
-          <Input label={t('bookings.time')} placeholder="14:30" value={form.bookingTime} onChangeText={(bookingTime) => setForm({ ...form, bookingTime })} colors={colors} />
-          <Input label={t('bookings.location')} placeholder={t('bookings.locationPlaceholder')} value={form.location} onChangeText={(location) => setForm({ ...form, location })} colors={colors} />
-          <Input label={t('bookings.budget')} placeholder="15000" value={form.budget} onChangeText={(budget) => setForm({ ...form, budget })} keyboardType="numeric" colors={colors} />
-          <Input label={t('bookings.details')} placeholder={t('bookings.detailsPlaceholder')} value={form.notes} onChangeText={(notes) => setForm({ ...form, notes })} multiline colors={colors} />
-        </ScrollView>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Input label={t('bookings.date')} placeholder="YYYY-MM-DD" value={form.bookingDate} onChangeText={(bookingDate) => setForm({ ...form, bookingDate })} colors={colors} />
+            <Input label={t('bookings.time')} placeholder="14:30" value={form.bookingTime} onChangeText={(bookingTime) => setForm({ ...form, bookingTime })} colors={colors} />
+            <Input label={t('bookings.location')} placeholder={t('bookings.locationPlaceholder')} value={form.location} onChangeText={(location) => setForm({ ...form, location })} colors={colors} />
+            <Input label={t('bookings.budget')} placeholder="15000" value={form.budget} onChangeText={(budget) => setForm({ ...form, budget })} keyboardType="numeric" colors={colors} />
+            <Input label={t('bookings.details')} placeholder={t('bookings.detailsPlaceholder')} value={form.notes} onChangeText={(notes) => setForm({ ...form, notes })} multiline colors={colors} />
+          </ScrollView>
 
-        <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-          <TouchableOpacity onPress={submit} disabled={submitting} style={[styles.submitBtn, { opacity: submitting ? 0.65 : 1 }]}>
-            <MaterialCommunityIcons name="calendar-check" size={20} color="#FFFFFF" />
-            <Text style={styles.submitText}>{submitting ? t('bookings.scheduling') : t('bookings.confirm')}</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+            <TouchableOpacity onPress={submit} disabled={submitting} style={[styles.submitBtn, { opacity: submitting ? 0.65 : 1 }]}>
+              <MaterialCommunityIcons name="calendar-check" size={20} color="#FFFFFF" />
+              <Text style={styles.submitText}>{submitting ? t('bookings.scheduling') : t('bookings.confirm')}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -96,12 +105,12 @@ const styles = StyleSheet.create({
   backBtn: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 22, fontWeight: '900' },
   subtitle: { fontSize: 13, fontWeight: '700', marginTop: 2 },
-  content: { padding: 18, paddingBottom: 120, gap: 16 },
+  content: { padding: 18, paddingBottom: 24, gap: 16 },
   field: { gap: 8 },
   label: { fontSize: 13, fontWeight: '800' },
   input: { minHeight: 52, borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, fontSize: 15, fontWeight: '600' },
   textArea: { minHeight: 120, paddingTop: 14, textAlignVertical: 'top' },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 18, borderTopWidth: 1 },
+  footer: { padding: 18, borderTopWidth: 1 },
   submitBtn: { height: 54, borderRadius: 8, backgroundColor: '#0D9488', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 });

@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, Image, StatusBar, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Image, StatusBar, FlatList, Dimensions, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { useLanguage } from '../../context/LanguageContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const IMAGE_HEIGHT = Math.round(height * 0.40);
 
 const OnboardingScreen = ({ navigation }) => {
   const { t } = useLanguage();
@@ -131,17 +132,21 @@ const OnboardingScreen = ({ navigation }) => {
         </View>
 
         {/* Text Content */}
-        <View style={styles.textContent}>
+        <ScrollView
+          contentContainerStyle={styles.textContent}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
+        >
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.subtitleFr}>{item.subtitleFr}</Text>
           <Text style={styles.desc}>{item.desc}</Text>
-        </View>
+        </ScrollView>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
 
       {/* Header */}
@@ -171,6 +176,7 @@ const OnboardingScreen = ({ navigation }) => {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewConfig}
         bounces={false}
+        style={styles.flatList}
       />
 
       {/* Bottom Area */}
@@ -196,19 +202,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10,
-    height: 60,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 10,
   },
   headerLogo: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
   skipText: { fontSize: 16, fontWeight: '600', color: '#4B5563' },
-  langHeader: { fontSize: 14, fontWeight: '600', color: '#475569' },
 
-  slide: { width, alignItems: 'center' },
+  flatList: { flex: 1 },
+
+  slide: { width, flex: 1, alignItems: 'center' },
   
-  visualContainer: { width: '100%', alignItems: 'center', marginTop: 10 },
+  visualContainer: { width: '100%', alignItems: 'center', paddingTop: 8 },
   
   imageWrap: {
-    width: width - 60, height: 340,
+    width: width - 60,
+    height: IMAGE_HEIGHT,
     backgroundColor: '#EEF2FB', borderRadius: 24,
     position: 'relative',
   },
@@ -238,7 +245,6 @@ const styles = StyleSheet.create({
   ratingTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   ratingSub: { fontSize: 10, color: '#475569', marginTop: 2 },
 
-  slide3Visual: { width: width - 60, height: 340, justifyContent: 'center' },
   directServiceImage: { width: '100%', height: '100%', borderRadius: 24 },
   connectionCard: {
     position: 'absolute', left: 18, right: 18, bottom: 22,
@@ -256,30 +262,33 @@ const styles = StyleSheet.create({
   slide3OverlayRow: { position: 'absolute', top: 18, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   slide3MiniCard: { flex: 1, minHeight: 44, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 12, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
   slide3MiniText: { flex: 1, color: '#0F172A', fontSize: 11, fontWeight: '800' },
-  s3CardsRow: { flexDirection: 'row', gap: 16 },
-  s3DarkCard: { flex: 1, backgroundColor: '#0F172A', borderRadius: 16, padding: 18, gap: 10 },
-  s3DarkCardText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
-  premiumBadge: { alignSelf: 'flex-start', color: '#9CC3FF', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  s3LightCard: { flex: 1, backgroundColor: '#DCE8F9', borderRadius: 16, padding: 18, gap: 10 },
-  s3LightCardText: { color: '#0F172A', fontSize: 15, fontWeight: '600' },
-  cashBadge: { alignSelf: 'flex-start', color: '#0F172A', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
 
-  textContent: { alignItems: 'center', marginTop: 40, paddingHorizontal: 20 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 6 },
-  subtitleFr: { fontSize: 18, fontWeight: '600', color: '#8F9BB3', textAlign: 'center', marginBottom: 16 },
-  desc: { fontSize: 15, color: '#4B5563', textAlign: 'center', lineHeight: 24, paddingHorizontal: 10 },
+  textContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: height < 700 ? 20 : 32,
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
+  title: { fontSize: height < 700 ? 22 : 26, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 6 },
+  subtitleFr: { fontSize: height < 700 ? 15 : 18, fontWeight: '600', color: '#8F9BB3', textAlign: 'center', marginBottom: 12 },
+  desc: { fontSize: height < 700 ? 13 : 15, color: '#4B5563', textAlign: 'center', lineHeight: 22, paddingHorizontal: 4 },
 
-  bottomArea: { paddingHorizontal: 30, paddingBottom: 40, alignItems: 'center' },
-  dotsRow: { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  bottomArea: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: height < 700 ? 16 : 28,
+    alignItems: 'center',
+  },
+  dotsRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1D5DB' },
   dotActive: { width: 24, backgroundColor: '#0D9488' },
-  nextBtn: { backgroundColor: '#0D9488', width: '100%', paddingVertical: 18, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+  nextBtn: {
+    backgroundColor: '#0D9488', width: '100%',
+    paddingVertical: height < 700 ? 14 : 17,
+    borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
+  },
   nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  
-  langPillContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 24 },
-  langLabel: { fontSize: 13, fontWeight: '600', color: '#4B5563', marginRight: 10 },
-  langPill: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#FFF' },
-  langPillText: { fontSize: 12, fontWeight: '700', color: '#0F172A' },
 });
 
 export default OnboardingScreen;

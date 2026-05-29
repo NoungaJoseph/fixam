@@ -293,7 +293,7 @@ const TopUpScreen = ({ navigation }) => {
             </View>
           )}
 
-          <View style={{ height: 110 }} />
+          <View style={{ height: 20 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-between', 
     paddingHorizontal: 20, 
-    paddingTop: Platform.OS === 'ios' ? 10 : 35, 
+    paddingTop: 8, 
     paddingBottom: 12 
   },
   headerBtn: { 
