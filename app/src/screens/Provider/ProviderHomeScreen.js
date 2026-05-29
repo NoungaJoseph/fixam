@@ -311,7 +311,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           {/* Profile & Greeting Section */}
           <View style={styles.profileSection}>
             <View style={styles.profileInfo}>
-              <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{greeting} ­ƒæï</Text>
+              <Text style={[styles.greetingText, { color: colors.textSecondary }]}>{greeting} 👋</Text>
               <View style={styles.nameRow}>
                 <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{firstName}</Text>
                 <View style={styles.levelBadge}>
@@ -320,7 +320,7 @@ const ProviderHomeScreen = ({ navigation }) => {
                 </View>
               </View>
               <Text style={[styles.jobsNearText, { color: colors.textSecondary }]} numberOfLines={1}>
-                <Text style={{ color: '#22C55E' }}>ÔÇó</Text> {t('home.newJobsNearby', { count: filteredJobs.length })}
+                <Text style={{ color: '#22C55E' }}>•</Text> {t('home.newJobsNearby', { count: filteredJobs.length })}
               </Text>
             </View>
           </View>
@@ -344,12 +344,12 @@ const ProviderHomeScreen = ({ navigation }) => {
           style={{ flexGrow: 0, marginBottom: 16 }}
         >
           <TouchableOpacity style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.subPillText, { color: colors.text }]}>­ƒôì Douala, Cameroon</Text>
+            <Text style={[styles.subPillText, { color: colors.text }]}>📍 Douala, Cameroon</Text>
             <MaterialCommunityIcons name="chevron-down" size={14} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.subPillText, { color: colors.text }]}>­ƒöÑ {t('home.dayStreak', { count: progress.dailyStreak })}</Text>
+            <Text style={[styles.subPillText, { color: colors.text }]}>🔥 {t('home.dayStreak', { count: progress.dailyStreak })}</Text>
           </View>
 
           <View style={[styles.subPill, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -576,7 +576,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           <View style={styles.sectionTitleRow}>
             <View style={[styles.liveDot, { backgroundColor: '#22C55E' }]} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.liveJobsNearYou')}</Text>
-            <Text style={styles.liveCountText}>ÔÇó {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
+            <Text style={styles.liveCountText}>• {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
           </View>
           <TouchableOpacity onPress={() => navigation.navigate('FindJobs')}>
             <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>

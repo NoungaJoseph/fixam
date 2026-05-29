@@ -1,0 +1,24 @@
+$kind: http-request
+name: Login
+order: 2000
+method: POST
+url: '{{baseUrl}}/api/auth/login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phone": "{{phone}}",
+      "password": "{{password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      const json = pm.response.json();
+      pm.test("Has token", () => pm.expect(json).to.have.property("token"));
+      pm.environment.set("token", json.token);
+      pm.environment.set("userId", json.user?.id);

@@ -1,0 +1,15 @@
+$kind: http-request
+name: Get All Users
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/admin/users'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

@@ -1,0 +1,40 @@
+$kind: http-request
+name: Test Push Notification
+order: 5000
+method: POST
+url: '{{baseUrl}}/api/notifications/test-push'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userId": "{{userId}}",
+      "title": "Test Notification",
+      "body": "Testing Fixam push notifications!"
+    }
+description: |-
+  Step 2 - Test single user push notification.
+  Set userId to a specific user ID, or use "ALL" for broadcast.
+  Requires a valid FCM token registered for the target user.
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 400", () => {
+        pm.expect(pm.response.code).to.be.oneOf([200, 400]);
+      });
+      const json = pm.response.json();
+      pm.test("Has success field", () => pm.expect(json).to.have.property("success"));
+      if (json.success) {
+        pm.test("Has message", () => pm.expect(json).to.have.property("message"));
+        console.log("Push result:", json.result);
+      } else {
+        console.warn("Push failed:", json.reason || json.message);
+      }

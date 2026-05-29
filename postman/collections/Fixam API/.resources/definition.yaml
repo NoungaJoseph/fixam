@@ -1,0 +1,38 @@
+$kind: collection
+name: Fixam API
+description: Complete API collection for the Fixam platform - a service marketplace connecting clients with providers.
+variables:
+  - key: baseUrl
+    value: 'http://localhost:3000'
+  - key: phone
+    value: '+237600000000'
+  - key: password
+    value: 'Password123!'
+  - key: name
+    value: 'Test User'
+  - key: otp
+    value: '123456'
+  - key: token
+    value: ''
+  - key: userId
+    value: ''
+  - key: providerId
+    value: ''
+  - key: jobId
+    value: ''
+  - key: assignmentId
+    value: ''
+  - key: bookingId
+    value: ''
+  - key: conversationId
+    value: ''
+  - key: callId
+    value: ''
+  - key: paymentId
+    value: ''
+  - key: notificationId
+    value: ''
+  - key: targetUserId
+    value: ''
+  - key: transactionId
+    value: ''

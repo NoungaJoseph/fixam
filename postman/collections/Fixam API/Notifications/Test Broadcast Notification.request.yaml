@@ -1,0 +1,39 @@
+$kind: http-request
+name: Test Broadcast Notification
+order: 6000
+method: POST
+url: '{{baseUrl}}/api/notifications/test-push'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userId": "ALL",
+      "title": "Broadcast Test",
+      "body": "This goes to all Fixam users!"
+    }
+description: |-
+  Step 3 - Broadcast push notification to ALL users with a registered FCM token.
+  Returns 400 if no users have FCM tokens registered in the DB.
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 400", () => {
+        pm.expect(pm.response.code).to.be.oneOf([200, 400]);
+      });
+      const json = pm.response.json();
+      pm.test("Has success field", () => pm.expect(json).to.have.property("success"));
+      if (json.success) {
+        pm.test("Broadcast message present", () => pm.expect(json.message).to.include("Broadcast"));
+        console.log("Broadcast result:", json.result);
+      } else {
+        console.warn("Broadcast failed - likely no FCM tokens in DB:", json.message);
+      }

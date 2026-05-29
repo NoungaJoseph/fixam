@@ -1,0 +1,24 @@
+$kind: http-request
+name: Update FCM Token
+order: 6000
+method: PUT
+url: '{{baseUrl}}/api/users/fcm-token'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "fcmToken": "test-fcm-token-123"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

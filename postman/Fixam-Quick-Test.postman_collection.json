@@ -1,0 +1,290 @@
+{
+  "info": {
+    "name": "Fixam Quick Test",
+    "_postman_id": "fixam-quick-test-v1",
+    "description": "Quick test collection for Fixam API — login, push notifications, profile, and health check.\n\n**HOW TO USE:**\n1. Import this file into Postman\n2. Create an environment with `baseUrl` = your Railway URL (e.g. https://your-app.up.railway.app)\n3. Run REQUEST 1 (Login) first — it auto-saves the token\n4. Run the remaining requests in order",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://your-app.up.railway.app",
+      "description": "Replace with your actual Railway production URL"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Auto-filled by REQUEST 1 (Login)"
+    },
+    {
+      "key": "userId",
+      "value": "e2abd379-db45-4d9d-9995-050b9c5c4e33",
+      "description": "Set this to a real user ID from your DB"
+    }
+  ],
+  "item": [
+    {
+      "name": "REQUEST 1: Login / Get Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"000000000\",\n  \"password\": \"REPLACE_WITH_PASSWORD\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Step 1 - Run this first to get token.\n\nReplace `phone` with your admin phone number and `password` with your password.\n\nYou can also use `email` instead of `phone`.\n\n**Response format:**\n```json\n{\n  \"success\": true,\n  \"token\": \"<JWT_TOKEN>\",\n  \"user\": { ...user object... }\n}\n```\n\nThe test script auto-saves `token` and `userId` to collection variables."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"Login successful\", () => pm.expect(json.success).to.be.true);",
+              "pm.test(\"Has JWT token\", () => pm.expect(json).to.have.property(\"token\"));",
+              "pm.test(\"Has user object\", () => pm.expect(json).to.have.property(\"user\"));",
+              "",
+              "// Auto-save token and userId for subsequent requests",
+              "if (json.token) {",
+              "  pm.collectionVariables.set(\"token\", json.token);",
+              "  console.log(\"✅ Token saved to collection variable\");",
+              "}",
+              "if (json.user && json.user.id) {",
+              "  pm.collectionVariables.set(\"userId\", json.user.id);",
+              "  console.log(\"✅ userId saved:\", json.user.id);",
+              "}",
+              "",
+              "// Handle 2FA case",
+              "if (json.requiresTwoFactor) {",
+              "  console.warn(\"⚠️ 2FA required — use /api/auth/2fa/verify-login with tempToken:\", json.tempToken);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "REQUEST 2: Test Push Notification (single user)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"e2abd379-db45-4d9d-9995-050b9c5c4e33\",\n  \"title\": \"Test Notification\",\n  \"body\": \"Testing Fixam push notifications!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications/test-push",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications",
+            "test-push"
+          ]
+        },
+        "description": "Step 2 - Test push notification to a single user.\n\nReplace `userId` in the body with a real user ID from your database.\n\n**Requires:** The target user must have an `fcmToken` registered in the DB (i.e. they must have opened the mobile app and granted notification permission).\n\n**Returns 400** if the user has no FCM token."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200 or 400\", () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test(\"Has success field\", () => pm.expect(json).to.have.property(\"success\"));",
+              "if (json.success) {",
+              "  console.log(\"✅ Push sent successfully:\", json.message);",
+              "  console.log(\"FCM result:\", JSON.stringify(json.result));",
+              "} else {",
+              "  console.warn(\"❌ Push failed:\", json.message || json.reason);",
+              "  if (json.message && json.message.includes('fcmToken')) {",
+              "    console.warn(\"💡 Tip: User has no FCM token. They need to open the app first.\");",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "REQUEST 3: Test Broadcast (all users)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"ALL\",\n  \"title\": \"Broadcast Test\",\n  \"body\": \"This goes to all Fixam users!\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/notifications/test-push",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "notifications",
+            "test-push"
+          ]
+        },
+        "description": "Step 3 - Broadcast push notification to ALL users who have an FCM token.\n\nSetting `userId` to `\"ALL\"` (or `\"broadcast\"`) triggers a multicast send to every user in the DB with a registered FCM token.\n\n**Returns 400** with message `\"No users with registered FCM tokens found in the database.\"` if no users have FCM tokens yet."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200 or 400\", () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.test(\"Has success field\", () => pm.expect(json).to.have.property(\"success\"));",
+              "if (json.success) {",
+              "  console.log(\"✅ Broadcast sent:\", json.message);",
+              "  console.log(\"FCM result:\", JSON.stringify(json.result));",
+              "} else {",
+              "  console.warn(\"❌ Broadcast failed:\", json.message);",
+              "  if (json.message && json.message.includes('No users')) {",
+              "    console.warn(\"💡 Tip: No users have FCM tokens yet. Users need to open the mobile app first.\");",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "REQUEST 4: Get My Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "users",
+            "me"
+          ]
+        },
+        "description": "Step 4 - Verify your token is valid.\n\nFetches the currently authenticated user's profile. If this returns 200, your token is working correctly.\n\n**Returns 401** if the token is missing, expired, or invalid."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test(\"Has user data\", () => pm.expect(json).to.have.property(\"id\"));",
+              "pm.test(\"Has phone\", () => pm.expect(json).to.have.property(\"phone\"));",
+              "console.log(\"✅ Logged in as:\", json.phone, \"| Role:\", json.role);",
+              "console.log(\"FCM Token status:\", json.fcmToken ? '✅ HAS TOKEN' : '❌ NO TOKEN');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "REQUEST 5: Check Notification Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "health"
+          ]
+        },
+        "description": "Step 5 - Check if the backend is up and running.\n\nNo authentication required. Returns server health status."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Server is up (200 or 204)\", () => {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 204]);",
+              "});",
+              "console.log(\"✅ Backend is reachable at:\", pm.request.url.toString());",
+              "try {",
+              "  const json = pm.response.json();",
+              "  console.log(\"Health response:\", JSON.stringify(json));",
+              "} catch(e) {",
+              "  console.log(\"Response (non-JSON):\", pm.response.text());",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -95,13 +95,6 @@ export const AuthProvider = ({ children }) => {
       storeToken('authUser', user);
       setAuthToken(token);
       requestStartupPermissions()
-        .then((pushToken) => {
-          if (pushToken && pushToken !== user.fcmToken) {
-            return api.put('/users/profile', { fcmToken: pushToken })
-              .then((res) => setUser(normalizeUser(res.data.data || res.data.user)));
-          }
-          return null;
-        })
         .catch((error) => {
           if (__DEV__) console.log('Startup permissions skipped:', error.message);
         });

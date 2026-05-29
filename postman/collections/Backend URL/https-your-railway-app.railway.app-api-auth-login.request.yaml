@@ -1,0 +1,8 @@
+$kind: http-request
+name: https://your-railway-app.railway.app/api/auth/login
+url: fixam-backend-production.up.railway.app
+method: POST
+body:
+  type: json
+  content: ""
+order: 1780022269823

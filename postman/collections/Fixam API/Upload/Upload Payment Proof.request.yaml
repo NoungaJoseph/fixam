@@ -1,0 +1,22 @@
+$kind: http-request
+name: Upload Payment Proof
+order: 3000
+method: POST
+url: '{{baseUrl}}/api/upload/payment'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: formdata
+  content:
+    - key: proof
+      type: file
+      src: ''
+      description: Payment proof file to upload
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

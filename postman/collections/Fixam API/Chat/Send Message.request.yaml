@@ -1,0 +1,28 @@
+$kind: http-request
+name: Send Message
+order: 5000
+method: POST
+url: '{{baseUrl}}/api/chat/send'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "conversationId": "{{conversationId}}",
+      "content": "Hello!",
+      "type": "TEXT"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 201", () => {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });

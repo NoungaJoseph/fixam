@@ -1,0 +1,24 @@
+$kind: http-request
+name: Approve Transaction
+order: 15000
+method: POST
+url: '{{baseUrl}}/api/admin/approve-transaction'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "transactionId": "{{transactionId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

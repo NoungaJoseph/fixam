@@ -1,0 +1,22 @@
+$kind: http-request
+name: Upload Verification Doc
+order: 2000
+method: POST
+url: '{{baseUrl}}/api/upload/verification'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: formdata
+  content:
+    - key: document
+      type: file
+      src: ''
+      description: Verification document file to upload
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

@@ -1,0 +1,19 @@
+$kind: http-request
+name: Get Balance
+order: 1000
+method: GET
+url: '{{baseUrl}}/api/wallet/balance'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      const json = pm.response.json();
+      pm.test("Has balance or coins field", () => {
+        pm.expect(json.hasOwnProperty("balance") || json.hasOwnProperty("coins")).to.be.true;
+      });

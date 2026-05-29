@@ -1,0 +1,15 @@
+$kind: http-request
+name: 'Enable 2FA - Send OTP'
+order: 5000
+method: POST
+url: '{{baseUrl}}/api/auth/2fa/send-otp'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

@@ -1,0 +1,17 @@
+$kind: http-request
+name: Add Favorite Provider
+order: 5000
+method: POST
+url: '{{baseUrl}}/api/providers/{{providerId}}/favorite'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 201", () => {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });

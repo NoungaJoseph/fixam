@@ -1,0 +1,15 @@
+$kind: http-request
+name: Get Financial Stats
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/admin/financial-stats'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

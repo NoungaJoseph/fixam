@@ -1,0 +1,28 @@
+$kind: http-request
+name: Initiate Top Up
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/payments/topup'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "amount": 5000,
+      "phone": "{{phone}}",
+      "provider": "MTN_MOMO"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200 or 201", () => {
+        pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });

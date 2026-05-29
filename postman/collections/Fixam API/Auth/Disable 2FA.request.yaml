@@ -1,0 +1,24 @@
+$kind: http-request
+name: Disable 2FA
+order: 7000
+method: POST
+url: '{{baseUrl}}/api/auth/2fa/disable'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "otp": "{{otp}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

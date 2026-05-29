@@ -1,0 +1,24 @@
+$kind: http-request
+name: Update Settings
+order: 19000
+method: PUT
+url: '{{baseUrl}}/api/admin/settings'
+headers:
+  - key: Content-Type
+    value: application/json
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+body:
+  type: json
+  content: |-
+    {
+      "coinRate": 1
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));

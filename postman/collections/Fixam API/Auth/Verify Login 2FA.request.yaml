@@ -1,0 +1,22 @@
+$kind: http-request
+name: Verify Login 2FA
+order: 8000
+method: POST
+url: '{{baseUrl}}/api/auth/2fa/verify-login'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phone": "{{phone}}",
+      "otp": "{{otp}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      const json = pm.response.json();
+      pm.test("Has token", () => pm.expect(json).to.have.property("token"));

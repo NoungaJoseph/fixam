@@ -1,0 +1,21 @@
+$kind: http-request
+name: Request OTP
+order: 3000
+method: POST
+url: '{{baseUrl}}/api/auth/request-otp'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "phone": "{{phone}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
+      const json = pm.response.json();
+      pm.test("Has message", () => pm.expect(json).to.have.property("message"));

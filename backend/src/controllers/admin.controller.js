@@ -211,25 +211,64 @@ const approveTransaction = async (req, res, next) => {
 
 const getDashboardStats = async (req, res, next) => {
   try {
-    const [userCount, jobCount, completedCount, reportCount, totalRevenue] = await Promise.all([
-      prisma.user.count(),
+    const [
+      totalUsers,
+      totalProviders,
+      totalJobs,
+      activeJobs,
+      completedJobs,
+      pendingJobs,
+      totalRevenue,
+      totalTransactions,
+      pendingApprovals,
+      totalReports,
+      openReports,
+      totalFeedback,
+      newFeedback
+    ] = await prisma.$transaction([
+      prisma.user.count({ where: { role: 'CLIENT' } }),
+      prisma.user.count({ where: { role: 'PROVIDER' } }),
       prisma.job.count(),
+      prisma.job.count({ where: { status: 'IN_PROGRESS' } }),
       prisma.job.count({ where: { status: 'COMPLETED' } }),
-      prisma.report.count(),
+      prisma.job.count({ where: { status: 'PENDING' } }),
       prisma.transaction.aggregate({
         where: { type: 'PURCHASE', status: 'SUCCESS' },
         _sum: { amount: true }
-      })
+      }),
+      prisma.transaction.count(),
+      prisma.job.count({ where: { approvalStatus: 'PENDING_APPROVAL' } }),
+      prisma.report.count(),
+      prisma.report.count({ where: { status: 'PENDING' } }),
+      prisma.feedback.count(),
+      prisma.feedback.count({ where: { status: 'NEW' } })
     ]);
+
+    const revenue = totalRevenue._sum.amount || 0;
 
     res.status(200).json({
       success: true,
       data: {
-        users: userCount,
-        jobs: jobCount,
-        completed: completedCount,
-        reports: reportCount,
-        revenue: totalRevenue._sum.amount || 0
+        totalUsers,
+        totalProviders,
+        totalJobs,
+        activeJobs,
+        completedJobs,
+        pendingJobs,
+        totalRevenue: revenue,
+        totalTransactions,
+        pendingApprovals,
+        pendingTaskApprovals: pendingApprovals,
+        totalReports,
+        openReports,
+        pendingDisputes: openReports,
+        totalFeedback,
+        newFeedback,
+        users: totalUsers,
+        jobs: totalJobs,
+        completed: completedJobs,
+        reports: totalReports,
+        revenue
       }
     });
   } catch (error) {
@@ -664,6 +703,18 @@ const approveJob = async (req, res, next) => {
       console.error('[Socket Error] Job approval notification failed:', err.message);
     }
 
+    try {
+      const { sendPushNotification } = require('../services/notification.service');
+      await sendPushNotification(
+        job.clientId,
+        'Task Approved ✅',
+        `Your task "${job.title}" is now live!`,
+        { type: 'JOB_APPROVED', jobId: job.id }
+      );
+    } catch (pushErr) {
+      console.error('[Push Error] Job approve push failed:', pushErr.message);
+    }
+
     res.status(200).json({ success: true, data: job, message: 'Job approved successfully' });
   } catch (error) {
     next(error);
@@ -751,7 +802,111 @@ const rejectJob = async (req, res, next) => {
       console.error('[Socket Error] Job rejection notification failed:', err.message);
     }
 
+    try {
+      const { sendPushNotification } = require('../services/notification.service');
+      await sendPushNotification(
+        job.clientId,
+        'Task Rejected ❌',
+        `Your task "${job.title}" was rejected.`,
+        { type: 'JOB_REJECTED', jobId: job.id, reason }
+      );
+    } catch (pushErr) {
+      console.error('[Push Error] Job reject push failed:', pushErr.message);
+    }
+
     res.status(200).json({ success: true, data: job, message: 'Job rejected successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSettings = async (req, res, next) => {
+  try {
+    let settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+    if (!settings) {
+      settings = await prisma.settings.create({ data: { id: 'global' } });
+    }
+    res.status(200).json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateSettings = async (req, res, next) => {
+  try {
+    const data = req.body;
+    const settings = await prisma.settings.upsert({
+      where: { id: 'global' },
+      update: data,
+      create: { id: 'global', ...data }
+    });
+    res.status(200).json({ success: true, data: settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const wireCoins = async (req, res, next) => {
+  try {
+    const { userId, amount, reason } = req.body;
+    if (!userId || !amount) {
+      return res.status(400).json({ success: false, message: 'User ID and amount are required' });
+    }
+
+    let wallet = await prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) {
+      wallet = await prisma.wallet.create({ data: { userId, balance: 0 } });
+    }
+
+    const transaction = await prisma.$transaction(async (tx) => {
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: Number(amount) } }
+      });
+
+      const trans = await tx.transaction.create({
+        data: {
+          walletId: wallet.id,
+          amount: Math.abs(Number(amount)),
+          type: Number(amount) >= 0 ? 'PURCHASE' : 'DEDUCTION',
+          status: 'SUCCESS',
+          description: reason || 'Admin wired coins manually'
+        }
+      });
+      return trans;
+    });
+    
+    // Emit wallet update socket event
+    const { getIO } = require('../services/socket.service');
+    try {
+      getIO().to(userId).emit('wallet:update', { balance: wallet.balance + Number(amount) });
+    } catch(err) {}
+    
+    // Notification
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: Number(amount) >= 0 ? 'Coins Added' : 'Coins Deducted',
+        body: `Admin ${Number(amount) >= 0 ? 'added' : 'deducted'} ${Math.abs(Number(amount))} coins. Reason: ${reason || 'Manual adjustment'}`,
+        data: { type: 'WALLET' }
+      }
+    });
+
+    res.status(200).json({ success: true, data: transaction });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getWireHistory = async (req, res, next) => {
+  try {
+    const history = await prisma.transaction.findMany({
+      where: { description: { startsWith: 'Admin wired', mode: 'insensitive' } },
+      include: { wallet: { include: { user: { select: { id: true, fullName: true, phone: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    res.status(200).json({ success: true, data: history });
   } catch (error) {
     next(error);
   }
@@ -778,5 +933,9 @@ module.exports = {
   getPendingJobs,
   getApprovedJobs,
   approveJob,
-  rejectJob
+  rejectJob,
+  getSettings,
+  updateSettings,
+  wireCoins,
+  getWireHistory
 };

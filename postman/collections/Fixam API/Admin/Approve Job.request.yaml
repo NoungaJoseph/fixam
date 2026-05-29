@@ -1,0 +1,15 @@
+$kind: http-request
+name: Approve Job
+order: 17000
+method: PUT
+url: '{{baseUrl}}/api/admin/jobs/{{jobId}}/approve'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{token}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", () => pm.response.to.have.status(200));
