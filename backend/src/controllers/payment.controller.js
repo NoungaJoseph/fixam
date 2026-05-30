@@ -32,10 +32,7 @@ const topup = async (req, res) => {
     // Format phone - ensure it has country code
     const formatPhone = (p) => {
       const cleaned = String(p).replace(/\s+/g, '')
-        .replace(/-/g, '')
-      if (cleaned.startsWith('+')) {
-        return cleaned.replace('+', '')
-      }
+        .replace(/-/g, '').replace('+', '')
       if (cleaned.startsWith('237')) return cleaned
       return '237' + cleaned
     }

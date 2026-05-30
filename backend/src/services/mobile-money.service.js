@@ -11,11 +11,17 @@ async function requestToPayWithKora({
   email = 'user@fixam.com',
   phone
 }) {
+  const formattedPhone = String(phone || '').replace(/\s+/g, '')
+    .replace(/-/g, '').replace('+', '')
+  const phoneNumber = formattedPhone.startsWith('237')
+    ? formattedPhone
+    : '237' + formattedPhone
+
   // Validate required fields
   if (!amount || amount <= 0) {
     return { error: ['Amount must be positive'] }
   }
-  if (!phone || !/^\d{8,15}$/.test(phone)) {
+  if (!phoneNumber || !/^\d{8,15}$/.test(phoneNumber)) {
     return { error: ['Phone must be 8-15 digits'] }
   }
   if (!notificationUrl || !redirectUrl) {
@@ -37,7 +43,7 @@ async function requestToPayWithKora({
     },
     merchant_bears_cost: false,
     mobile_money: {
-      number: phone
+      number: phoneNumber
     }
   }
 
