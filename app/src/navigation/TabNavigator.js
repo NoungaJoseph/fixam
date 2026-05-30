@@ -39,12 +39,15 @@ import HiddenProfileScreen from '../screens/Profile/HiddenProfileScreen';
 import ChangePasswordScreen from '../screens/Profile/ChangePasswordScreen';
 import HelpCenterScreen from '../screens/Profile/HelpCenterScreen';
 import InvitationScreen from '../screens/Profile/InvitationScreen';
+import DeleteAccountScreen from '../screens/Profile/DeleteAccountScreen';
+import ConfirmDeleteScreen from '../screens/Profile/ConfirmDeleteScreen';
 import TopUpScreen from '../screens/Wallet/TopUpScreen';
 import TopUpAmountScreen from '../screens/Wallet/TopUpAmountScreen';
 import TopUpPaymentScreen from '../screens/Wallet/TopUpPaymentScreen';
 import TopUpSuccessScreen from '../screens/Wallet/TopUpSuccessScreen';
 import CoinPaymentFormScreen from '../screens/Wallet/CoinPaymentFormScreen';
 import CoinPaymentSuccessScreen from '../screens/Wallet/CoinPaymentSuccessScreen';
+import CoinPaymentFailedScreen from '../screens/Wallet/CoinPaymentFailedScreen';
 import BookingFormScreen from '../screens/Bookings/BookingFormScreen';
 
 const Tab = createBottomTabNavigator();
@@ -67,6 +70,7 @@ const HomeStack = () => (
     <Stack.Screen name="TopUpSuccess" component={TopUpSuccessScreen} />
     <Stack.Screen name="CoinPaymentForm" component={CoinPaymentFormScreen} />
     <Stack.Screen name="CoinPaymentSuccess" component={CoinPaymentSuccessScreen} />
+    <Stack.Screen name="CoinPaymentFailed" component={CoinPaymentFailedScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
 );
@@ -89,6 +93,8 @@ const ProfileStack = () => (
     <Stack.Screen name="HiddenProfile" component={HiddenProfileScreen} />
     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+    <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+    <Stack.Screen name="ConfirmDelete" component={ConfirmDeleteScreen} />
   </Stack.Navigator>
 );
 
@@ -101,6 +107,7 @@ const WalletStack = () => (
     <Stack.Screen name="TopUpSuccess" component={TopUpSuccessScreen} />
     <Stack.Screen name="CoinPaymentForm" component={CoinPaymentFormScreen} />
     <Stack.Screen name="CoinPaymentSuccess" component={CoinPaymentSuccessScreen} />
+    <Stack.Screen name="CoinPaymentFailed" component={CoinPaymentFailedScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
   </Stack.Navigator>
 );
@@ -145,7 +152,8 @@ const BottomTabNavigator = () => {
           'VerificationSuccess', 
           'ProviderList', 
           'ProviderProfile',
-          'TaskDetails'
+          'TaskDetails',
+          'BookingForm'
         ].includes(routeName);
         return {
           headerShown: false,

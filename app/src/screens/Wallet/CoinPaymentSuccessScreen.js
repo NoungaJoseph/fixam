@@ -5,14 +5,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useLanguage } from '../../context/LanguageContext';
 
 const CoinPaymentSuccessScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
-  const { t } = useLanguage();
-  const { transaction, package: pkg } = route.params || {};
+  const { coins, package: pkg } = route.params || {};
   const isProvider = user?.role?.toUpperCase() === 'PROVIDER';
+  const coinCount = coins || pkg?.coins || 0;
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -31,13 +30,13 @@ const CoinPaymentSuccessScreen = ({ navigation, route }) => {
     });
   };
 
-  const handleContactSupport = () => {
+  const handleContinue = () => {
     const parent = navigation.getParent();
     if (parent) {
-      parent.navigate('MainTabs', { screen: 'Messages', params: { screen: 'ChatList' } });
+      parent.navigate('MainTabs');
       return;
     }
-    navigation.navigate('ChatList');
+    navigation.goBack();
   };
 
   return (
@@ -65,91 +64,36 @@ const CoinPaymentSuccessScreen = ({ navigation, route }) => {
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', width: '100%' }}>
-            <Text style={[styles.title, { color: colors.text }]}>{t('wallet.paymentRequestSubmitted')}</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Payment Successful! 🎉</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {t('wallet.paymentPendingSubtitle', { count: pkg?.coins || 0 })}
+              {coinCount} coins have been added to your wallet
             </Text>
 
             {/* Status Card */}
             <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={styles.statusRow}>
-                <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>{t('wallet.status')}</Text>
-                <View style={styles.statusBadge}>
-                  <MaterialCommunityIcons name="clock-outline" size={14} color="#F97316" />
-                  <Text style={styles.statusText}>{t('wallet.pendingApproval')}</Text>
+                <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Status</Text>
+                <View style={[styles.statusBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <MaterialCommunityIcons name="check-circle" size={14} color="#16A34A" />
+                  <Text style={[styles.statusText, { color: '#16A34A' }]}>Completed</Text>
                 </View>
               </View>
 
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
               <View style={styles.statusRow}>
-                <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>{t('wallet.transactionId')}</Text>
-                <Text style={[styles.statusValue, { color: colors.accent }]}>{transaction?.id?.slice(-8) || t('common.notAvailable')}</Text>
+                <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>Package</Text>
+                <Text style={[styles.statusValue, { color: colors.text }]}>{pkg?.label || 'Coin top up'}</Text>
               </View>
 
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
               <View style={styles.statusRow}>
-                <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>{t('wallet.amountRequested')}</Text>
-                <Text style={[styles.statusValue, { color: colors.text }]}>{t('wallet.coinCount', { count: pkg?.coins || 0 })}</Text>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-              <View style={styles.statusRow}>
-                <Text style={[styles.totalLabel, { color: colors.text }]}>{t('wallet.totalCoins')}</Text>
+                <Text style={[styles.totalLabel, { color: colors.text }]}>Coins Added</Text>
                 <Text style={[styles.totalValue, { color: colors.accent }]}>
-                  {t('wallet.coinCount', { count: pkg?.coins || 0 })}
+                  {coinCount} coins
                 </Text>
               </View>
-            </View>
-
-            {/* Next Steps */}
-            <View style={[styles.stepsCard, { backgroundColor: colors.accentSoft }]}>
-              <Text style={[styles.stepsTitle, { color: colors.accent }]}>{t('wallet.whatHappensNext')}</Text>
-              <View style={styles.stepItem}>
-                <View style={[styles.stepNumber, { backgroundColor: colors.accent }]}>
-                  <Text style={styles.stepNumberText}>1</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.stepLabel, { color: colors.accent }]}>{t('wallet.requestReceived')}</Text>
-                  <Text style={[styles.stepDesc, { color: colors.accent }]}>
-                    {t('wallet.receiptUploaded')}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.stepItem}>
-                <View style={[styles.stepNumber, { backgroundColor: colors.accent }]}>
-                  <Text style={styles.stepNumberText}>2</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.stepLabel, { color: colors.accent }]}>{t('wallet.adminReview')}</Text>
-                  <Text style={[styles.stepDesc, { color: colors.accent }]}>
-                    {t('wallet.adminReviewDesc')}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.stepItem}>
-                <View style={[styles.stepNumber, { backgroundColor: colors.accent }]}>
-                  <Text style={styles.stepNumberText}>3</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.stepLabel, { color: colors.accent }]}>{t('wallet.coinsCredited')}</Text>
-                  <Text style={[styles.stepDesc, { color: colors.accent }]}>
-                    {t('wallet.coinsCreditedDesc')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Notification Info */}
-            <View style={[styles.notificationBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="bell" size={20} color={colors.accent} />
-              <Text style={[styles.notificationText, { color: colors.textSecondary }]}>
-                {t('wallet.confirmationNotification')}
-              </Text>
             </View>
           </Animated.View>
         </ScrollView>
@@ -160,15 +104,14 @@ const CoinPaymentSuccessScreen = ({ navigation, route }) => {
             style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
             onPress={handleBackToWallet}
           >
-            <Text style={styles.primaryBtnText}>{t('wallet.backToWallet')}</Text>
+            <Text style={styles.primaryBtnText}>Go to Wallet</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.secondaryBtn, { borderColor: colors.border }]}
-            onPress={handleContactSupport}
+            onPress={handleContinue}
           >
-            <MaterialCommunityIcons name="message" size={20} color={colors.accent} />
-            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>{t('common.contactSupport')}</Text>
+            <Text style={[styles.secondaryBtnText, { color: colors.accent }]}>Continue</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

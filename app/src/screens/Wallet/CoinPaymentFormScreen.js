@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useSocket } from '../../context/SocketContext';
+import { useAppContext } from '../../context/AppContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
@@ -16,7 +16,7 @@ const PAYMENT_METHODS = [
 const CoinPaymentFormScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
   const { user } = useAuth();
-  const { on } = useSocket();
+  const { fetchAppData } = useAppContext();
   const { t } = useLanguage();
   const { package: pkg } = route.params || {};
 
@@ -27,19 +27,15 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
   });
   const [loading, setLoading] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState('IDLE');
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
-    const off = on('payment:update', (payment) => {
-      if (payment?.status === 'SUCCESS') {
-        setPaymentStatus('SUCCESS');
-        navigation.replace('CoinPaymentSuccess', { transaction: payment.transaction || payment, package: pkg, message: t('payments.paymentConfirmed') });
-      } else if (payment?.status === 'FAILED') {
-        setPaymentStatus('FAILED');
-        Alert.alert(t('payments.failed'), payment.failureReason || t('payments.paymentNotCompleted'));
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
-    });
-    return () => off?.();
-  }, [navigation, on, pkg]);
+    };
+  }, []);
 
   useEffect(() => {
     generatePaymentId();
@@ -52,6 +48,63 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
     setPaymentId(id);
   };
 
+  const getNumericAmount = (value) => {
+    return Number(String(value || '').replace(/[^\d]/g, ''));
+  };
+
+  const totalCoins = (pkg?.coins || 0) + (pkg?.bonus || 0);
+
+  const pollPaymentStatus = async (reference) => {
+    const maxAttempts = 24;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts++;
+
+      try {
+        const response = await api.get('/payments/status/' + reference);
+        const { status } = response.data;
+
+        if (status === 'success') {
+          await fetchAppData?.();
+          navigation.replace('CoinPaymentSuccess', {
+            coins: response.data.coins,
+            package: pkg,
+          });
+          return;
+        }
+
+        if (status === 'failed') {
+          navigation.replace('CoinPaymentFailed', {
+            message: response.data.message,
+            package: pkg,
+          });
+          return;
+        }
+
+        if (attempts < maxAttempts) {
+          timeoutRef.current = setTimeout(poll, 5000);
+        } else {
+          navigation.replace('CoinPaymentFailed', {
+            message: 'Payment timed out. If money was deducted, please contact support.',
+            package: pkg,
+          });
+        }
+      } catch (error) {
+        if (attempts < maxAttempts) {
+          timeoutRef.current = setTimeout(poll, 5000);
+        } else {
+          navigation.replace('CoinPaymentFailed', {
+            message: 'Payment timed out. If money was deducted, please contact support.',
+            package: pkg,
+          });
+        }
+      }
+    };
+
+    poll();
+  };
+
   const handleSubmitPayment = async () => {
     // Validate form
     if (!formData.phone.trim()) {
@@ -60,49 +113,63 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
     }
     try {
       setLoading(true);
+      const amount = getNumericAmount(pkg.amount || pkg.price);
 
-      const response = await api.post('/payments/purchase-coins', {
-        amount: pkg.amount || pkg.price,
+      const response = await api.post('/payments/topup', {
+        amount,
         phone: formData.phone,
-        provider: selectedMethod,
-        coins: pkg.coins || 0,
+        coins: totalCoins,
       });
 
       setPaymentStatus('PROCESSING');
-      const paymentIdFromApi = response.data.data?.id;
-      Alert.alert(t('payments.promptSent'), response.data.message || t('payments.confirmOnPhone'));
-      if (paymentIdFromApi) {
-        const poll = async (attempt = 0) => {
-          if (attempt > 24) return;
-          try {
-            const statusRes = await api.get(`/payments/${paymentIdFromApi}/status`);
-            const payment = statusRes.data.data;
-            if (payment.status === 'SUCCESS') {
-              setPaymentStatus('SUCCESS');
-              navigation.replace('CoinPaymentSuccess', {
-                transaction: payment.transaction || payment,
-                package: pkg,
-                message: t('payments.paymentConfirmed'),
-              });
-              return;
-            }
-            if (payment.status === 'FAILED') {
-              setPaymentStatus('FAILED');
-              Alert.alert(t('payments.failed'), payment.failureReason || t('payments.paymentNotCompleted'));
-              return;
-            }
-          } catch (_) {}
-          setTimeout(() => poll(attempt + 1), 5000);
-        };
-        poll();
+      setPaymentId(response.data.reference || paymentId);
+      if (response.data.reference) {
+        pollPaymentStatus(response.data.reference);
+      } else {
+        navigation.replace('CoinPaymentFailed', {
+          message: 'Payment reference was not returned. Please try again.',
+          package: pkg,
+        });
       }
     } catch (error) {
       console.log('Payment submission error:', error);
-      Alert.alert(t('common.error'), t('payments.submitPaymentFailed'));
+      navigation.replace('CoinPaymentFailed', {
+        message: error.response?.data?.message || t('payments.submitPaymentFailed'),
+        package: pkg,
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  if (paymentStatus === 'PROCESSING') {
+    return (
+      <View style={[styles.background, { backgroundColor: colors.background }]}>
+        <StatusBar
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+          backgroundColor="transparent"
+          translucent
+        />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.pendingContent}>
+            <View style={[styles.pendingIcon, { backgroundColor: colors.accentSoft }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+            <Text style={[styles.pendingTitle, { color: colors.text }]}>
+              Please approve the payment on your phone
+            </Text>
+            <Text style={[styles.pendingSubtitle, { color: colors.textSecondary }]}>
+              We are checking your Kora payment status. This can take up to 2 minutes.
+            </Text>
+            <View style={[styles.pendingReferenceBox, { borderColor: colors.border }]}>
+              <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Reference</Text>
+              <Text style={[styles.paymentId, { color: colors.accent }]}>{paymentId}</Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.background, { backgroundColor: colors.background }]}>
@@ -232,7 +299,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
             <View style={styles.calculationRow}>
               <Text style={[styles.totalLabel, { color: colors.text }]}>{t('payments.totalCoins')}</Text>
-              <Text style={[styles.totalValue, { color: colors.accent }]}>{pkg.coins + (pkg.bonus || 0)} {t('payments.coins')}</Text>
+              <Text style={[styles.totalValue, { color: colors.accent }]}>{totalCoins} {t('payments.coins')}</Text>
             </View>
           </View>
 
@@ -521,6 +588,40 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '800'
+  },
+  pendingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24
+  },
+  pendingIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24
+  },
+  pendingTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginBottom: 12
+  },
+  pendingSubtitle: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 24
+  },
+  pendingReferenceBox: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center'
   }
 });
 
