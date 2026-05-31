@@ -109,6 +109,26 @@ const ChatScreen = ({ route, navigation }) => {
     }
   }, [activeConvId, conversations, currentUser.id]);
 
+  // Fetch participant profile if not loaded from context
+  useEffect(() => {
+    const shouldFetchParticipant = !userName && receiverId && !participantDetails.otherParticipant;
+    if (shouldFetchParticipant) {
+      api.get(`/users/${receiverId}/profile`)
+        .then((res) => {
+          const userData = res.data.data;
+          setParticipantDetails(prev => ({
+            ...prev,
+            userName: userData?.fullName || userData?.phone || 'User',
+            avatar: userData?.avatar || prev.avatar,
+            otherParticipant: userData,
+          }));
+        })
+        .catch((error) => {
+          console.log('Error fetching participant profile:', error.message);
+        });
+    }
+  }, [receiverId, userName]);
+
   const fetchMessages = useCallback(async () => {
     if (!activeConvId) {
       console.log('[ChatScreen] No conversation ID, skipping message fetch');
