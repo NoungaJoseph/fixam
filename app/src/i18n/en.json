@@ -258,7 +258,19 @@
     "phone": "Phone number",
     "pay": "Pay",
     "waiting": "Waiting for mobile money confirmation...",
-    "failed": "Payment failed"
+    "failed": "Payment failed",
+    "coins": "Coins",
+    "transactionId": "Transaction ID",
+    "yourInformation": "Your Information",
+    "phoneNumber": "Phone Number",
+    "paymentMethod": "Payment Method",
+    "howPaymentWorks": "How Payment Works",
+    "paymentInstructions": "You will receive a prompt to confirm the payment for {{price}}.",
+    "baseCoins": "Base Coins",
+    "bonusCoins": "Bonus Coins",
+    "totalCoins": "Total Coins",
+    "phoneRequiredShort": "Phone number is required.",
+    "submitPaymentFailed": "Payment submission failed. Please try again."
   },
   "support": {
     "title": "Fixam Support",

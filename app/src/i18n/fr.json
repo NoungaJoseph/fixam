@@ -258,7 +258,19 @@
     "phone": "Numéro de téléphone",
     "pay": "Payer",
     "waiting": "En attente de confirmation Mobile Money...",
-    "failed": "Le paiement a échoué"
+    "failed": "Le paiement a échoué",
+    "coins": "Pièces",
+    "transactionId": "ID de transaction",
+    "yourInformation": "Vos informations",
+    "phoneNumber": "Numéro de téléphone",
+    "paymentMethod": "Mode de paiement",
+    "howPaymentWorks": "Comment fonctionne le paiement",
+    "paymentInstructions": "Vous recevrez une invite pour confirmer le paiement de {{price}}.",
+    "baseCoins": "Pièces de base",
+    "bonusCoins": "Pièces bonus",
+    "totalCoins": "Total des pièces",
+    "phoneRequiredShort": "Le numéro de téléphone est requis.",
+    "submitPaymentFailed": "La soumission du paiement a échoué. Veuillez réessayer."
   },
   "support": {
     "title": "Assistance Fixam",
