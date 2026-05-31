@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
 const PACKAGES = [
+  { id: 'test-pack', coins: 1, amount: 100, price: '100 FCFA', label: 'Test Pack', description: '1 coin - Testing only', isTest: true, popular: false, bonus: 0 },
   { id: 'p1', coins: 10, price: '5,000 FCFA', label: 'Starter', popular: false, bonus: 0 },
   { id: 'p2', coins: 20, price: '10,000 FCFA', label: 'Standard', popular: true, bonus: 2 },
   { id: 'p3', coins: 30, price: '15,000 FCFA', label: 'Popular', popular: false, bonus: 3 },
@@ -139,6 +140,11 @@ const TopUpScreen = ({ navigation }) => {
                       <Text style={styles.popularText}>{t('wallet.bestValue')}</Text>
                     </View>
                   )}
+                  {pkg.isTest && (
+                    <View style={styles.testBadge}>
+                      <Text style={styles.testBadgeText}>TEST</Text>
+                    </View>
+                  )}
 
                   {/* Left Circle Icon */}
                   <View style={[
@@ -160,9 +166,14 @@ const TopUpScreen = ({ navigation }) => {
                     
                     <View style={[styles.badgePill, { backgroundColor: isDarkMode ? '#115E5920' : badgeColors.bg }]}>
                       <Text style={[styles.badgeText, { color: isDarkMode ? '#0D9488' : badgeColors.text }]}>
-                        {t(`wallet.packages.${pkg.label.toLowerCase()}`)}
+                        {pkg.isTest ? pkg.label : t(`wallet.packages.${pkg.label.toLowerCase()}`)}
                       </Text>
                     </View>
+                    {pkg.description ? (
+                      <Text style={[styles.pkgDescription, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
+                        {pkg.description}
+                      </Text>
+                    ) : null}
                   </View>
 
                   {/* Right Column price and radio check */}
@@ -470,6 +481,23 @@ const styles = StyleSheet.create({
     fontSize: 9, 
     fontWeight: '900' 
   },
+  testBadge: {
+    position: 'absolute',
+    top: -10,
+    right: 16,
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#FFF',
+    zIndex: 50,
+  },
+  testBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
   pkgIconContainer: {
     width: 44,
     height: 44,
@@ -491,6 +519,11 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
+  },
+  pkgDescription: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 5,
   },
   pkgRight: {
     alignItems: 'flex-end',
