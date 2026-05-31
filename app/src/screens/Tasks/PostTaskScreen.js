@@ -53,12 +53,13 @@ const CATEGORY_COLORS = {
 };
 
 const STATUS_STYLES = {
-  PENDING: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
-  PENDING_APPROVAL: { label: 'PENDING', icon: 'clock-outline', text: '#0D9488', bg: '#E2F8F4' },
-  IN_PROGRESS: { label: 'IN PROGRESS', icon: 'sync', text: '#2563EB', bg: '#EAF2FF' },
-  COMPLETED: { label: 'COMPLETED', icon: 'check-circle-outline', text: '#0D9488', bg: '#E2F8F4' },
-  CANCELLED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
-  REJECTED: { label: 'CANCELLED', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
+  PENDING: { label: 'Pending Approval', icon: 'clock-outline', text: '#F59E0B', bg: '#FEF3C7' },
+  PENDING_APPROVAL: { label: 'Pending Approval', icon: 'clock-outline', text: '#F59E0B', bg: '#FEF3C7' },
+  ASSIGNED: { label: 'Provider Selected', icon: 'check-outline', text: '#2563EB', bg: '#EAF2FF' },
+  IN_PROGRESS: { label: 'In Progress', icon: 'sync', text: '#7C3AED', bg: '#F3E8FF' },
+  COMPLETED: { label: 'Completed', icon: 'check-circle-outline', text: '#0D9488', bg: '#E2F8F4' },
+  CANCELLED: { label: 'Cancelled', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
+  REJECTED: { label: 'Cancelled', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
 };
 
 const pad2 = (value) => String(value).padStart(2, '0');
@@ -74,7 +75,10 @@ const formatTimeInput = (date) => {
 const normalizeTaskStatus = (job) => {
   if (job.approvalStatus === 'REJECTED') return 'CANCELLED';
   if (job.approvalStatus === 'PENDING_APPROVAL') return 'PENDING';
-  return String(job.status || 'PENDING').toUpperCase();
+  const rawStatus = String(job.status || 'PENDING').toUpperCase();
+  if (rawStatus === 'OPEN') return 'PENDING';
+  // Keep ASSIGNED status as-is (don't map to IN_PROGRESS)
+  return rawStatus;
 };
 
 const formatCardDate = (job) => {
@@ -402,9 +406,22 @@ const PostTaskScreen = ({ route, navigation }) => {
     const description = job.description || t('jobs.noDescription');
     const locationText = job.location || '4.1070, 9.7619';
     const titleText = job.title || t('jobs.untitledTask');
+    const applicantCount = job._count?.assignments ?? job.assignments?.length ?? 0;
+
+    // FCFA budget formatting
+    const budgetMin = Number(job.budgetMin || job.budget || 0);
+    const budgetMax = Number(job.budgetMax || job.budget || 0);
+    const budgetDisplay = budgetMin !== budgetMax
+      ? `${budgetMin.toLocaleString()} – ${budgetMax.toLocaleString()} FCFA`
+      : `${budgetMin.toLocaleString()} FCFA`;
 
     return (
-      <View key={job.id} style={[styles.taskCard, { backgroundColor: colors.card }]}>
+      <TouchableOpacity
+        key={job.id}
+        style={[styles.taskCard, { backgroundColor: colors.card }]}
+        onPress={() => navigation.navigate('JobStatus', { job })}
+        activeOpacity={0.85}
+      >
         <View style={styles.taskCardHeader}>
           <View style={[styles.catBadge, { backgroundColor: categoryStyle.bg }]}>
             <Text style={[styles.catBadgeText, { color: categoryStyle.text }]}>{translateService(category).toUpperCase()}</Text>
@@ -420,8 +437,8 @@ const PostTaskScreen = ({ route, navigation }) => {
         
         <View style={styles.taskBodyRow}>
           <View style={styles.taskCopy}>
-            <Text style={styles.taskTitle}>{titleText}</Text>
-            <Text style={styles.taskDescriptionText} numberOfLines={2}>{description}</Text>
+            <Text style={styles.taskTitle} numberOfLines={2} ellipsizeMode="tail">{titleText}</Text>
+            <Text style={styles.taskDescriptionText} numberOfLines={2} ellipsizeMode="tail">{description}</Text>
           </View>
           <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
             <MaterialCommunityIcons name={statusStyle.icon} size={18} color={statusStyle.text} />
@@ -430,16 +447,14 @@ const PostTaskScreen = ({ route, navigation }) => {
         </View>
         
         <View style={styles.taskMetaGrid}>
-          <View style={styles.taskMetaItem}>
+          <View style={[styles.taskMetaItem, { flex: 1, minWidth: 0 }]}>
             <MaterialCommunityIcons name="map-marker" size={22} color="#0D9488" />
-            <Text style={styles.taskMetaValue}>{locationText}</Text>
+            <Text style={[styles.taskMetaValue, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">{locationText}</Text>
           </View>
           <View style={styles.metaDivider} />
-          <View style={styles.taskMetaItem}>
-            <MaterialCommunityIcons name="currency-usd" size={18} color="#06B85F" />
-            <Text style={styles.budgetValue}>
-              {Number(job.budgetMin || job.budget || 0).toLocaleString()} - {Number(job.budgetMax || job.budget || 0).toLocaleString()} XAF
-            </Text>
+          <View style={[styles.taskMetaItem, { flex: 1, minWidth: 0 }]}>
+            <MaterialCommunityIcons name="wallet-outline" size={18} color="#06B85F" />
+            <Text style={[styles.budgetValue, { flexShrink: 1 }]} numberOfLines={1}>{budgetDisplay}</Text>
           </View>
         </View>
 
@@ -449,6 +464,22 @@ const PostTaskScreen = ({ route, navigation }) => {
             <Text style={[styles.rejectionText, { color: colors.error }]}>{t('jobs.reason')}: {job.rejectionReason}</Text>
           </View>
         ) : null}
+
+        {/* Applicant count */}
+        <View style={styles.applicantCountRow}>
+          <MaterialCommunityIcons
+            name="account-group-outline"
+            size={16}
+            color={applicantCount > 0 ? '#0D9488' : '#94A3B8'}
+          />
+          <Text style={[styles.applicantCountText, { color: applicantCount > 0 ? '#0D9488' : '#94A3B8' }]}>
+            {applicantCount === 0
+              ? t('jobs.noApplicants')
+              : applicantCount === 1
+                ? t('jobs.oneApplicant')
+                : t('jobs.applicantsCount', { count: applicantCount })}
+          </Text>
+        </View>
 
         <View style={styles.taskActionGroup}>
           <TouchableOpacity 
@@ -487,13 +518,18 @@ const PostTaskScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   const visibleJobs = (jobs || []).filter((job) => {
     const normalizedStatus = normalizeTaskStatus(job);
-    return activeFilter === 'ALL' || normalizedStatus === activeFilter;
+    if (activeFilter === 'ALL') return true;
+    // Group PENDING and ASSIGNED together under "Pending" tab
+    if (activeFilter === 'PENDING') {
+      return normalizedStatus === 'PENDING' || normalizedStatus === 'ASSIGNED';
+    }
+    return normalizedStatus === activeFilter;
   });
 
   const detailEditorConfig = detailEditor === 'what'
@@ -547,9 +583,9 @@ const PostTaskScreen = ({ route, navigation }) => {
             >
               <View style={styles.tasksHeroText}>
                 <Text style={styles.tasksHeroTitle}>{t('jobs.postedTasks')}</Text>
-                <Text style={styles.tasksHeroSubtitle}>{t('jobs.postedTasksSubtitle')}</Text>
+                <Text style={styles.tasksHeroSubtitle} numberOfLines={3} ellipsizeMode="tail">{t('jobs.postedTasksSubtitle')}</Text>
               </View>
-              <Image source={tasksHeroImage} style={styles.tasksHeroImage} resizeMode="contain" />
+              <Image source={tasksHeroImage} style={styles.tasksHeroImage} />
             </LinearGradient>
 
             <View style={styles.filterBar}>
@@ -635,7 +671,6 @@ const PostTaskScreen = ({ route, navigation }) => {
               <Image source={tasksHeroImage} style={styles.createHeroImage} resizeMode="contain" />
             </LinearGradient>
 
-            <View style={[styles.createFormCard, { backgroundColor: colors.card }]}>
               <View style={styles.sectionTitleRow}>
                 <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.category')}</Text>
                 <TouchableOpacity onPress={() => setShowCategoryPicker((value) => !value)}>
@@ -797,7 +832,6 @@ const PostTaskScreen = ({ route, navigation }) => {
                   })}
                 </View>
               </View>
-            </View>
 
             <TouchableOpacity style={styles.createPrimaryBtn} onPress={handleNext}>
               <Text style={styles.createPrimaryText}>{t('jobs.continueToDescription')}</Text>
@@ -1833,30 +1867,29 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     paddingLeft: 22,
-    paddingRight: 132,
+    paddingRight: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  tasksHeroText: { flex: 1, justifyContent: 'center' },
+  tasksHeroText: { flex: 1, flexShrink: 1, paddingRight: 8, justifyContent: 'center' },
   tasksHeroTitle: {
     color: '#FFF',
-    fontSize: 26,
-    lineHeight: 31,
-    fontWeight: '900',
-    marginBottom: 12,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   tasksHeroSubtitle: {
-    color: '#FFF',
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    marginTop: 4,
   },
   tasksHeroImage: {
-    position: 'absolute',
-    right: 16,
-    bottom: 14,
-    width: 116,
-    height: 100,
+    width: 90,
+    height: 90,
+    resizeMode: 'contain',
   },
   filterBar: {
     marginHorizontal: 18,
@@ -1987,6 +2020,8 @@ const styles = StyleSheet.create({
   rejectionBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 8, marginBottom: 15, backgroundColor: 'rgba(239, 68, 68, 0.05)' },
   rejectionText: { fontSize: 13, fontWeight: '700', flex: 1 },
   taskActionGroup: { flexDirection: 'row', gap: 8, marginTop: 5 },
+  applicantCountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  applicantCountText: { fontSize: 12, fontWeight: '700' },
   secondaryActionBtn: {
     flex: 1,
     height: 50,

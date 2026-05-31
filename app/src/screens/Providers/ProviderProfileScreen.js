@@ -1,6 +1,6 @@
 import React from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, StatusBar, Linking, Share, Platform, Alert } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert, Modal, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -8,13 +8,20 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAppContext } from '../../context/AppContext';
 import api, { getMediaUrl } from '../../services/api';
 import UserAvatar from '../../components/UserAvatar';
+import { StatusBar } from 'expo-status-bar';
 
 const ProviderProfileScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t, currentLanguage } = useLanguage();
   const { favoriteProviderIds, toggleFavoriteProvider } = useAppContext();
   const provider = route.params?.provider || null;
+  const insets = useSafeAreaInsets();
+  const [pastHeader, setPastHeader] = React.useState(false);
   const [reviews, setReviews] = React.useState([]);
+  const [hasBooking, setHasBooking] = React.useState(false);
+  const [bookingCheckLoading, setBookingCheckLoading] = React.useState(false);
+  const [showBookingModal, setShowBookingModal] = React.useState(false);
+  const [bookingConfirmLoading, setBookingConfirmLoading] = React.useState(false);
 
 
 
@@ -25,6 +32,24 @@ const ProviderProfileScreen = ({ route, navigation }) => {
       .then((res) => setReviews(res.data.data || []))
       .catch(() => setReviews([]));
   }, [provider?.user?.id]);
+
+  React.useEffect(() => {
+    const checkBookingStatus = async () => {
+      try {
+        setBookingCheckLoading(true);
+        const res = await api.get(`/bookings/check?providerId=${provider.id}`);
+        setHasBooking(res.data.data?.hasBooking || false);
+      } catch (error) {
+        console.error('Error checking booking:', error);
+      } finally {
+        setBookingCheckLoading(false);
+      }
+    };
+
+    if (provider?.id) {
+      checkBookingStatus();
+    }
+  }, [provider?.id]);
 
   if (!provider) {
     return (
@@ -50,19 +75,19 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   const serviceArea = provider.serviceArea || 'Douala, Cameroon';
   const isOnline = provider.user?.isOnline || false;
   const isFavorite = favoriteProviderIds?.includes(provider.id);
-  
-  const ratePrice = provider.rate 
-    ? `${provider.rate.toLocaleString()} FCFA` 
+
+  const ratePrice = provider.rate
+    ? `${provider.rate.toLocaleString()} FCFA`
     : t('profile.contactForPrice');
 
-  const skills = provider.skills && provider.skills.length > 0 
-    ? provider.skills 
+  const skills = provider.skills && provider.skills.length > 0
+    ? provider.skills
     : [];
 
   const socialLinks = provider.socialLinks || {};
   const hasSocialLinks = Object.values(socialLinks).some(Boolean);
 
-  const joinedDate = provider.user?.createdAt 
+  const joinedDate = provider.user?.createdAt
     ? new Date(provider.user.createdAt).toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })
     : t('common.recent');
 
@@ -75,10 +100,15 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         message: `Book ${fullName} on Fixam: ${url}`,
         ...(Platform.OS === 'ios' ? { url } : {}),
       });
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const handleMessageProvider = async () => {
+    if (!hasBooking) {
+      Alert.alert(t('common.error'), t('profile.bookBeforeMessaging'));
+      return;
+    }
+
     try {
       const res = await api.post('/chat/conversations', { participantId: provider.user?.id });
       const conversation = res.data.data;
@@ -99,6 +129,39 @@ const ProviderProfileScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleBookPress = () => {
+    setShowBookingModal(true);
+  };
+
+  const handleConfirmBooking = async () => {
+    try {
+      setBookingConfirmLoading(true);
+      const res = await api.post('/bookings', {
+        providerId: provider.id,
+      });
+      
+      if (res.data.success) {
+        setHasBooking(true);
+        setShowBookingModal(false);
+        Alert.alert(t('common.success'), t('profile.bookingConfirmed'), [
+          {
+            text: t('common.ok'),
+            onPress: () => {
+              // Optionally navigate to booking details or just close
+            }
+          }
+        ]);
+      }
+    } catch (error) {
+      Alert.alert(
+        t('common.error'),
+        error.response?.data?.message || t('profile.bookingFailed')
+      );
+    } finally {
+      setBookingConfirmLoading(false);
+    }
+  };
+
   // Expertise styling
   const getSkillStyles = (skill) => {
     const s = skill.toLowerCase();
@@ -115,11 +178,28 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#FAFAFA' }]} edges={['top']}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0F172A' : '#FAFAFA' }]}>
+      <StatusBar style={pastHeader ? (isDarkMode ? 'light' : 'dark') : 'light'} translucent backgroundColor="transparent" />
+
+      {/* Persistent status bar background so time/battery are always visible */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: pastHeader ? (isDarkMode ? '#0F172A' : '#FAFAFA') : '#0E7490',
+        zIndex: 50,
+      }} />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        onScroll={(e) => setPastHeader(e.nativeEvent.contentOffset.y > 80)}
+        scrollEventThrottle={16}
+      >
+
         {/* Curved Gradient Header */}
         <View style={styles.headerContainer}>
           <LinearGradient
@@ -128,7 +208,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.headerSafeArea}>
+            <SafeAreaView style={styles.headerSafeArea} edges={['top']}>
               <View style={styles.headerActions}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
                   <MaterialCommunityIcons name="arrow-left" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
@@ -141,7 +221,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                   <MaterialCommunityIcons name={isFavorite ? 'heart' : 'heart-outline'} size={21} color={isFavorite ? '#EF4444' : (isDarkMode ? '#FFF' : '#0F172A')} />
                 </TouchableOpacity>
               </View>
-            </View>
+            </SafeAreaView>
           </LinearGradient>
 
           {/* Hanging Avatar */}
@@ -247,7 +327,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.aboutMe')}</Text>
           <View style={styles.aboutRow}>
             <Text style={[styles.aboutText, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>{bio}</Text>
-            
+
             {/* Joined Card */}
             <View style={[styles.joinedCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
               <MaterialCommunityIcons name="calendar-check-outline" size={24} color="#0D9488" />
@@ -265,10 +345,10 @@ const ProviderProfileScreen = ({ route, navigation }) => {
               {skills.slice(0, 4).map((skill, i) => {
                 const itemStyles = getSkillStyles(skill);
                 return (
-                  <View 
-                    key={i} 
+                  <View
+                    key={i}
                     style={[
-                      styles.skillTag, 
+                      styles.skillTag,
                       { backgroundColor: isDarkMode ? '#1E293B' : itemStyles.bg, borderColor: isDarkMode ? '#1F2937' : itemStyles.border }
                     ]}
                   >
@@ -290,7 +370,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.highlights')}</Text>
           <View style={styles.highlightsGrid}>
-            
+
             {/* Highlight 1 - Verified Professional Status */}
             <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
               <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#115E5920' : '#ECFDF5' }]}>
@@ -352,7 +432,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
             <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.linkedAccounts')}</Text>
             {Object.keys(socialLinks).filter(key => socialLinks[key]).map((key) => {
               const label = key === 'tiktok' ? 'TikTok' : key === 'linkedin' ? 'LinkedIn' : key === 'facebook' ? 'Facebook' : 'Instagram';
-              
+
               // Branded Social Media Logo URLs
               const logoUrls = {
                 tiktok: 'https://cdn-icons-png.flaticon.com/512/3046/3046124.png',
@@ -360,9 +440,9 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                 facebook: 'https://cdn-icons-png.flaticon.com/512/124/124010.png',
                 instagram: 'https://cdn-icons-png.flaticon.com/512/174/174855.png'
               };
-              
+
               const cleanUrl = socialLinks[key];
-              
+
               // Robust handle extractor
               let handleText = cleanUrl;
               if (cleanUrl.includes('/')) {
@@ -372,8 +452,8 @@ const ProviderProfileScreen = ({ route, navigation }) => {
               handleText = handleText.replace(/^@/, '');
 
               return (
-                <TouchableOpacity 
-                  key={key} 
+                <TouchableOpacity
+                  key={key}
                   style={[styles.linkedAccountCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9', marginBottom: 8 }]}
                   onPress={() => Linking.openURL(cleanUrl)}
                 >
@@ -409,13 +489,13 @@ const ProviderProfileScreen = ({ route, navigation }) => {
             reviews.slice(0, 3).map((review, i) => {
               const reviewerName = review.job?.client?.fullName || t('profile.verifiedClient');
               const reviewerAvatarUri = getMediaUrl(review.job?.client?.avatar);
-              const reviewDateText = review.createdAt 
+              const reviewDateText = review.createdAt
                 ? new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 : t('common.recent');
 
               return (
-                <View 
-                  key={review.id || i} 
+                <View
+                  key={review.id || i}
                   style={[styles.reviewCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9', marginBottom: 12 }]}
                 >
                   <View style={styles.reviewTopRow}>
@@ -429,12 +509,12 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                       </View>
                       <View style={styles.reviewRatingRow}>
                         {[1, 2, 3, 4, 5].map((star) => (
-                          <MaterialCommunityIcons 
-                            key={star} 
-                            name={star <= (review.rating || 5) ? "star" : "star-outline"} 
-                            size={14} 
-                            color="#F59E0B" 
-                            style={{ marginRight: 2 }} 
+                          <MaterialCommunityIcons
+                            key={star}
+                            name={star <= (review.rating || 5) ? "star" : "star-outline"}
+                            size={14}
+                            color="#F59E0B"
+                            style={{ marginRight: 2 }}
                           />
                         ))}
                         <Text style={[styles.reviewRatingText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
@@ -456,47 +536,136 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           {reviews.length > 1 && (
             <View style={styles.dotsContainer}>
               {reviews.slice(0, 3).map((_, idx) => (
-                <View 
-                  key={idx} 
+                <View
+                  key={idx}
                   style={[
-                    styles.dot, 
-                    idx === 0 ? styles.dotActive : null, 
+                    styles.dot,
+                    idx === 0 ? styles.dotActive : null,
                     { backgroundColor: idx === 0 ? '#0D9488' : (isDarkMode ? '#475569' : '#CBD5E1') }
-                  ]} 
+                  ]}
                 />
               ))}
             </View>
           )}
         </View>
 
+        {/* Fail-safe Static Booking Button */}
+        <View style={styles.staticBookingContainer}>
+          <TouchableOpacity
+            style={[styles.staticBookButton, { backgroundColor: colors.accent }]}
+            onPress={() => navigation.navigate('BookingForm', { providerId: provider.user?.id, providerName: fullName })}
+          >
+            <MaterialCommunityIcons name="calendar-check" size={22} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.staticBookButtonText}>{t('profile.bookNow')} - {ratePrice}</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       {/* Dynamic Bottom Booking Bar */}
-      <View style={[styles.bookingBarContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderTopColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+      <View style={[styles.bookingBarContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderTopColor: isDarkMode ? '#1F2937' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 20) }]}>
         <View style={styles.bookingBar}>
-          <TouchableOpacity 
-            style={[styles.chatButton, { backgroundColor: isDarkMode ? '#0B1120' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#E2E8F0' }]}
+          <TouchableOpacity
+            style={[styles.chatButton, { backgroundColor: isDarkMode ? '#0B1120' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#E2E8F0', opacity: hasBooking ? 1 : 0.5 }]}
             onPress={handleMessageProvider}
+            disabled={!hasBooking}
           >
             <MaterialCommunityIcons name="message-text-outline" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.bookButton}
-            onPress={() => navigation.navigate('BookingForm', { providerId: provider.user?.id, providerName: fullName })}
+            onPress={handleBookPress}
+            disabled={bookingCheckLoading}
           >
-            <Text style={styles.bookButtonText}>{t('profile.bookNow')} - {ratePrice}</Text>
+            <Text style={styles.bookButtonText}>
+              {bookingCheckLoading ? '...' : (hasBooking ? t('profile.booked') : `${t('profile.bookNow')} - 1 🪙`)}
+            </Text>
             <MaterialCommunityIcons name="chevron-right" size={20} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+
+      {/* Booking Confirmation Modal */}
+      <Modal
+        visible={showBookingModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBookingModal(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
+                {t('profile.bookProvider')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowBookingModal(false)}
+                disabled={bookingConfirmLoading}
+              >
+                <MaterialCommunityIcons name="close" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <View style={[styles.bookingConfirmCard, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC' }]}>
+                <UserAvatar uri={avatarUri} name={fullName} size={80} />
+                <Text style={[styles.providerNameConfirm, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
+                  {fullName}
+                </Text>
+                <Text style={[styles.rateConfirm, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
+                  {ratePrice}
+                </Text>
+              </View>
+
+              <View style={[styles.coinDeductionBox, { backgroundColor: isDarkMode ? '#FFA50020' : '#FEF3C7', borderColor: isDarkMode ? '#FF8C0040' : '#FCD34D' }]}>
+                <MaterialCommunityIcons name="information" size={20} color="#D97706" style={{ marginRight: 10 }} />
+                <Text style={[styles.coinDeductionText, { color: '#B45309' }]}>
+                  1 🪙 {t('profile.coinDeducted')}
+                </Text>
+              </View>
+
+              <Text style={[styles.confirmDescription, { color: isDarkMode ? '#CBD5E1' : '#64748B' }]}>
+                {t('profile.bookingDescription')}
+              </Text>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { borderColor: isDarkMode ? '#475569' : '#E2E8F0', backgroundColor: isDarkMode ? '#0F172A' : '#FFF' }]}
+                onPress={() => setShowBookingModal(false)}
+                disabled={bookingConfirmLoading}
+              >
+                <Text style={[styles.cancelButtonText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
+                  {t('common.cancel')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmButton, { opacity: bookingConfirmLoading ? 0.7 : 1 }]}
+                onPress={handleConfirmBooking}
+                disabled={bookingConfirmLoading}
+              >
+                {bookingConfirmLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="check" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.confirmButtonText}>{t('common.confirm')}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  
+
   // Curved Header Styles
   headerContainer: {
     position: 'relative',
@@ -542,7 +711,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  
+
   // Hanging Avatar Styles
   avatarWrapper: {
     position: 'absolute',
@@ -933,20 +1102,40 @@ const styles = StyleSheet.create({
 
   // Booking Bar Styles
   bookingBarContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     borderTopWidth: 1,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    zIndex: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.04,
     shadowRadius: 10,
     elevation: 8,
+  },
+  staticBookingContainer: {
+    paddingHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 40,
+    alignItems: 'center',
+    width: '100%',
+  },
+  staticBookButton: {
+    width: '100%',
+    height: 54,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  staticBookButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
   bookingBar: {
     flexDirection: 'row',
@@ -986,6 +1175,93 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalBody: {
+    marginBottom: 20,
+  },
+  bookingConfirmCard: {
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+  },
+  providerNameConfirm: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  rateConfirm: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  coinDeductionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  coinDeductionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  confirmDescription: {
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#0D9488',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

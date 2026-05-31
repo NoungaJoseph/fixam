@@ -103,7 +103,7 @@ const ProviderProfileSectionEditScreen = ({ navigation, route }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
             <MaterialCommunityIcons name="chevron-left" size={30} color={colors.text} />

@@ -17,7 +17,7 @@ const DashboardScreen = ({ navigation }) => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
-  
+
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
@@ -117,7 +117,7 @@ const DashboardScreen = ({ navigation }) => {
       const msg = [];
       if (form.fullName !== user.fullName) msg.push(t('profileDetail.nameField'));
       if (form.password) msg.push(t('profileDetail.passwordField'));
-      
+
       const confirm = await new Promise(resolve => {
         Alert.alert(
           t('profileDetail.profileChange'),
@@ -247,7 +247,7 @@ const DashboardScreen = ({ navigation }) => {
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>{t('profileDetail.professionalDashboard')}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.headerIconBtn, { backgroundColor: colors.accent + '15', borderRadius: 21 }]}
             onPress={switchToClient}
           >
@@ -400,7 +400,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={[styles.freelancerHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.freelancerHeaderTitle, { color: colors.text }]}>{t('profileDetail.personalProfile')}</Text>
           {user?.role === 'PROVIDER' && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.headerIconBtn, { backgroundColor: colors.accent + '15', borderRadius: 21 }]}
               onPress={switchToProvider}
             >
@@ -480,7 +480,7 @@ const DashboardScreen = ({ navigation }) => {
         <View style={styles.profileHeader}>
           <View style={[styles.avatarWrap, { backgroundColor: colors.card }]}>
             <UserAvatar uri={user?.avatar} name={user?.fullName} size={94} />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.editAvatarBtn, { backgroundColor: colors.accent }]}
               onPress={handleImagePick}
               disabled={loading}
@@ -492,9 +492,9 @@ const DashboardScreen = ({ navigation }) => {
             {user?.pendingName ? t('profileDetail.pendingName', { name: user.pendingName }) : user?.fullName || t('common.user')}
           </Text>
           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || user?.phone}</Text>
-          
-          <TouchableOpacity 
-            style={[styles.editProfileBtn, { backgroundColor: colors.card, borderColor: colors.border }]} 
+
+          <TouchableOpacity
+            style={[styles.editProfileBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => editing ? save() : setEditing(true)}
             disabled={loading}
           >
@@ -505,23 +505,23 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.formSection}>
-          <ProfileField label={t('profileDetail.fullName')} value={form.fullName} onChangeText={(v) => setForm({...form, fullName: v})} editable={editing} style={inputStyle} colors={colors} />
-          <ProfileField label={t('profileDetail.email')} value={form.email} onChangeText={(v) => setForm({...form, email: v})} editable={editing} style={inputStyle} colors={colors} />
-          <ProfileField label={t('profileDetail.dateOfBirth')} value={form.dob} onChangeText={(v) => setForm({...form, dob: v})} editable={editing} style={inputStyle} colors={colors} placeholder="1995-01-01" />
-          
+          <ProfileField label={t('profileDetail.fullName')} value={form.fullName} onChangeText={(v) => setForm({ ...form, fullName: v })} editable={editing} style={inputStyle} colors={colors} />
+          <ProfileField label={t('profileDetail.email')} value={form.email} onChangeText={(v) => setForm({ ...form, email: v })} editable={editing} style={inputStyle} colors={colors} />
+          <ProfileField label={t('profileDetail.dateOfBirth')} value={form.dob} onChangeText={(v) => setForm({ ...form, dob: v })} editable={editing} style={inputStyle} colors={colors} placeholder="1995-01-01" />
+
           {editing && (
-            <ProfileField label={t('profileDetail.newPasswordOptional')} value={form.password} onChangeText={(v) => setForm({...form, password: v})} editable={editing} style={inputStyle} colors={colors} secureTextEntry />
+            <ProfileField label={t('profileDetail.newPasswordOptional')} value={form.password} onChangeText={(v) => setForm({ ...form, password: v })} editable={editing} style={inputStyle} colors={colors} secureTextEntry />
           )}
 
-          <ProfileField label={t('profileDetail.phone')} value={form.phone} editable={false} style={[inputStyle, {opacity: 0.5}]} colors={colors} />
+          <ProfileField label={t('profileDetail.phone')} value={form.phone} editable={false} style={[inputStyle, { opacity: 0.5 }]} colors={colors} />
 
           {user?.role === 'PROVIDER' && (
             <>
               <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.professionalProfile')}</Text>
-              <ProfileField label={t('profileDetail.bio')} value={form.bio} onChangeText={(v) => setForm({...form, bio: v})} editable={editing} style={inputStyle} colors={colors} multiline />
-              <ProfileField label={t('profileDetail.serviceArea')} value={form.serviceArea} onChangeText={(v) => setForm({...form, serviceArea: v})} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.serviceAreaPlaceholder')} />
-              <ProfileField label={t('profileDetail.experienceLevel')} value={form.experienceLevel} onChangeText={(v) => setForm({...form, experienceLevel: v})} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.experienceLevelPlaceholder')} />
-              
+              <ProfileField label={t('profileDetail.bio')} value={form.bio} onChangeText={(v) => setForm({ ...form, bio: v })} editable={editing} style={inputStyle} colors={colors} multiline />
+              <ProfileField label={t('profileDetail.serviceArea')} value={form.serviceArea} onChangeText={(v) => setForm({ ...form, serviceArea: v })} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.serviceAreaPlaceholder')} />
+              <ProfileField label={t('profileDetail.experienceLevel')} value={form.experienceLevel} onChangeText={(v) => setForm({ ...form, experienceLevel: v })} editable={editing} style={inputStyle} colors={colors} placeholder={t('profileDetail.experienceLevelPlaceholder')} />
+
               <View style={styles.fieldWrap}>
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>{t('profileDetail.skills')}</Text>
                 <View style={styles.skillsContainer}>
@@ -536,8 +536,8 @@ const DashboardScreen = ({ navigation }) => {
                     </View>
                   ))}
                   {editing && (
-                    <TouchableOpacity 
-                      style={[styles.addSkillBtn, { borderColor: colors.accent }]} 
+                    <TouchableOpacity
+                      style={[styles.addSkillBtn, { borderColor: colors.accent }]}
                       onPress={() => setShowSkillPicker(true)}
                     >
                       <MaterialCommunityIcons name="plus" size={18} color={colors.accent} />
@@ -547,18 +547,18 @@ const DashboardScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <ProfileField label={t('profileDetail.hourlyRate')} value={form.rate} onChangeText={(v) => setForm({...form, rate: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
+              <ProfileField label={t('profileDetail.hourlyRate')} value={form.rate} onChangeText={(v) => setForm({ ...form, rate: v })} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
 
               <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.previousWork')}</Text>
-              <ProfileField label={t('profileDetail.projectTitle')} value={form.portfolioTitle} onChangeText={(v) => setForm({...form, portfolioTitle: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label={t('profileDetail.projectDescription')} value={form.portfolioDescription} onChangeText={(v) => setForm({...form, portfolioDescription: v})} editable={editing} style={inputStyle} colors={colors} multiline />
-              <ProfileField label={t('profileDetail.projectImageUrl')} value={form.portfolioImageUrl} onChangeText={(v) => setForm({...form, portfolioImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.projectTitle')} value={form.portfolioTitle} onChangeText={(v) => setForm({ ...form, portfolioTitle: v })} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.projectDescription')} value={form.portfolioDescription} onChangeText={(v) => setForm({ ...form, portfolioDescription: v })} editable={editing} style={inputStyle} colors={colors} multiline />
+              <ProfileField label={t('profileDetail.projectImageUrl')} value={form.portfolioImageUrl} onChangeText={(v) => setForm({ ...form, portfolioImageUrl: v })} editable={editing} style={inputStyle} colors={colors} />
 
               <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('profileDetail.certificate')}</Text>
-              <ProfileField label={t('profileDetail.certificateName')} value={form.certificateTitle} onChangeText={(v) => setForm({...form, certificateTitle: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label={t('profileDetail.issuer')} value={form.certificateIssuer} onChangeText={(v) => setForm({...form, certificateIssuer: v})} editable={editing} style={inputStyle} colors={colors} />
-              <ProfileField label={t('profileDetail.year')} value={form.certificateYear} onChangeText={(v) => setForm({...form, certificateYear: v})} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
-              <ProfileField label={t('profileDetail.certificateImageUrl')} value={form.certificateImageUrl} onChangeText={(v) => setForm({...form, certificateImageUrl: v})} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.certificateName')} value={form.certificateTitle} onChangeText={(v) => setForm({ ...form, certificateTitle: v })} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.issuer')} value={form.certificateIssuer} onChangeText={(v) => setForm({ ...form, certificateIssuer: v })} editable={editing} style={inputStyle} colors={colors} />
+              <ProfileField label={t('profileDetail.year')} value={form.certificateYear} onChangeText={(v) => setForm({ ...form, certificateYear: v })} editable={editing} style={inputStyle} colors={colors} keyboardType="numeric" />
+              <ProfileField label={t('profileDetail.certificateImageUrl')} value={form.certificateImageUrl} onChangeText={(v) => setForm({ ...form, certificateImageUrl: v })} editable={editing} style={inputStyle} colors={colors} />
             </>
           )}
         </View>
@@ -578,24 +578,24 @@ const DashboardScreen = ({ navigation }) => {
             </View>
             <ScrollView contentContainerStyle={styles.modalScroll}>
               {[
-                'Plumbing', 'Electrical', 'Carpentry', 'Painting', 'Masonry', 
+                'Plumbing', 'Electrical', 'Carpentry', 'Painting', 'Masonry',
                 'AC Repair', 'Cleaning', 'Gardening', 'Tutoring', 'Handyman'
               ].map(skill => {
                 const isSelected = form.skills.includes(skill);
                 return (
-                  <TouchableOpacity 
-                    key={skill} 
-                    style={[styles.pickerItem, { backgroundColor: isSelected ? colors.accent : colors.background, borderColor: colors.border }]} 
+                  <TouchableOpacity
+                    key={skill}
+                    style={[styles.pickerItem, { backgroundColor: isSelected ? colors.accent : colors.background, borderColor: colors.border }]}
                     onPress={() => toggleSkill(skill)}
                   >
-              <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: '700' }}>{skill}</Text>
+                    <Text style={{ color: isSelected ? '#FFF' : colors.text, fontWeight: '700' }}>{skill}</Text>
                     {isSelected && <MaterialCommunityIcons name="check" size={18} color="#FFF" />}
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-            <TouchableOpacity 
-              style={[styles.modalDoneBtn, { backgroundColor: colors.accent }]} 
+            <TouchableOpacity
+              style={[styles.modalDoneBtn, { backgroundColor: colors.accent }]}
               onPress={() => setShowSkillPicker(false)}
             >
               <Text style={styles.modalDoneText}>{t('common.done')}</Text>
@@ -631,17 +631,17 @@ const ProfileModeDropdown = ({ colors, isProviderMode, switchToClient, switchToP
       <View style={styles.profileSectionHeader}>
         <Text style={[styles.profileSectionTitle, { color: colors.text }]}>{t('profileDetail.accountMode')}</Text>
       </View>
-      
+
       <TouchableOpacity
         style={[styles.dropdownFake, { borderColor: colors.border, backgroundColor: colors.card }]}
         onPress={isProviderMode ? switchToClient : switchToProvider}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={[styles.modeIconCircle, { backgroundColor: colors.accent + '15' }]}>
-            <MaterialCommunityIcons 
-              name={isProviderMode ? "briefcase" : "account"} 
-              size={22} 
-              color={colors.accent} 
+            <MaterialCommunityIcons
+              name={isProviderMode ? "briefcase" : "account"}
+              size={22}
+              color={colors.accent}
             />
           </View>
           <View>

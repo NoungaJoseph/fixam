@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, StatusBar, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
-import { getMediaUrl } from '../../services/api';
+import api, { getMediaUrl } from '../../services/api';
 import UserAvatar from '../../components/UserAvatar';
 
 
@@ -19,6 +19,19 @@ const ProviderListScreen = ({ route, navigation }) => {
   const [search, setSearch] = useState(route.params?.search || '');
   const [activeFilter, setActiveFilter] = useState('Rating');
   const [showFilters, setShowFilters] = useState(false);
+  const [topProviders, setTopProviders] = useState([]);
+
+  useEffect(() => {
+    if (!category || category === 'all') {
+      api.get('/providers/top-of-month')
+        .then(res => {
+          if (res.data?.success) {
+            setTopProviders(res.data.data);
+          }
+        })
+        .catch(err => console.log('Error fetching top providers:', err));
+    }
+  }, [category]);
 
 
 
@@ -116,16 +129,10 @@ const ProviderListScreen = ({ route, navigation }) => {
       <View style={styles.cardActions}>
         <TouchableOpacity
           style={[styles.chatBtn, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('Chat', { receiverId: item.user?.id, userName: item.user?.fullName, avatar: avatarUri })}
+          onPress={() => navigation.navigate('ProviderProfile', { provider: item })}
         >
-          <MaterialCommunityIcons name="message-outline" size={16} color="#FFF" />
-          <Text style={styles.chatBtnText}>Send Message</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.callBtn, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}
-          onPress={() => alert(`Calling ${item.user?.fullName || 'Provider'}...`)}
-        >
-          <MaterialCommunityIcons name="phone-outline" size={20} color={colors.accent} />
+          <MaterialCommunityIcons name="briefcase-check" size={16} color="#FFF" />
+          <Text style={styles.chatBtnText}>Book Provider</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -196,6 +203,23 @@ const ProviderListScreen = ({ route, navigation }) => {
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
+          ListHeaderComponent={(!category || category === 'all') && !search && !verifiedOnly && !favoritesOnly && topProviders.length > 0 ? (
+            <View style={styles.topProvidersSection}>
+              <Text style={[styles.topProvidersTitle, { color: colors.text }]}>Providers of the Month 🏆</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topProvidersScroll}>
+                {topProviders.map(item => (
+                  <TouchableOpacity key={`top-${item.id}`} style={[styles.topCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('ProviderProfile', { provider: item })}>
+                    <UserAvatar uri={getMediaUrl(item.user?.avatar)} name={item.user?.fullName} size={50} radius={25} style={styles.topAvatar} />
+                    <Text style={[styles.topProvName, { color: colors.text }]} numberOfLines={1}>{item.user?.fullName}</Text>
+                    <View style={styles.topRatingRow}>
+                      <MaterialCommunityIcons name="star" size={12} color="#F59E0B" />
+                      <Text style={styles.topRatingText}>{Number(item.rating || 0).toFixed(1)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
           renderItem={renderProvider}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -265,6 +289,14 @@ const styles = StyleSheet.create({
   empty: { paddingTop: 80, alignItems: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '800', marginTop: 20 },
   emptyDesc: { fontSize: 14, textAlign: 'center', marginTop: 10, lineHeight: 20 },
+  topProvidersSection: { marginBottom: 20 },
+  topProvidersTitle: { fontSize: 16, fontWeight: '800', marginLeft: 20, marginBottom: 12 },
+  topProvidersScroll: { paddingHorizontal: 20, gap: 12 },
+  topCard: { width: 110, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
+  topAvatar: { marginBottom: 8 },
+  topProvName: { fontSize: 13, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
+  topRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  topRatingText: { fontSize: 12, fontWeight: '700', color: '#F59E0B' },
 });
 
 export default ProviderListScreen;

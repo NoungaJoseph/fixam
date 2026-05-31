@@ -54,6 +54,7 @@ export const AppProvider = ({ children }) => {
   const [conversations, setConversations] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [walletDetails, setWalletDetails] = useState(null);
   const [hiddenJobIds, setHiddenJobIds] = useState([]);
   const [favoriteJobIds, setFavoriteJobIds] = useState([]);
   const [favoriteProviderIds, setFavoriteProviderIds] = useState([]);
@@ -226,6 +227,7 @@ export const AppProvider = ({ children }) => {
       }));
       setJobs([...(jobsRes.data.data || []).map(normalizeJob), ...bookingJobs]);
       setWalletBalance(walletRes.data.data?.balance || 0);
+      setWalletDetails(walletRes.data.data || null);
       setConversations((chatRes.data.data || []).map(normalizeConversation));
       setTransactions(transRes.data.data || []);
       if (user?.role?.toUpperCase() === 'CLIENT') {
@@ -423,6 +425,7 @@ export const AppProvider = ({ children }) => {
       unreadCount,
       notificationCount,
       walletBalance, 
+      walletDetails,
       transactions,
       isProviderOnline,
       isLoading,

@@ -60,16 +60,24 @@ const mergeMessage = (list, incoming) => {
 };
 
 const ChatScreen = ({ route, navigation }) => {
-  const { conversationId, userName, receiverId, avatar, task, otherParticipant, isSupportConversation = false } = route.params || {};
-  const avatarUri = getMediaUrl(avatar);
-  console.log('[ChatScreen] Params:', { conversationId, userName, receiverId });
+  const { conversationId, task, isSupportConversation = false } = route.params || {};
   const { user, uploadFile } = useAuth();
   const currentUser = user || {};
-  const { fetchConversations, fetchNotifications } = useAppContext();
+  const { fetchConversations, fetchNotifications, conversations } = useAppContext();
   const { isDarkMode, colors } = useTheme();
   const { t } = useLanguage();
   const { on, emit } = useSocket();
   const insets = useSafeAreaInsets();
+  
+  const [participantDetails, setParticipantDetails] = useState({
+    userName: route.params?.userName || '',
+    receiverId: route.params?.receiverId || '',
+    avatar: route.params?.avatar || '',
+    otherParticipant: route.params?.otherParticipant || null,
+  });
+  
+  const { userName, receiverId, avatar, otherParticipant } = participantDetails;
+  const avatarUri = getMediaUrl(avatar);
   
   const [activeConvId, setActiveConvId] = useState(conversationId);
   const [messages, setMessages] = useState([]);
@@ -85,7 +93,21 @@ const ChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     activeConvIdRef.current = activeConvId;
-  }, [activeConvId]);
+    if (activeConvId && conversations.length > 0) {
+      const conv = conversations.find(c => c.id === activeConvId);
+      if (conv && conv.participants?.length > 0) {
+        const participant = conv.participants.find(p => p.id !== currentUser.id);
+        if (participant) {
+          setParticipantDetails({
+            userName: participant.fullName || participant.phone || 'User',
+            receiverId: participant.id,
+            avatar: participant.avatar,
+            otherParticipant: participant,
+          });
+        }
+      }
+    }
+  }, [activeConvId, conversations, currentUser.id]);
 
   const fetchMessages = useCallback(async () => {
     if (!activeConvId) {
@@ -368,14 +390,23 @@ const ChatScreen = ({ route, navigation }) => {
           <FlatList ref={flatListRef} data={messages} keyExtractor={item => item.id} renderItem={renderMessage} contentContainerStyle={styles.messageList} showsVerticalScrollIndicator={false} onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })} />
         )}
 
-        <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
-          <TouchableOpacity style={styles.attachBtn} onPress={handleImagePick} disabled={isUploading}>{isUploading ? <ActivityIndicator size="small" color={colors.accent} /> : <MaterialCommunityIcons name="plus" size={24} color={colors.accent} />}</TouchableOpacity>
-          <View style={[styles.inputContainer, { backgroundColor: colors.background }]}>
-            <TextInput style={[styles.textInput, { color: colors.text }]} placeholder={t('messages.type')} placeholderTextColor={colors.placeholder} value={input} onChangeText={(t) => { setInput(t); emit('typing', { conversationId: activeConvId, isTyping: t.length > 0 }); }} multiline />
+        {currentUser.role === 'CLIENT' && otherParticipant?.role === 'PROVIDER' && !isSupportConversation && !hasAcceptedWork ? (
+          <View style={[styles.bookingBanner, { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <MaterialCommunityIcons name="calendar-lock" size={28} color={colors.placeholder} style={{ marginBottom: 8 }} />
+            <Text style={[styles.bookingBannerText, { color: colors.textSecondary }]}>{t('messages.mustBookProvider', 'You must book this provider to message them.')}</Text>
+            <TouchableOpacity style={[styles.bannerBookBtn, { backgroundColor: colors.accent }]} onPress={openBookingForm}>
+              <Text style={styles.bannerBookBtnText}>{t('messages.bookToMessage', 'Book to Message')}</Text>
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.accent, opacity: input.trim() && !isSending ? 1 : 0.45 }]} onPress={() => handleSend()} disabled={!input.trim() || isSending}><MaterialCommunityIcons name="send" size={20} color="#FFF" /></TouchableOpacity>
-        </View>
+        ) : (
+          <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
+            <TouchableOpacity style={styles.attachBtn} onPress={handleImagePick} disabled={isUploading}>{isUploading ? <ActivityIndicator size="small" color={colors.accent} /> : <MaterialCommunityIcons name="plus" size={24} color={colors.accent} />}</TouchableOpacity>
+            <View style={[styles.inputContainer, { backgroundColor: colors.background }]}>
+              <TextInput style={[styles.textInput, { color: colors.text }]} placeholder={t('messages.type')} placeholderTextColor={colors.placeholder} value={input} onChangeText={(t) => { setInput(t); emit('typing', { conversationId: activeConvId, isTyping: t.length > 0 }); }} multiline />
+            </View>
+            <TouchableOpacity style={[styles.sendButton, { backgroundColor: colors.accent, opacity: input.trim() && !isSending ? 1 : 0.45 }]} onPress={() => handleSend()} disabled={!input.trim() || isSending}><MaterialCommunityIcons name="send" size={20} color="#FFF" /></TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -409,6 +440,29 @@ const styles = StyleSheet.create({
   inputContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 25, paddingHorizontal: 15, marginRight: 10 },
   textInput: { flex: 1, minHeight: 45, fontSize: 15, paddingTop: 10, paddingBottom: 10 },
   sendButton: { width: 45, height: 45, borderRadius: 22.5, justifyContent: 'center', alignItems: 'center' },
+  bookingBanner: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  bookingBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  bannerBookBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  bannerBookBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
 
 export default ChatScreen;

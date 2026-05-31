@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -67,7 +67,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
 
         if (status === 'success') {
           await fetchAppData?.();
-          navigation.replace('CoinPaymentSuccess', {
+          navigation.navigate('CoinPaymentSuccess', {
             coins: response.data.coins,
             package: pkg,
           });
@@ -75,7 +75,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
         }
 
         if (status === 'failed') {
-          navigation.replace('CoinPaymentFailed', {
+          navigation.navigate('CoinPaymentFailed', {
             message: response.data.message,
             package: pkg,
           });
@@ -85,7 +85,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
         if (attempts < maxAttempts) {
           timeoutRef.current = setTimeout(poll, 5000);
         } else {
-          navigation.replace('CoinPaymentFailed', {
+          navigation.navigate('CoinPaymentFailed', {
             message: 'Payment timed out. If money was deducted, please contact support.',
             package: pkg,
           });
@@ -94,7 +94,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
         if (attempts < maxAttempts) {
           timeoutRef.current = setTimeout(poll, 5000);
         } else {
-          navigation.replace('CoinPaymentFailed', {
+          navigation.navigate('CoinPaymentFailed', {
             message: 'Payment timed out. If money was deducted, please contact support.',
             package: pkg,
           });
@@ -126,14 +126,14 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
       if (response.data.reference) {
         pollPaymentStatus(response.data.reference);
       } else {
-        navigation.replace('CoinPaymentFailed', {
+        navigation.navigate('CoinPaymentFailed', {
           message: 'Payment reference was not returned. Please try again.',
           package: pkg,
         });
       }
     } catch (error) {
       console.log('Payment submission error:', error);
-      navigation.replace('CoinPaymentFailed', {
+      navigation.navigate('CoinPaymentFailed', {
         message: error.response?.data?.message || t('payments.submitPaymentFailed'),
         package: pkg,
       });
@@ -178,6 +178,10 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
         backgroundColor="transparent"
         translucent
       />
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -327,6 +331,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
           <View style={{ height: 32 }} />
         </ScrollView>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 };

@@ -150,7 +150,21 @@ const JobStatusScreen = ({ route, navigation }) => {
                           <Text style={[styles.applicationMeta, { color: colors.textSecondary }]}>
                             {t('jobs.ratingValue', { rating: Number(provider?.rating || 0).toFixed(1) })}
                           </Text>
+                          {provider?.jobsCompleted !== undefined && (
+                            <>
+                              <Text style={{ color: colors.textSecondary, marginHorizontal: 4 }}>•</Text>
+                              <MaterialCommunityIcons name="briefcase-outline" size={14} color={colors.textSecondary} style={{ marginRight: 2 }} />
+                              <Text style={[styles.applicationMeta, { color: colors.textSecondary }]}>
+                                {provider.jobsCompleted}
+                              </Text>
+                            </>
+                          )}
                         </View>
+                        {provider?.rate ? (
+                          <Text style={[styles.applicationMeta, { color: colors.accent, marginTop: 4, fontWeight: '800' }]}>
+                            {Number(provider.rate).toLocaleString()} FCFA
+                          </Text>
+                        ) : null}
                       </View>
                     </TouchableOpacity>
                     

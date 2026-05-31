@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
   TextInput, Image, StatusBar, Dimensions, Platform, RefreshControl
@@ -61,7 +62,7 @@ const LEARN_CARDS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
-  const { providers, walletBalance, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds } = useAppContext();
+  const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
@@ -69,6 +70,12 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
   const learnScrollRef = useRef(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAppData();
+    }, [])
+  );
 
   useEffect(() => {
     let timer;
@@ -106,9 +113,9 @@ const HomeScreen = ({ navigation }) => {
 
   // Real data counts
   const activeTaskCount = jobs?.filter(j => j.status === 'OPEN' || j.status === 'IN_PROGRESS').length || 0;
-  const completedTaskCount = jobs?.filter(j => j.status === 'COMPLETED').length || 0;
+  const completedTaskCount = walletDetails?.completedTasks ?? (jobs?.filter(j => j.status === 'COMPLETED').length || 0);
   const savedCount = favoriteProviderIds?.length || 0;
-  const txCount = transactions?.length || 0;
+  const txCount = walletDetails?.thisMonthTransactions ?? (transactions?.length || 0);
 
   // Level thresholds grow by 5 more tasks each level: 5, 15, 30, 50...
   const calculateLevel = (completedCount) => {
@@ -128,8 +135,8 @@ const HomeScreen = ({ navigation }) => {
 
   const currentLevel = calculateLevel(completedTaskCount);
   const { currentThreshold, nextThreshold } = getLevelThresholds(currentLevel);
-  const tasksInCurrentLevel = completedTaskCount - currentThreshold;
-  const tasksNeededForNextLevel = nextThreshold - currentThreshold;
+  const tasksNeededForNextLevel = walletDetails?.nextLevelTasks ?? (nextThreshold - currentThreshold);
+  const progressPercent = walletDetails?.progressPercent ?? Math.min(100, Math.round((completedTaskCount / tasksNeededForNextLevel) * 100));
   const nextRewardCoins = Math.min(currentLevel, 200);
   const localizedLearnCards = LEARN_CARDS.map((card) => {
     const copy = {
@@ -258,10 +265,10 @@ const HomeScreen = ({ navigation }) => {
           <View style={{ flex: 1 }}>
             <Text style={styles.progressTitle}>{t('home.doingGreat')} 🔥</Text>
             <Text style={styles.progressCount}>{t('home.tasksCompleted', { count: completedTaskCount })}</Text>
-            <Text style={styles.progressSub}>{t('home.tasksToLevel', { count: Math.max(nextThreshold - completedTaskCount, 0) })}</Text>
+            <Text style={styles.progressSub}>{t('home.tasksToLevel', { count: Math.max(tasksNeededForNextLevel - completedTaskCount, 0) })}</Text>
             <View style={styles.progressBar}>
               {[1,2,3,4,5].map((i) => {
-                const stepValue = (tasksNeededForNextLevel > 0 ? (tasksInCurrentLevel / tasksNeededForNextLevel) : 1) * 5;
+                const stepValue = (progressPercent / 100) * 5;
                 return (
                   <View key={i} style={[styles.progressSegment, { backgroundColor: i <= stepValue ? '#0D9488' : 'rgba(255,255,255,0.15)' }]} />
                 );

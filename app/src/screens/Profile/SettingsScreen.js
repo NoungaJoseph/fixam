@@ -87,7 +87,7 @@ const SettingsScreen = ({ navigation, route }) => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
           {/* Page Title */}
@@ -212,7 +212,8 @@ const SettingsScreen = ({ navigation, route }) => {
           {/* ACTIONS */}
           <SectionHeader icon="power" label={t('settings.actions')} />
           <SectionCard>
-            <SettingItem icon="logout" title={t('settings.logout')} desc={t('settings.logoutDesc')} onPress={handleLogout} danger />
+            <SettingItem icon="logout" title={t('settings.logout')} desc={t('settings.logoutDesc')} onPress={handleLogout} />
+            <SettingItem icon="delete-outline" title={t('settings.deleteAccount')} desc={t('settings.deleteAccountDesc')} onPress={() => navigation.navigate('DeleteAccount')} danger />
           </SectionCard>
 
           <Text style={[styles.version, { color: colors.placeholder }]}>{t('settings.version')}</Text>

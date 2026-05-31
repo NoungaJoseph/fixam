@@ -269,7 +269,7 @@ const PrivacySecurityScreen = ({ navigation }) => {
             />
           </View>
 
-          <TouchableOpacity style={styles.deleteBtn}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={() => navigation.navigate('DeleteAccount')}>
             <MaterialCommunityIcons name="delete-outline" size={20} color={colors.error} />
             <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
           </TouchableOpacity>
