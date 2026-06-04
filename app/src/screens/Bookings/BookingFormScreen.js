@@ -5,7 +5,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
-import { translateApiError } from '../../i18n/translate';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
@@ -13,12 +12,12 @@ import { StatusBar } from 'expo-status-bar';
 const BookingFormScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
-  const { providerId, providerName, task } = route.params || {};
+  const { providerId, providerName, providerRate, task } = route.params || {};
   const [form, setForm] = useState({
     bookingDate: '',
     bookingTime: '',
     location: task?.location || '',
-    budget: String(task?.budgetMax || task?.budget || ''),
+    budget: String(task?.budgetMax || task?.budget || providerRate || 0),
     notes: task?.description || '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -95,20 +94,22 @@ const BookingFormScreen = ({ route, navigation }) => {
     }
     try {
       setSubmitting(true);
+      const bookingBudget = Number(String(form.budget || 0).replace(/[^\d.]/g, '')) || 0;
       const res = await api.post('/bookings', {
         providerId,
         taskId: task?.id,
         bookingDate: form.bookingDate,
         bookingTime: form.bookingTime,
-        location: form.location,
-        budget: Number(String(form.budget).replace(/[^\d.]/g, '')),
-        notes: form.notes,
+        budget: bookingBudget,
+        location: form.location || '',
+        notes: form.notes || '',
       });
       Alert.alert(t('bookings.sent'), t('bookings.sentBody'));
       navigation.goBack();
       return res.data;
     } catch (error) {
-      Alert.alert(t('bookings.failed'), translateApiError(error, 'errors.bookingFailed'));
+      const message = error.response?.data?.message || t('errors.bookingFailed');
+      Alert.alert(t('bookings.failed'), message);
     } finally {
       setSubmitting(false);
     }

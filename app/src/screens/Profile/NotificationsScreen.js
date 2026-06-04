@@ -1,29 +1,33 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Platform } from 'react-native';
+import { FlatList, StyleSheet, View, Text, TouchableOpacity, StatusBar, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAppContext } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
 
 const ICON_CONFIG = {
-  TRANSACTION:     { icon: 'wallet',         color: '#0D9488', bg: '#F0FDFA' },
-  VERIFICATION:    { icon: 'shield-check',   color: '#2563EB', bg: '#EFF6FF' },
-  JOB:             { icon: 'briefcase',      color: '#8B5CF6', bg: '#F5F3FF' },
-  JOB_APPLICATION: { icon: 'send',           color: '#F59E0B', bg: '#FFFBEB' },
-  DEFAULT:         { icon: 'bell',           color: '#64748B', bg: '#F1F5F9' },
+  NEW_MESSAGE: { icon: 'message-text-outline', color: '#0D9488', bg: '#F0FDFA' },
+  NEW_APPLICATION: { icon: 'send-outline', color: '#F59E0B', bg: '#FFFBEB' },
+  APPLICATION_ACCEPTED: { icon: 'briefcase-check-outline', color: '#2563EB', bg: '#EFF6FF' },
+  JOB_COMPLETED: { icon: 'check-circle-outline', color: '#22C55E', bg: '#ECFDF5' },
+  BOOKING_SENT: { icon: 'calendar-check-outline', color: '#8B5CF6', bg: '#F5F3FF' },
+  COINS_ADDED: { icon: 'wallet-plus-outline', color: '#0D9488', bg: '#F0FDFA' },
+  PROVIDER_OF_MONTH: { icon: 'trophy-outline', color: '#F59E0B', bg: '#FFFBEB' },
+  TRANSACTION: { icon: 'wallet', color: '#0D9488', bg: '#F0FDFA' },
+  VERIFICATION: { icon: 'shield-check', color: '#2563EB', bg: '#EFF6FF' },
+  JOB: { icon: 'briefcase', color: '#8B5CF6', bg: '#F5F3FF' },
+  JOB_APPLICATION: { icon: 'send', color: '#F59E0B', bg: '#FFFBEB' },
+  DEFAULT: { icon: 'bell-outline', color: '#64748B', bg: '#F1F5F9' },
 };
 
 const NotificationsScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const [filter, setFilter] = useState('All');
   const { t, currentLanguage } = useLanguage();
-  const { notifications, markNotificationAsRead, archiveNotification } = useAppContext();
-  const { user } = useAuth();
+  const { notifications, markNotificationAsRead } = useAppContext();
 
-  const getConfig = (type) => ICON_CONFIG[type] || ICON_CONFIG.DEFAULT;
+  const getConfig = (notif) => ICON_CONFIG[notif?.data?.type || notif?.type] || ICON_CONFIG.DEFAULT;
 
   const getTimeLabel = (date) => {
     const d = new Date(date);
@@ -36,33 +40,8 @@ const NotificationsScreen = ({ navigation }) => {
   };
 
   const handlePress = async (notif) => {
-    try {
-      if (!notif.isRead) await markNotificationAsRead(notif.id);
-      if (notif.data?.type === 'TRANSACTION') {
-        if (user?.role === 'PROVIDER') {
-          navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' });
-        } else {
-          navigation.navigate('TopUp');
-        }
-      } else if (notif.data?.type === 'VERIFICATION') {
-        navigation.navigate('Settings', { screen: 'Verification' });
-      } else if ((notif.data?.type === 'JOB' || notif.data?.type === 'JOB_APPLICATION') && notif.data?.jobId) {
-        const res = await api.get(`/jobs/${notif.data.jobId}`);
-        const job = res.data.data;
-        if (user?.role === 'PROVIDER') {
-          navigation.getParent()?.getParent()?.navigate('MainTabs', { screen: 'Home', params: { screen: 'TaskDetails', params: { task: job } } });
-        } else {
-          navigation.getParent()?.getParent()?.navigate('Tasks', { screen: 'JobStatus', params: { job } });
-        }
-      }
-    } catch (err) {
-      Alert.alert(t('common.error'), err.response?.data?.message || t('common.tryAgain'));
-    }
-  };
-
-  const handleArchive = async (notif) => {
-    try { await archiveNotification(notif.id); }
-    catch (err) { Alert.alert(t('common.error'), err.response?.data?.message || t('common.tryAgain')); }
+    if (!notif.isRead) await markNotificationAsRead(notif.id);
+    navigation.navigate('NotificationDetail', { notification: { ...notif, isRead: true } });
   };
 
   const filtered = notifications.filter(n => {
@@ -72,6 +51,30 @@ const NotificationsScreen = ({ navigation }) => {
   });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const renderItem = ({ item: notif }) => {
+    const cfg = getConfig(notif);
+    const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
+
+    return (
+      <TouchableOpacity
+        style={styles.notifRow}
+        onPress={() => handlePress(notif)}
+        activeOpacity={0.82}
+      >
+        <View style={styles.dotSlot}>
+          {!notif.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />}
+        </View>
+        <View style={[styles.notifIcon, { backgroundColor: darkBg }]}>
+          <MaterialCommunityIcons name={cfg.icon} size={21} color={cfg.color} />
+        </View>
+        <View style={styles.notifBody}>
+          <Text style={[styles.notifTitle, { color: colors.text }]} numberOfLines={1}>{notif.title}</Text>
+          <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.body}</Text>
+        </View>
+        <Text style={[styles.notifTime, { color: colors.placeholder }]} numberOfLines={1}>{getTimeLabel(notif.createdAt)}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -113,8 +116,16 @@ const NotificationsScreen = ({ navigation }) => {
           })}
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {filtered.length === 0 ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => (
+            <View style={[styles.separator, { backgroundColor: isDarkMode ? '#1F2937' : '#F0F0F0' }]} />
+          )}
+          ListEmptyComponent={(
             <View style={styles.empty}>
               <View style={[styles.emptyCircle, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
                 <MaterialCommunityIcons name="bell-off-outline" size={56} color={colors.placeholder} />
@@ -124,51 +135,8 @@ const NotificationsScreen = ({ navigation }) => {
                 {filter === 'Unread' ? t('notifications.emptyUnread') : t('notifications.emptySubtitle')}
               </Text>
             </View>
-          ) : (
-            filtered.map(notif => {
-              const cfg = getConfig(notif.data?.type);
-              const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
-              return (
-                <TouchableOpacity
-                  key={notif.id}
-                  style={[styles.notifRow, {
-                    backgroundColor: !notif.isRead
-                      ? (isDarkMode ? 'rgba(13,148,136,0.06)' : '#F0FDFA')
-                      : colors.card,
-                    borderColor: !notif.isRead ? '#0D9488' : colors.border,
-                    borderLeftWidth: !notif.isRead ? 5 : 1,
-                    shadowColor: isDarkMode ? 'transparent' : '#000',
-                  }]}
-                  onPress={() => handlePress(notif)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.notifIcon, { backgroundColor: darkBg }]}>
-                    <MaterialCommunityIcons name={cfg.icon} size={22} color={cfg.color} />
-                  </View>
-                  <View style={styles.notifBody}>
-                    <View style={styles.notifTop}>
-                      <Text style={[styles.notifTitle, { color: colors.text }]} numberOfLines={1}>{notif.title}</Text>
-                      <Text style={[styles.notifTime, { color: colors.placeholder }]}>{getTimeLabel(notif.createdAt)}</Text>
-                    </View>
-                    <Text style={[styles.notifDesc, { color: colors.textSecondary }]} numberOfLines={2}>{notif.body}</Text>
-                  </View>
-                  <View style={styles.notifActions}>
-                    <View style={{ width: 8, height: 8 }}>
-                      {!notif.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />}
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.archiveBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC' }]}
-                      onPress={(e) => { e.stopPropagation?.(); handleArchive(notif); }}
-                    >
-                      <MaterialCommunityIcons name="archive-outline" size={16} color={colors.placeholder} />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
           )}
-          <View style={{ height: 100 }} />
-        </ScrollView>
+        />
       </SafeAreaView>
     </View>
   );
@@ -192,21 +160,22 @@ const styles = StyleSheet.create({
   chip: { flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 22, borderWidth: 1 },
   chipText: { fontSize: 13, fontWeight: '700' },
 
-  scroll: { paddingHorizontal: 16, paddingTop: 4 },
+  list: { paddingTop: 4, paddingBottom: 100 },
   notifRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1,
-    shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
-  notifIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  dotSlot: { width: 8, height: 40, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  notifIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   notifBody: { flex: 1 },
-  notifTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  notifTitle: { fontSize: 14, fontWeight: '800', flex: 1, marginRight: 6 },
-  notifTime: { fontSize: 11, fontWeight: '500' },
+  notifTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  notifTime: { width: 58, fontSize: 12, fontWeight: '500', textAlign: 'right', marginTop: 2 },
   notifDesc: { fontSize: 13, lineHeight: 18 },
-  notifActions: { alignItems: 'flex-end', gap: 8, flexShrink: 0 },
   unreadDot: { width: 8, height: 8, borderRadius: 4 },
-  archiveBtn: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  separator: { height: 1, marginHorizontal: 16 },
 
   empty: { alignItems: 'center', paddingTop: 80, gap: 16 },
   emptyCircle: { width: 110, height: 110, borderRadius: 55, alignItems: 'center', justifyContent: 'center' },

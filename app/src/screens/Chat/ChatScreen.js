@@ -35,6 +35,19 @@ const normalizeMessage = (message) => {
 
 const normalizeMessages = (list = []) => list.map(normalizeMessage).filter(Boolean);
 
+const normalizeParticipant = (participant) => {
+  if (!participant) return null;
+  const userData = participant.user || participant;
+  if (!userData?.id) return null;
+
+  return {
+    userName: userData.fullName || userData.phone || 'User',
+    receiverId: userData.id,
+    avatar: userData.avatar || '',
+    otherParticipant: userData,
+  };
+};
+
 const mergeMessage = (list, incoming) => {
   const message = normalizeMessage(incoming);
   if (!message) return list;
@@ -91,43 +104,39 @@ const ChatScreen = ({ route, navigation }) => {
   const activeConvIdRef = useRef(conversationId);
   console.log('[ChatScreen] Initial loading state:', !!conversationId);
 
+  // Keep activeConvIdRef in sync
   useEffect(() => {
     activeConvIdRef.current = activeConvId;
-    if (activeConvId && conversations.length > 0) {
-      const conv = conversations.find(c => c.id === activeConvId);
-      if (conv && conv.participants?.length > 0) {
-        const participant = conv.participants.find(p => p.id !== currentUser.id);
-        if (participant) {
-          setParticipantDetails({
-            userName: participant.fullName || participant.phone || 'User',
-            receiverId: participant.id,
-            avatar: participant.avatar,
-            otherParticipant: participant,
-          });
-        }
-      }
-    }
-  }, [activeConvId, conversations, currentUser.id]);
+  }, [activeConvId]);
 
-  // Fetch participant profile if not loaded from context
+  // Always fetch full participant details from the conversation endpoint on mount.
+  // This guarantees otherParticipant.role and providerProfile are populated regardless
+  // of how the chat was opened (provider profile page vs. Messages list).
   useEffect(() => {
-    const shouldFetchParticipant = !userName && receiverId && !participantDetails.otherParticipant;
-    if (shouldFetchParticipant) {
-      api.get(`/users/${receiverId}/profile`)
-        .then((res) => {
-          const userData = res.data.data;
-          setParticipantDetails(prev => ({
-            ...prev,
-            userName: userData?.fullName || userData?.phone || 'User',
-            avatar: userData?.avatar || prev.avatar,
-            otherParticipant: userData,
-          }));
-        })
-        .catch((error) => {
-          console.log('Error fetching participant profile:', error.message);
-        });
-    }
-  }, [receiverId, userName]);
+    if (!activeConvId) return;
+
+    api.get(`/chat/conversations/${activeConvId}`)
+      .then((res) => {
+        const conv = res.data.data;
+        if (!conv?.participants) return;
+        const other = conv.participants.find((p) => (p.userId || p.user?.id || p.id) !== currentUser.id);
+        const normalized = normalizeParticipant(other);
+        if (normalized) setParticipantDetails(normalized);
+      })
+      .catch((err) => {
+        console.log('[ChatScreen] Could not fetch conversation details:', err.message);
+        // Fallback: try to find participant in already-loaded conversations context
+        if (conversations.length > 0) {
+          const conv = conversations.find((c) => c.id === activeConvId);
+          if (conv?.participants?.length > 0) {
+            const participant = conv.participants.find((p) => (p.userId || p.user?.id || p.id) !== currentUser.id);
+            const normalized = normalizeParticipant(participant);
+            if (normalized) setParticipantDetails(normalized);
+          }
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvId]);
 
   const fetchMessages = useCallback(async () => {
     if (!activeConvId) {

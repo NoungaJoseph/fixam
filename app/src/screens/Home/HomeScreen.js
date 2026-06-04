@@ -12,19 +12,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateService } from '../../i18n/translate';
 import UserAvatar from '../../components/UserAvatar';
+import { POPULAR_SERVICE_CATALOG, POPULAR_SERVICE_IMAGES } from '../../data/popularServices';
 
 const { width } = Dimensions.get('window');
 
-const CATEGORIES = [
-  { id: '1', name: 'Cleaning', icon: 'broom', color: '#0D9488' },
-  { id: '2', name: 'Plumbing', icon: 'pipe-wrench', color: '#0D9488' },
-  { id: '3', name: 'Electrical', icon: 'lightning-bolt', color: '#F59E0B' },
-  { id: '4', name: 'Carpentry', icon: 'saw-blade', color: '#0D9488' },
-  { id: '5', name: 'Painting', icon: 'format-paint', color: '#0D9488' },
-  { id: '6', name: 'Beauty', icon: 'content-cut', color: '#EC4899' },
-  { id: '7', name: 'Babysitting', icon: 'baby-face-outline', color: '#8B5CF6' },
-  { id: '8', name: 'Landscaping', icon: 'flower-outline', color: '#22C55E' },
-];
+const POPULAR_SERVICES = POPULAR_SERVICE_CATALOG.slice(0, 15);
 
 const LEARN_CARDS = [
   {
@@ -189,37 +181,77 @@ const HomeScreen = ({ navigation }) => {
       >
 
         {/* ═══ 1.5. SEARCH BAR & FILTER ROW ═══ */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}>
-            <MaterialCommunityIcons name="magnify" size={22} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.text }]}
-              placeholder={t('home.searchProfessionals')}
-              placeholderTextColor={isDarkMode ? '#64748B' : '#94A3B8'}
-              value={search}
-              onChangeText={setSearch}
-              onSubmitEditing={() => {
-                if (search.trim()) {
-                  navigation.navigate('ProviderList', { search: search.trim() });
-                  setSearch('');
-                }
+        <LinearGradient
+          colors={isDarkMode ? ['#071936', '#0F172A'] : ['#E6F7F5', '#DBEAFE']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.searchBand}
+        >
+          <View style={styles.searchRow}>
+            <View style={[styles.searchBar, { backgroundColor: isDarkMode ? '#0F172A' : '#FFF', borderColor: isDarkMode ? '#1E3A5F' : '#BDEBE5' }]}>
+              <MaterialCommunityIcons name="magnify" size={22} color={isDarkMode ? '#94A3B8' : '#0D9488'} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder={t('home.searchProfessionals')}
+                placeholderTextColor={isDarkMode ? '#64748B' : '#5B7C8A'}
+                value={search}
+                onChangeText={setSearch}
+                onSubmitEditing={() => {
+                  if (search.trim()) {
+                    navigation.navigate('ProviderList', { search: search.trim() });
+                    setSearch('');
+                  }
+                }}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <MaterialCommunityIcons name="close-circle" size={18} color={isDarkMode ? '#64748B' : '#0D9488'} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={[styles.filterBtn, { backgroundColor: isDarkMode ? '#0F172A' : '#FFF', borderColor: isDarkMode ? '#1E3A5F' : '#BDEBE5' }]}
+              onPress={() => {
+                navigation.navigate('ProviderList');
               }}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <MaterialCommunityIcons name="close-circle" size={18} color={isDarkMode ? '#64748B' : '#94A3B8'} />
-              </TouchableOpacity>
-            )}
+            >
+              <MaterialCommunityIcons name="tune-variant" size={20} color={isDarkMode ? '#E2E8F0' : '#0D9488'} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={[styles.filterBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
-            onPress={() => {
-              navigation.navigate('ProviderList');
-            }}
-          >
-            <MaterialCommunityIcons name="tune-variant" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+
+          <View style={styles.popularHeader}>
+            <Text style={[styles.popularTitle, { color: colors.text }]}>{t('home.popularCategories')}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('PopularServices')}>
+              <Text style={styles.popularSeeAll}>{t('home.viewAll')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularScroll}>
+            {POPULAR_SERVICES.map(service => (
+              <TouchableOpacity
+                key={service.imageName}
+                style={[styles.popularCard, { backgroundColor: isDarkMode ? '#111827' : '#FFF' }]}
+                onPress={() => navigation.navigate('ProviderList', { category: service.name })}
+                activeOpacity={0.84}
+              >
+                <View style={styles.popularIconPanel}>
+                  <Image
+                    source={POPULAR_SERVICE_IMAGES[service.imageName]}
+                    style={styles.popularImage}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={['rgba(15,23,42,0.04)', 'rgba(15,23,42,0.22)']}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </View>
+                <Text style={[styles.popularCardText, { color: colors.text }]} numberOfLines={2}>
+                  {translateService(service.name)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </LinearGradient>
 
         {/* ═══ 2. WALLET BALANCE CARD ═══ */}
         <TouchableOpacity
@@ -403,26 +435,6 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ═══ 6. POPULAR CATEGORIES ═══ */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.popularCategories')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ProviderList')}>
-            <Text style={styles.viewAll}>{t('home.viewAll')}</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
-          {CATEGORIES.map(cat => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.catPill, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#E2E8F0' }]}
-              onPress={() => navigation.navigate('ProviderList', { category: cat.name })}
-            >
-              <MaterialCommunityIcons name={cat.icon} size={16} color={cat.color} />
-              <Text style={[styles.catText, { color: colors.text }]}>{translateService(cat.name)}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
         {/* ═══ 7. RECOMMENDED PROFESSIONALS ═══ */}
         {providers.length > 0 && (
           <>
@@ -512,11 +524,14 @@ const styles = StyleSheet.create({
   bellBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
 
   // 1.5. SEARCH BAR & FILTER
+  searchBand: {
+    paddingTop: 14,
+    paddingBottom: 18,
+  },
   searchRow: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 16,
-    marginTop: 16,
   },
   searchBar: {
     flex: 1,
@@ -541,12 +556,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
+  popularHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginTop: 18,
+    marginBottom: 12,
+  },
+  popularTitle: {
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  popularSeeAll: {
+    color: '#0D9488',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  popularScroll: {
+    paddingLeft: 18,
+    paddingRight: 10,
+    gap: 10,
+  },
+  popularCard: {
+    width: 132,
+    overflow: 'hidden',
+    borderRadius: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  popularIconPanel: {
+    height: 82,
+    overflow: 'hidden',
+    backgroundColor: '#E2E8F0',
+  },
+  popularImage: {
+    width: '100%',
+    height: '100%',
+  },
+  popularCardText: {
+    minHeight: 54,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '900',
+  },
 
   // 2. WALLET CARD
   walletCard: {
-    marginHorizontal: 16, 
-    marginTop: 16, 
-    borderRadius: 24, 
+    marginHorizontal: 0, 
+    marginTop: 0, 
+    borderRadius: 0, 
     paddingHorizontal: 20, 
     paddingVertical: 22,
     flexDirection: 'row', 
@@ -629,7 +693,7 @@ const styles = StyleSheet.create({
 
   // 3. PROGRESS CARD
   progressCard: {
-    marginHorizontal: 16, marginTop: 14, borderRadius: 24, paddingHorizontal: 22, paddingVertical: 26,
+    marginHorizontal: 0, marginTop: 0, borderRadius: 0, paddingHorizontal: 22, paddingVertical: 26,
     flexDirection: 'row', alignItems: 'center', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
@@ -646,7 +710,7 @@ const styles = StyleSheet.create({
 
   // 4. CTA CARD
   ctaCard: {
-    marginHorizontal: 16, marginTop: 14, borderRadius: 24, paddingHorizontal: 24, paddingVertical: 28,
+    marginHorizontal: 0, marginTop: 0, borderRadius: 0, paddingHorizontal: 24, paddingVertical: 28,
     flexDirection: 'row', alignItems: 'center', borderWidth: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 4,
   },
@@ -757,11 +821,6 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginTop: 20, marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '900' },
   viewAll: { fontSize: 13, fontWeight: '700', color: '#0D9488' },
-
-  // 6. CATEGORIES
-  catScroll: { paddingLeft: 16, paddingRight: 8, gap: 8 },
-  catPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1 },
-  catText: { fontSize: 13, fontWeight: '600' },
 
   // 7. PROFESSIONALS
   proScroll: { paddingLeft: 16, paddingRight: 8 },

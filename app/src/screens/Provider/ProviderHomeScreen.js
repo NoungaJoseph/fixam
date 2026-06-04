@@ -767,8 +767,8 @@ const styles = StyleSheet.create({
 
   // 3. Premium Stats Dashboard Card
   statsCard: {
-    marginHorizontal: 8,
-    borderRadius: 24,
+    marginHorizontal: 0,
+    borderRadius: 0,
     paddingVertical: 22,
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 10,
-    marginBottom: 16,
+    marginBottom: 0,
   },
   cardCol: {
     flex: 1,
@@ -874,9 +874,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
   },
   levelProgressCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 18,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderRadius: 0,
     borderWidth: 1,
     padding: 16,
   },
@@ -912,8 +912,8 @@ const styles = StyleSheet.create({
 
   // 4. Unified Availability & Quick Nav Container
   unifiedNavCard: {
-    marginHorizontal: 16,
-    borderRadius: 24,
+    marginHorizontal: 0,
+    borderRadius: 0,
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingVertical: 18,

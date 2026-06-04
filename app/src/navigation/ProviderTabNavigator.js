@@ -27,6 +27,7 @@ import ProviderProfileEditItemScreen from '../screens/Dashboard/ProviderProfileE
 import ProviderProfileSectionEditScreen from '../screens/Dashboard/ProviderProfileSectionEditScreen';
 import SettingsScreen from '../screens/Profile/SettingsScreen';
 import NotificationsScreen from '../screens/Profile/NotificationsScreen';
+import NotificationDetailScreen from '../screens/Profile/NotificationDetailScreen';
 import NotificationSettingsScreen from '../screens/Profile/NotificationSettingsScreen';
 import PrivacySecurityScreen from '../screens/Profile/PrivacySecurityScreen';
 import ProfileLanguageScreen from '../screens/Profile/ProfileLanguageScreen';
@@ -61,6 +62,7 @@ const HomeStack = () => (
     <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="FindJobs" component={FindJobsScreen} />
@@ -73,6 +75,7 @@ const FindJobsStack = () => (
     <Stack.Screen name="FindJobsMain" component={FindJobsScreen} />
     <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -86,6 +89,7 @@ const JobsStack = () => (
     <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="ReviewTask" component={ReviewTaskScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -117,6 +121,7 @@ const MessagesStack = () => (
     <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="LiveTaskMap" component={LiveTaskMapScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -127,6 +132,7 @@ const ProfileStack = () => (
     <Stack.Screen name="ProviderProfileEditItem" component={ProviderProfileEditItemScreen} />
     <Stack.Screen name="ProviderProfileSectionEdit" component={ProviderProfileSectionEditScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
     <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
     <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
     <Stack.Screen name="LanguageSelection" component={ProfileLanguageScreen} />

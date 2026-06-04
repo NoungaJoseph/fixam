@@ -382,7 +382,7 @@ export const AppProvider = ({ children }) => {
     if (markingNotificationsRef.current.has(id)) return;
     markingNotificationsRef.current.add(id);
     try {
-      await api.put(`/notifications/${id}/read`);
+      await api.patch(`/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     } catch (error) {
       console.log('Error marking notification as read:', error);

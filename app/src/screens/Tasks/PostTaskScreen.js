@@ -486,7 +486,7 @@ const PostTaskScreen = ({ route, navigation }) => {
             style={styles.secondaryActionBtn}
             onPress={() => navigation.navigate('JobStatus', { job })}
           >
-            <MaterialCommunityIcons name="eye" size={22} color="#071936" />
+            <MaterialCommunityIcons name="eye" size={18} color="#071936" />
             <Text style={styles.secondaryActionText}>{t('jobs.details')}</Text>
           </TouchableOpacity>
           
@@ -495,14 +495,14 @@ const PostTaskScreen = ({ route, navigation }) => {
               style={styles.secondaryActionBtn}
               onPress={() => startEditTask(job)}
             >
-              <MaterialCommunityIcons name="pencil-outline" size={22} color="#071936" />
+              <MaterialCommunityIcons name="pencil-outline" size={18} color="#071936" />
               <Text style={styles.secondaryActionText}>{t('jobs.edit')}</Text>
             </TouchableOpacity>
           )}
 
           {isComplete ? (
             <TouchableOpacity style={[styles.secondaryActionBtn, styles.bookAgainBtn]} onPress={navigateToCreateTask}>
-              <MaterialCommunityIcons name="sync" size={22} color="#071936" />
+              <MaterialCommunityIcons name="sync" size={18} color="#071936" />
               <Text style={styles.secondaryActionText}>{t('jobs.bookAgain')}</Text>
             </TouchableOpacity>
           ) : (
@@ -513,7 +513,7 @@ const PostTaskScreen = ({ route, navigation }) => {
                 { text: t('jobs.complete'), onPress: () => updateTaskStatus(job, 'COMPLETED') }
               ])}
             >
-              <MaterialCommunityIcons name="check-circle-outline" size={22} color="#FFF" />
+              <MaterialCommunityIcons name="check-circle-outline" size={18} color="#FFF" />
               <Text style={styles.primaryActionText}>{isInProgress ? t('jobs.markCompleted') : t('jobs.done')}</Text>
             </TouchableOpacity>
           )}
@@ -566,11 +566,11 @@ const PostTaskScreen = ({ route, navigation }) => {
         <>
           <View style={[styles.tasksHeader, { backgroundColor: colors.background }]}>
             <TouchableOpacity onPress={openDrawer} style={[styles.menuBtn, { backgroundColor: isDarkMode ? '#111827' : '#F1F5F9' }]}>
-              <MaterialCommunityIcons name="menu" size={32} color={colors.text} />
+              <MaterialCommunityIcons name="menu" size={26} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.tasksHeaderTitle, { color: colors.text }]}>{t('jobs.myTasks')}</Text>
             <TouchableOpacity onPress={navigateToCreateTask} style={styles.addTaskBtn}>
-              <MaterialCommunityIcons name="plus" size={34} color="#FFF" />
+              <MaterialCommunityIcons name="plus" size={26} color="#FFF" />
             </TouchableOpacity>
           </View>
 
@@ -1151,9 +1151,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   menuBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1164,9 +1164,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   addTaskBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: '#0D9488',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1861,10 +1861,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 0, paddingBottom: 122 },
   tasksHero: {
     minHeight: 146,
-    marginHorizontal: 18,
-    marginTop: 16,
-    marginBottom: 22,
-    borderRadius: 20,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
+    borderRadius: 0,
     overflow: 'hidden',
     paddingLeft: 22,
     paddingRight: 16,
@@ -1892,25 +1892,27 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   filterBar: {
-    marginHorizontal: 18,
-    marginBottom: 18,
-    height: 70,
-    borderRadius: 18,
+    marginHorizontal: 0,
+    marginBottom: 0,
+    height: 64,
+    borderRadius: 0,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   filterScroll: {
     alignItems: 'center',
     paddingHorizontal: 12,
   },
   filterItem: {
-    height: 58,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -1978,19 +1980,21 @@ const styles = StyleSheet.create({
   reviewValue: { fontSize: 16, fontWeight: '700' },
   infoBox: { flexDirection: 'row', gap: 12, padding: 16, borderRadius: 12, borderLeftWidth: 6 },
   infoText: { fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 20 },
-  taskList: { gap: 10 },
+  taskList: { gap: 0 },
   taskCard: {
-    marginHorizontal: 18,
-    marginBottom: 2,
+    marginHorizontal: 0,
+    marginBottom: 0,
     paddingTop: 18,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderRadius: 0,
     shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 4,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   taskCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   cardRightMeta: { flexDirection: 'row', alignItems: 'center', gap: 7 },
@@ -2024,37 +2028,41 @@ const styles = StyleSheet.create({
   applicantCountText: { fontSize: 12, fontWeight: '700' },
   secondaryActionBtn: {
     flex: 1,
-    height: 50,
-    borderRadius: 8,
+    minHeight: 46,
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#F1F5F9',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 8,
   },
   bookAgainBtn: { flex: 1.85 },
-  secondaryActionText: { color: '#071936', fontSize: 15, fontWeight: '900' },
+  secondaryActionText: { color: '#071936', fontSize: 13, fontWeight: '900' },
   primaryActionBtn: {
     flex: 1,
-    height: 50,
-    borderRadius: 8,
+    minHeight: 46,
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: '#0D9488',
     shadowColor: '#0D9488',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.24,
     shadowRadius: 10,
-    elevation: 5,
+    elevation: 2,
+    paddingHorizontal: 8,
   },
   blueActionBtn: {
     flex: 1.45,
     backgroundColor: '#1F73F1',
     shadowColor: '#1F73F1',
   },
-  primaryActionText: { color: '#FFF', fontSize: 15, fontWeight: '900' },
+  primaryActionText: { color: '#FFF', fontSize: 13, fontWeight: '900' },
   successContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   iconWrap: { marginBottom: 30 },
   successTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 16 },

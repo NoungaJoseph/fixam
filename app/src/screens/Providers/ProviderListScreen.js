@@ -18,6 +18,7 @@ const ProviderListScreen = ({ route, navigation }) => {
   const favoritesOnly = Boolean(route.params?.favoritesOnly);
   const [search, setSearch] = useState(route.params?.search || '');
   const [activeFilter, setActiveFilter] = useState('Rating');
+  const [pendingFilter, setPendingFilter] = useState('Rating');
   const [showFilters, setShowFilters] = useState(false);
   const [topProviders, setTopProviders] = useState([]);
 
@@ -32,6 +33,16 @@ const ProviderListScreen = ({ route, navigation }) => {
         .catch(err => console.log('Error fetching top providers:', err));
     }
   }, [category]);
+
+  const applyFilter = () => {
+    setActiveFilter(pendingFilter);
+    setShowFilters(false);
+  };
+
+  const resetFilter = () => {
+    setPendingFilter('Rating');
+    setActiveFilter('Rating');
+  };
 
 
 
@@ -97,7 +108,7 @@ const ProviderListScreen = ({ route, navigation }) => {
           uri={avatarUri}
           name={item.user?.fullName || 'User'}
           size={60}
-          radius={18}
+          radius={0}
           style={[styles.avatar, { backgroundColor: isDarkMode ? '#1e293b' : '#f3f4f6' }]}
         />
         <View style={styles.cardInfo}>
@@ -153,7 +164,13 @@ const ProviderListScreen = ({ route, navigation }) => {
           <Text style={[styles.headerTitle, { color: colors.text }]}>
             {favoritesOnly ? 'Favorite Pros' : verifiedOnly ? 'Verified Pros' : category && category !== 'all' ? `${category} Pros` : 'Discover Pros'}
           </Text>
-          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: showFilters ? colors.accent : colors.card }]} onPress={() => setShowFilters((value) => !value)}>
+          <TouchableOpacity
+            style={[styles.filterBtn, { backgroundColor: showFilters ? colors.accent : colors.card }]}
+            onPress={() => {
+              setPendingFilter(activeFilter);
+              setShowFilters((value) => !value);
+            }}
+          >
             <MaterialCommunityIcons name="tune-variant" size={20} color={showFilters ? '#FFF' : colors.text} />
           </TouchableOpacity>
         </View>
@@ -168,6 +185,7 @@ const ProviderListScreen = ({ route, navigation }) => {
               placeholderTextColor={colors.placeholder}
               value={search}
               onChangeText={setSearch}
+              returnKeyType="search"
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch('')}>
@@ -179,23 +197,46 @@ const ProviderListScreen = ({ route, navigation }) => {
 
         {showFilters && (
           <View style={[styles.filterPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.filterPanelTitle, { color: colors.text }]}>Sort results</Text>
+            <View style={styles.filterPanelHeader}>
+              <View>
+                <Text style={[styles.filterPanelTitle, { color: colors.text }]}>Sort results</Text>
+                <Text style={[styles.filterPanelSub, { color: colors.textSecondary }]}>Choose one filter, then apply it to your current search.</Text>
+              </View>
+              {activeFilter !== 'Rating' && (
+                <TouchableOpacity onPress={resetFilter} style={styles.resetFilterBtn}>
+                  <Text style={styles.resetFilterText}>Reset</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <View style={styles.filtersRow}>
               {FILTERS.map(f => (
                 <TouchableOpacity
                   key={f}
                   style={[
                     styles.filterChip,
-                    { backgroundColor: activeFilter === f ? colors.accent : (isDarkMode ? '#0F172A' : '#F8FAFC'), borderColor: activeFilter === f ? colors.accent : colors.border },
+                    { backgroundColor: pendingFilter === f ? colors.accent : (isDarkMode ? '#0F172A' : '#F8FAFC'), borderColor: pendingFilter === f ? colors.accent : colors.border },
                   ]}
-                  onPress={() => setActiveFilter(f)}
+                  onPress={() => setPendingFilter(f)}
                 >
-                  <Text style={[styles.filterText, { color: activeFilter === f ? '#FFF' : colors.textSecondary }]}>
+                  <Text style={[styles.filterText, { color: pendingFilter === f ? '#FFF' : colors.textSecondary }]}>
                     {f}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+            <TouchableOpacity
+              style={[
+                styles.applyFilterBtn,
+                { backgroundColor: pendingFilter === activeFilter ? (isDarkMode ? '#334155' : '#CBD5E1') : colors.accent },
+              ]}
+              onPress={applyFilter}
+              disabled={pendingFilter === activeFilter}
+            >
+              <MaterialCommunityIcons name="check" size={18} color="#FFF" />
+              <Text style={styles.applyFilterText}>
+                {pendingFilter === activeFilter ? `Applied: ${activeFilter}` : `Apply ${pendingFilter}`}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -242,9 +283,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 15,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  backBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '900' },
-  filterBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  filterBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   searchContainer: { paddingHorizontal: 20, marginBottom: 15 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -252,39 +293,52 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 15, fontWeight: '600' },
-  filterPanel: { marginHorizontal: 20, marginBottom: 15, borderRadius: 8, borderWidth: 1, padding: 14 },
-  filterPanelTitle: { fontSize: 13, fontWeight: '900', marginBottom: 10 },
+  filterPanel: { marginHorizontal: 20, marginBottom: 15, borderRadius: 0, borderWidth: 1, padding: 14 },
+  filterPanelHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
+  filterPanelTitle: { fontSize: 13, fontWeight: '900', marginBottom: 4 },
+  filterPanelSub: { fontSize: 11, lineHeight: 15, fontWeight: '600', maxWidth: 230 },
+  resetFilterBtn: { paddingHorizontal: 10, paddingVertical: 6, alignSelf: 'flex-start' },
+  resetFilterText: { color: '#0D9488', fontSize: 12, fontWeight: '900' },
   filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   filterChip: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 0,
     borderWidth: 1,
   },
   filterText: { fontSize: 13, fontWeight: '700' },
+  applyFilterBtn: {
+    height: 46,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  applyFilterText: { color: '#FFF', fontSize: 14, fontWeight: '900' },
   list: { paddingHorizontal: 20, paddingBottom: 40 },
   card: {
-    borderRadius: 22, padding: 16, marginBottom: 16,
+    borderRadius: 0, padding: 16, marginBottom: 12,
     borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, elevation: 1,
+    shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8, elevation: 1,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   cardMeta: { alignItems: 'flex-end', gap: 8 },
-  favoriteBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  avatar: { width: 60, height: 60, borderRadius: 18 },
+  favoriteBtn: { width: 36, height: 36, borderRadius: 0, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 60, height: 60, borderRadius: 0 },
   cardInfo: { flex: 1, marginLeft: 15 },
   provName: { fontSize: 17, fontWeight: '800' },
   provSkill: { fontSize: 13, fontWeight: '700', marginVertical: 3 },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   locationText: { fontSize: 12, fontWeight: '600' },
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 0 },
   ratingText: { fontSize: 13, fontWeight: '800' },
   cardActions: { flexDirection: 'row', gap: 10 },
   chatBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, borderRadius: 14, paddingVertical: 12,
+    gap: 8, borderRadius: 0, paddingVertical: 12,
   },
   chatBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   callBtn: {
-    width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1
+    width: 48, height: 48, borderRadius: 0, justifyContent: 'center', alignItems: 'center', borderWidth: 1
   },
   empty: { paddingTop: 80, alignItems: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '800', marginTop: 20 },
@@ -292,7 +346,7 @@ const styles = StyleSheet.create({
   topProvidersSection: { marginBottom: 20 },
   topProvidersTitle: { fontSize: 16, fontWeight: '800', marginLeft: 20, marginBottom: 12 },
   topProvidersScroll: { paddingHorizontal: 20, gap: 12 },
-  topCard: { width: 110, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
+  topCard: { width: 110, padding: 12, borderRadius: 0, borderWidth: 1, alignItems: 'center' },
   topAvatar: { marginBottom: 8 },
   topProvName: { fontSize: 13, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
   topRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

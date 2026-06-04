@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert, Modal, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,13 +15,11 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   const { t, currentLanguage } = useLanguage();
   const { favoriteProviderIds, toggleFavoriteProvider } = useAppContext();
   const provider = route.params?.provider || null;
+  const providerUserId = provider?.user?.id || provider?.userId;
   const insets = useSafeAreaInsets();
   const [pastHeader, setPastHeader] = React.useState(false);
   const [reviews, setReviews] = React.useState([]);
   const [hasBooking, setHasBooking] = React.useState(false);
-  const [bookingCheckLoading, setBookingCheckLoading] = React.useState(false);
-  const [showBookingModal, setShowBookingModal] = React.useState(false);
-  const [bookingConfirmLoading, setBookingConfirmLoading] = React.useState(false);
 
 
 
@@ -36,20 +34,18 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   React.useEffect(() => {
     const checkBookingStatus = async () => {
       try {
-        setBookingCheckLoading(true);
-        const res = await api.get(`/bookings/check?providerId=${provider.id}`);
+        if (!providerUserId) return;
+        const res = await api.get(`/bookings/check?providerId=${providerUserId}`);
         setHasBooking(res.data.data?.hasBooking || false);
       } catch (error) {
-        console.error('Error checking booking:', error);
-      } finally {
-        setBookingCheckLoading(false);
+        setHasBooking(false);
       }
     };
 
-    if (provider?.id) {
+    if (providerUserId) {
       checkBookingStatus();
     }
-  }, [provider?.id]);
+  }, [providerUserId]);
 
   if (!provider) {
     return (
@@ -67,9 +63,14 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   const fullName = provider.user?.fullName || t('common.provider');
   const avatarUri = getMediaUrl(provider.user?.avatar);
 
-  const ratingVal = provider.rating ? parseFloat(provider.rating).toFixed(1) : '0.0';
-  const reviewCountVal = provider.reviewCount || reviews.length || 0;
-  const jobsCompletedCount = provider.jobsCompleted || reviews.filter(r => r.rating >= 4).length || 0;
+  const numericRating = Number(provider.rating || 0);
+  const ratingVal = numericRating > 0 ? numericRating.toFixed(1) : '0.0';
+  const reviewCountVal = Number(provider.reviewCount || reviews.length || 0);
+  const jobsCompletedCount = Number(provider.jobsCompleted || 0);
+  const positiveReviewCount = reviews.filter(r => Number(r.rating || 0) >= 4).length;
+  const successRate = jobsCompletedCount > 0 && reviewCountVal > 0
+    ? Math.round((positiveReviewCount / reviewCountVal) * 100)
+    : null;
   const experienceLevel = provider.experienceLevel || t('profile.standardLevel');
   const bio = provider.bio || t('profile.noBiography');
   const serviceArea = provider.serviceArea || 'Douala, Cameroon';
@@ -86,6 +87,39 @@ const ProviderProfileScreen = ({ route, navigation }) => {
 
   const socialLinks = provider.socialLinks || {};
   const hasSocialLinks = Object.values(socialLinks).some(Boolean);
+  const portfolio = Array.isArray(provider.portfolio) ? provider.portfolio.filter(item => Object.values(item || {}).some(Boolean)) : [];
+  const certificates = Array.isArray(provider.certificates) ? provider.certificates.filter(item => Object.values(item || {}).some(Boolean)) : [];
+  const employmentHistory = Array.isArray(provider.employmentHistory) ? provider.employmentHistory.filter(item => Object.values(item || {}).some(Boolean)) : [];
+  const earnedHighlights = [
+    provider.verification === 'VERIFIED' ? {
+      icon: 'shield-check',
+      color: '#10B981',
+      bg: isDarkMode ? '#115E5920' : '#ECFDF5',
+      title: t('profile.backgroundVerified'),
+      detail: t('profile.verifiedProfessional'),
+    } : null,
+    successRate !== null ? {
+      icon: 'trophy-outline',
+      color: '#2563EB',
+      bg: isDarkMode ? '#1E3A8A20' : '#EFF6FF',
+      title: `${successRate}% ${t('profile.jobSuccess')}`,
+      detail: `${jobsCompletedCount} ${t('home.jobsCompleted')}`,
+    } : null,
+    jobsCompletedCount > 0 && numericRating >= 4 ? {
+      icon: 'clock-outline',
+      color: '#8B5CF6',
+      bg: isDarkMode ? '#5B21B620' : '#F3E8FF',
+      title: t('profile.onTimeCompletion'),
+      detail: 'Based on client reviews',
+    } : null,
+    reviewCountVal >= 3 && numericRating >= 4.8 ? {
+      icon: 'thumb-up-outline',
+      color: '#F97316',
+      bg: isDarkMode ? '#7C2D1220' : '#FFF7ED',
+      title: t('profile.topRatedProvider'),
+      detail: `${ratingVal} ${t('profile.rating')}`,
+    } : null,
+  ].filter(Boolean);
 
   const joinedDate = provider.user?.createdAt
     ? new Date(provider.user.createdAt).toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })
@@ -93,7 +127,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
 
   const handleShare = async () => {
     try {
-      const uid = provider?.user?.id;
+      const uid = providerUserId;
       const url = uid ? `https://fixam.app/profile/${uid}` : 'https://fixam.app/download';
       await Share.share({
         title: `${fullName} profile`,
@@ -110,14 +144,19 @@ const ProviderProfileScreen = ({ route, navigation }) => {
     }
 
     try {
-      const res = await api.post('/chat/conversations', { participantId: provider.user?.id });
+      if (!providerUserId) {
+        Alert.alert(t('common.error'), t('profile.providerUnavailable'));
+        return;
+      }
+
+      const res = await api.post('/chat/conversations', { participantId: providerUserId });
       const conversation = res.data.data;
       navigation.navigate('Chat', {
         conversationId: conversation.id,
-        receiverId: provider.user?.id,
+        receiverId: providerUserId,
         userName: fullName,
         avatar: avatarUri,
-        otherParticipant: conversation.participants?.[0] || { id: provider.user?.id, role: 'PROVIDER' },
+        otherParticipant: conversation.participants?.[0] || { id: providerUserId, role: 'PROVIDER' },
         isSupportConversation: conversation.isSystem,
       });
     } catch (error) {
@@ -126,39 +165,6 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         return;
       }
       Alert.alert(t('common.error'), error.response?.data?.message || t('common.tryAgain'));
-    }
-  };
-
-  const handleBookPress = () => {
-    setShowBookingModal(true);
-  };
-
-  const handleConfirmBooking = async () => {
-    try {
-      setBookingConfirmLoading(true);
-      const res = await api.post('/bookings', {
-        providerId: provider.id,
-      });
-      
-      if (res.data.success) {
-        setHasBooking(true);
-        setShowBookingModal(false);
-        Alert.alert(t('common.success'), t('profile.bookingConfirmed'), [
-          {
-            text: t('common.ok'),
-            onPress: () => {
-              // Optionally navigate to booking details or just close
-            }
-          }
-        ]);
-      }
-    } catch (error) {
-      Alert.alert(
-        t('common.error'),
-        error.response?.data?.message || t('profile.bookingFailed')
-      );
-    } finally {
-      setBookingConfirmLoading(false);
     }
   };
 
@@ -195,7 +201,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 36 }}
         onScroll={(e) => setPastHeader(e.nativeEvent.contentOffset.y > 80)}
         scrollEventThrottle={16}
       >
@@ -273,51 +279,57 @@ const ProviderProfileScreen = ({ route, navigation }) => {
 
         {/* Stats Row Container Card */}
         <View style={styles.statsCardContainer}>
-          <View style={[styles.statsCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-            {/* Rating */}
-            <View style={styles.statItem}>
-              <View style={styles.statIconValRow}>
-                <MaterialCommunityIcons name="star" size={16} color="#F59E0B" style={{ marginRight: 4 }} />
-                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{ratingVal}</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statRow}>
+              {/* Rating */}
+              <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.statIconValRow}>
+                  <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#78350F40' : '#FEF3C7' }]}>
+                    <MaterialCommunityIcons name="star" size={17} color="#F59E0B" />
+                  </View>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{ratingVal}</Text>
+                </View>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('profile.rating')}</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{reviewCountVal} {t('profile.reviews')}</Text>
               </View>
-              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('profile.rating')}</Text>
-              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>({reviewCountVal})</Text>
+
+              {/* Reviews */}
+              <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.statIconValRow}>
+                  <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#1E3A8A40' : '#DBEAFE' }]}>
+                    <MaterialCommunityIcons name="message-star-outline" size={17} color="#2563EB" />
+                  </View>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{reviewCountVal}</Text>
+                </View>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('profile.reviews')}</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{reviewCountVal > 0 ? t('common.recent') : t('profile.noReviews')}</Text>
+              </View>
             </View>
 
-            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]} />
-
-            {/* Reviews */}
-            <View style={styles.statItem}>
-              <View style={styles.statIconValRow}>
-                <MaterialCommunityIcons name="shield-check-outline" size={16} color="#2563EB" style={{ marginRight: 4 }} />
-                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{reviewCountVal}</Text>
+            <View style={styles.statRow}>
+              {/* Jobs Completed */}
+              <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.statIconValRow}>
+                  <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#064E3B40' : '#D1FAE5' }]}>
+                    <MaterialCommunityIcons name="briefcase-outline" size={17} color="#10B981" />
+                  </View>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{jobsCompletedCount}</Text>
+                </View>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('home.jobsCompleted')}</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{successRate !== null ? `${successRate}% success` : 'No completed jobs yet'}</Text>
               </View>
-              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('profile.reviews')}</Text>
-              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
-            </View>
 
-            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]} />
-
-            {/* Jobs Completed */}
-            <View style={styles.statItem}>
-              <View style={styles.statIconValRow}>
-                <MaterialCommunityIcons name="briefcase-outline" size={16} color="#10B981" style={{ marginRight: 4 }} />
-                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{jobsCompletedCount}</Text>
+              {/* Level */}
+              <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.statIconValRow}>
+                  <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#4C1D9540' : '#EDE9FE' }]}>
+                    <MaterialCommunityIcons name="chart-bar" size={17} color="#8B5CF6" />
+                  </View>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]} numberOfLines={1}>{experienceLevel}</Text>
+                </View>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('home.levelLabel')}</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{serviceArea}</Text>
               </View>
-              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('home.jobsCompleted')}</Text>
-              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
-            </View>
-
-            <View style={[styles.statDivider, { backgroundColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]} />
-
-            {/* Level */}
-            <View style={styles.statItem}>
-              <View style={styles.statIconValRow}>
-                <MaterialCommunityIcons name="chart-bar" size={16} color="#8B5CF6" style={{ marginRight: 4 }} />
-                <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{experienceLevel}</Text>
-              </View>
-              <Text style={[styles.statLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('home.levelLabel')}</Text>
-              <Text style={[styles.statSubLabel, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>&nbsp;</Text>
             </View>
           </View>
         </View>
@@ -369,62 +381,81 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         {/* Highlights Section */}
         <View style={styles.sectionContainer}>
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.highlights')}</Text>
-          <View style={styles.highlightsGrid}>
-
-            {/* Highlight 1 - Verified Professional Status */}
-            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#115E5920' : '#ECFDF5' }]}>
-                <MaterialCommunityIcons name="shield-check" size={20} color="#10B981" />
-              </View>
-              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.backgroundVerified')}</Text>
-              {provider.verification === 'VERIFIED' && (
-                <View style={styles.highlightCheckDot}>
-                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
+          {earnedHighlights.length > 0 ? (
+            <View style={styles.highlightsGrid}>
+              {earnedHighlights.map((item) => (
+                <View key={item.title} style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                  <View style={[styles.highlightIconWrap, { backgroundColor: item.bg }]}>
+                    <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
+                  </View>
+                  <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{item.title}</Text>
+                  <Text style={[styles.highlightDetail, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{item.detail}</Text>
                 </View>
-              )}
+              ))}
             </View>
-
-            {/* Highlight 2 - Job Success (based on rating) */}
-            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#1E3A8A20' : '#EFF6FF' }]}>
-                <MaterialCommunityIcons name="trophy-outline" size={20} color="#2563EB" />
-              </View>
-              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.jobSuccess')}</Text>
-              {parseFloat(ratingVal) >= 4.5 && (
-                <View style={styles.highlightCheckDot}>
-                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
-                </View>
-              )}
+          ) : (
+            <View style={[styles.emptyProfileCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+              <MaterialCommunityIcons name="progress-clock" size={24} color="#94A3B8" />
+              <Text style={[styles.emptyProfileText, { color: isDarkMode ? '#CBD5E1' : '#64748B' }]}>This provider is still building verified highlights.</Text>
             </View>
-
-            {/* Highlight 3 - On-time Completion */}
-            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#5B21B620' : '#F3E8FF' }]}>
-                <MaterialCommunityIcons name="clock-outline" size={20} color="#8B5CF6" />
-              </View>
-              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.onTimeCompletion')}</Text>
-              {parseFloat(ratingVal) >= 4.0 && (
-                <View style={styles.highlightCheckDot}>
-                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
-                </View>
-              )}
-            </View>
-
-            {/* Highlight 4 - Top Rated status */}
-            <View style={[styles.highlightCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-              <View style={[styles.highlightIconWrap, { backgroundColor: isDarkMode ? '#7C2D1220' : '#FFF7ED' }]}>
-                <MaterialCommunityIcons name="thumb-up-outline" size={20} color="#F97316" />
-              </View>
-              <Text style={[styles.highlightText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('profile.topRatedProvider')}</Text>
-              {parseFloat(ratingVal) >= 4.8 && (
-                <View style={styles.highlightCheckDot}>
-                  <MaterialCommunityIcons name="check" size={10} color="#FFF" />
-                </View>
-              )}
-            </View>
-
-          </View>
+          )}
         </View>
+
+        {portfolio.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Projects</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectScroll}>
+              {portfolio.map((item, index) => (
+                <View key={`${item.title || 'project'}-${index}`} style={[styles.projectCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                  {item.imageUrl ? (
+                    <Image source={{ uri: item.imageUrl }} style={styles.projectImage} />
+                  ) : (
+                    <View style={[styles.projectImage, styles.projectImageFallback]}>
+                      <MaterialCommunityIcons name="image-outline" size={28} color="#94A3B8" />
+                    </View>
+                  )}
+                  <Text style={[styles.projectTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]} numberOfLines={1}>{item.title || 'Project'}</Text>
+                  {item.description ? <Text style={[styles.projectDesc, { color: isDarkMode ? '#CBD5E1' : '#64748B' }]} numberOfLines={3}>{item.description}</Text> : null}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {certificates.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Certificates</Text>
+            {certificates.map((item, index) => (
+              <View key={`${item.title || 'certificate'}-${index}`} style={[styles.credentialRow, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.credentialIcon}>
+                  <MaterialCommunityIcons name="certificate-outline" size={22} color="#0D9488" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.credentialTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{item.title || 'Certificate'}</Text>
+                  <Text style={[styles.credentialMeta, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{[item.issuer, item.year].filter(Boolean).join(' | ') || 'Credential added'}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {employmentHistory.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Work history</Text>
+            {employmentHistory.map((item, index) => (
+              <View key={`${item.title || item.company || 'work'}-${index}`} style={[styles.credentialRow, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.credentialIcon}>
+                  <MaterialCommunityIcons name="briefcase-outline" size={22} color="#2563EB" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.credentialTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{item.title || item.company || 'Work experience'}</Text>
+                  <Text style={[styles.credentialMeta, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{[item.company, item.period].filter(Boolean).join(' | ')}</Text>
+                  {item.description ? <Text style={[styles.credentialDesc, { color: isDarkMode ? '#CBD5E1' : '#64748B' }]}>{item.description}</Text> : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Linked Accounts Section - Render dynamic accounts only */}
         {hasSocialLinks && (
@@ -549,11 +580,24 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* Fail-safe Static Booking Button */}
+        {hasBooking && (
+          <View style={styles.sectionContainer}>
+            <TouchableOpacity
+              style={[styles.messageUnlockedButton, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}
+              onPress={handleMessageProvider}
+            >
+              <MaterialCommunityIcons name="message-text-outline" size={22} color="#0D9488" />
+              <Text style={[styles.messageUnlockedText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>Message provider</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Booking CTA */}
         <View style={styles.staticBookingContainer}>
           <TouchableOpacity
-            style={[styles.staticBookButton, { backgroundColor: colors.accent }]}
-            onPress={() => navigation.navigate('BookingForm', { providerId: provider.user?.id, providerName: fullName })}
+            style={[styles.staticBookButton, { backgroundColor: colors.accent, opacity: providerUserId ? 1 : 0.55 }]}
+            disabled={!providerUserId}
+            onPress={() => navigation.navigate('BookingForm', { providerId: providerUserId, providerName: fullName, providerRate: provider.rate || 0 })}
           >
             <MaterialCommunityIcons name="calendar-check" size={22} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.staticBookButtonText}>{t('profile.bookNow')} - {ratePrice}</Text>
@@ -562,103 +606,6 @@ const ProviderProfileScreen = ({ route, navigation }) => {
 
       </ScrollView>
 
-      {/* Dynamic Bottom Booking Bar */}
-      <View style={[styles.bookingBarContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderTopColor: isDarkMode ? '#1F2937' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 20) }]}>
-        <View style={styles.bookingBar}>
-          <TouchableOpacity
-            style={[styles.chatButton, { backgroundColor: isDarkMode ? '#0B1120' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#E2E8F0', opacity: hasBooking ? 1 : 0.5 }]}
-            onPress={handleMessageProvider}
-            disabled={!hasBooking}
-          >
-            <MaterialCommunityIcons name="message-text-outline" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.bookButton}
-            onPress={handleBookPress}
-            disabled={bookingCheckLoading}
-          >
-            <Text style={styles.bookButtonText}>
-              {bookingCheckLoading ? '...' : (hasBooking ? t('profile.booked') : `${t('profile.bookNow')} - 1 🪙`)}
-            </Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Booking Confirmation Modal */}
-      <Modal
-        visible={showBookingModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowBookingModal(false)}
-      >
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.7)' }]}>
-          <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF' }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                {t('profile.bookProvider')}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowBookingModal(false)}
-                disabled={bookingConfirmLoading}
-              >
-                <MaterialCommunityIcons name="close" size={24} color={isDarkMode ? '#FFF' : '#0F172A'} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              <View style={[styles.bookingConfirmCard, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC' }]}>
-                <UserAvatar uri={avatarUri} name={fullName} size={80} />
-                <Text style={[styles.providerNameConfirm, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                  {fullName}
-                </Text>
-                <Text style={[styles.rateConfirm, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>
-                  {ratePrice}
-                </Text>
-              </View>
-
-              <View style={[styles.coinDeductionBox, { backgroundColor: isDarkMode ? '#FFA50020' : '#FEF3C7', borderColor: isDarkMode ? '#FF8C0040' : '#FCD34D' }]}>
-                <MaterialCommunityIcons name="information" size={20} color="#D97706" style={{ marginRight: 10 }} />
-                <Text style={[styles.coinDeductionText, { color: '#B45309' }]}>
-                  1 🪙 {t('profile.coinDeducted')}
-                </Text>
-              </View>
-
-              <Text style={[styles.confirmDescription, { color: isDarkMode ? '#CBD5E1' : '#64748B' }]}>
-                {t('profile.bookingDescription')}
-              </Text>
-            </View>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.cancelButton, { borderColor: isDarkMode ? '#475569' : '#E2E8F0', backgroundColor: isDarkMode ? '#0F172A' : '#FFF' }]}
-                onPress={() => setShowBookingModal(false)}
-                disabled={bookingConfirmLoading}
-              >
-                <Text style={[styles.cancelButtonText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                  {t('common.cancel')}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.confirmButton, { opacity: bookingConfirmLoading ? 0.7 : 1 }]}
-                onPress={handleConfirmBooking}
-                disabled={bookingConfirmLoading}
-              >
-                {bookingConfirmLoading ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="check" size={20} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.confirmButtonText}>{t('common.confirm')}</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -813,52 +760,65 @@ const styles = StyleSheet.create({
 
   // Stats Card Styles
   statsCardContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    marginBottom: 26,
   },
-  statsCard: {
+  statsGrid: {
+    gap: 10,
+  },
+  statRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 2,
+    gap: 10,
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    minWidth: 0,
+    minHeight: 112,
+    alignItems: 'flex-start',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
   },
   statIconValRow: {
+    width: '100%',
+    alignItems: 'center',
     flexDirection: 'row',
+    gap: 9,
+    marginBottom: 10,
+  },
+  statIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
-    marginBottom: 4,
   },
   statVal: {
-    fontSize: 16,
-    fontWeight: '800',
+    flex: 1,
+    minWidth: 0,
+    fontSize: 19,
+    lineHeight: 23,
+    fontWeight: '900',
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'center',
+    width: '100%',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
   },
   statSubLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 36,
+    width: '100%',
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginTop: 4,
   },
 
   // Section Standard Container
@@ -972,6 +932,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 16,
   },
+  highlightDetail: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+    marginTop: 5,
+  },
   highlightCheckDot: {
     position: 'absolute',
     bottom: 12,
@@ -982,6 +948,86 @@ const styles = StyleSheet.create({
     backgroundColor: '#22C55E',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyProfileCard: {
+    minHeight: 86,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: 8,
+  },
+  emptyProfileText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  projectScroll: {
+    gap: 12,
+    paddingRight: 20,
+  },
+  projectCard: {
+    width: 190,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  projectImage: {
+    width: '100%',
+    height: 112,
+    backgroundColor: '#E2E8F0',
+  },
+  projectImageFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  projectDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 14,
+  },
+  credentialRow: {
+    flexDirection: 'row',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 10,
+  },
+  credentialIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  credentialTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    marginBottom: 3,
+  },
+  credentialMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  credentialDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+    marginTop: 7,
   },
 
   // Linked Accounts Styles
@@ -1100,24 +1146,25 @@ const styles = StyleSheet.create({
     width: 14,
   },
 
-  // Booking Bar Styles
-  bookingBarContainer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 8,
-  },
   staticBookingContainer: {
     paddingHorizontal: 20,
     marginTop: 12,
     marginBottom: 40,
     alignItems: 'center',
     width: '100%',
+  },
+  messageUnlockedButton: {
+    height: 54,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  messageUnlockedText: {
+    fontSize: 15,
+    fontWeight: '900',
   },
   staticBookButton: {
     width: '100%',
@@ -1136,24 +1183,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
-  },
-  bookingBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  chatButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 3,
-    elevation: 1,
   },
   bookButton: {
     flex: 1,
@@ -1175,93 +1204,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '800',
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalBody: {
-    marginBottom: 20,
-  },
-  bookingConfirmCard: {
-    alignItems: 'center',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  providerNameConfirm: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  rateConfirm: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  coinDeductionBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  coinDeductionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-  },
-  confirmDescription: {
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#0D9488',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmButtonText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 

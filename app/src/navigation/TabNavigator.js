@@ -14,6 +14,7 @@ import HomeScreen from '../screens/Home/HomeScreen';
 import ProviderListScreen from '../screens/Providers/ProviderListScreen';
 import ProviderProfileScreen from '../screens/Providers/ProviderProfileScreen';
 import FavoriteProvidersScreen from '../screens/Providers/FavoriteProvidersScreen';
+import PopularServicesScreen from '../screens/Providers/PopularServicesScreen';
 import PostTaskScreen from '../screens/Tasks/PostTaskScreen';
 import TaskSuccessScreen from '../screens/Tasks/TaskSuccessScreen';
 import JobStatusScreen from '../screens/Tasks/JobStatusScreen';
@@ -27,6 +28,7 @@ import WalletScreen from '../screens/Wallet/WalletScreen';
 import RatingScreen from '../screens/Profile/RatingScreen';
 import SettingsScreen from '../screens/Profile/SettingsScreen';
 import NotificationsScreen from '../screens/Profile/NotificationsScreen';
+import NotificationDetailScreen from '../screens/Profile/NotificationDetailScreen';
 import NotificationSettingsScreen from '../screens/Profile/NotificationSettingsScreen';
 import PrivacySecurityScreen from '../screens/Profile/PrivacySecurityScreen';
 import ProfileLanguageScreen from '../screens/Profile/ProfileLanguageScreen';
@@ -60,7 +62,9 @@ const HomeStack = () => (
     <Stack.Screen name="ProviderList" component={ProviderListScreen} />
     <Stack.Screen name="ProviderProfile" component={ProviderProfileScreen} />
     <Stack.Screen name="FavoriteProviders" component={FavoriteProvidersScreen} />
+    <Stack.Screen name="PopularServices" component={PopularServicesScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
     <Stack.Screen name="Chat" component={ChatScreen} />
     <Stack.Screen name="BookingForm" component={BookingFormScreen} />
     <Stack.Screen name="Rating" component={RatingScreen} />
@@ -82,6 +86,7 @@ const ProfileStack = () => (
     <Stack.Screen name="ProviderProfileEditItem" component={ProviderProfileEditItemScreen} />
     <Stack.Screen name="ProviderProfileSectionEdit" component={ProviderProfileSectionEditScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
     <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
     <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
     <Stack.Screen name="LanguageSelection" component={ProfileLanguageScreen} />
@@ -151,6 +156,7 @@ const BottomTabNavigator = () => {
           'Selfie', 
           'VerificationSuccess', 
           'ProviderList', 
+          'PopularServices',
           'ProviderProfile',
           'TaskDetails',
           'BookingForm'
