@@ -18,13 +18,70 @@ import SupportChatButton from './src/components/SupportChatButton';
 import BiometricLockScreen from './src/components/BiometricLockScreen';
 import * as SecureStore from 'expo-secure-store';
 import * as Sentry from '@sentry/react-native';
-
+import axios from 'axios';
+import MaintenanceScreen from './src/screens/MaintenanceScreen';
 import notificationService from './src/services/notificationService';
+import AnimatedSplashScreen from './src/screens/Auth/AnimatedSplashScreen';
 
 Sentry.init({
-  dsn: 'https://abc@o123.ingest.sentry.io/456',
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
   tracesSampleRate: 1.0,
+  enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
 });
+
+// ---------------------------------------------------------------------------
+// Maintenance gate — checked once at startup, rechecked every 5 min if active
+// ---------------------------------------------------------------------------
+const useMaintenanceCheck = () => {
+  const [appReady, setAppReady] = React.useState(false);
+  const [maintenance, setMaintenance] = React.useState(false);
+  const [maintenanceMsg, setMaintenanceMsg] = React.useState('');
+  const intervalRef = React.useRef(null);
+
+  const checkStatus = React.useCallback(async () => {
+    try {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+      const response = await Promise.race([
+        axios.get(`${API_URL}/api/system/status`),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        ),
+      ]);
+
+      const inMaintenance = response?.data?.maintenance === true;
+      setMaintenance(inMaintenance);
+      setMaintenanceMsg(response?.data?.message || '');
+
+      if (inMaintenance) {
+        // Poll every 5 minutes while in maintenance
+        if (!intervalRef.current) {
+          intervalRef.current = setInterval(checkStatus, 5 * 60 * 1000);
+        }
+      } else {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      }
+    } catch (_) {
+      // Timeout or network error — fail open, proceed normally
+      setMaintenance(false);
+    } finally {
+      setAppReady(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    checkStatus();
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [checkStatus]);
+
+  return { appReady, maintenance, maintenanceMsg };
+};
 
 const AppChrome = () => {
   const { isDarkMode } = useTheme();
@@ -87,6 +144,29 @@ const AppChrome = () => {
 };
 
 function App() {
+  const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
+
+  if (!appReady) {
+    // Show the animated splash while the status check resolves (max 3s)
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AnimatedSplashScreen />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
+  if (maintenance) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <MaintenanceScreen message={maintenanceMsg} />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
