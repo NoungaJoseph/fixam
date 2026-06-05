@@ -267,12 +267,21 @@ const PrivacySecurityScreen = ({ navigation }) => {
               desc={t('profile.dataUsageDesc')}
               onPress={() => {}}
             />
+          <View style={[styles.section, { marginTop: 10 }]}>
+            <Text style={[styles.sectionLabel, { color: colors.error }]}>DANGER ZONE</Text>
+            <TouchableOpacity 
+              style={[styles.dangerBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2', borderColor: 'rgba(239, 68, 68, 0.3)' }]} 
+              onPress={() => navigation.navigate('DeleteAccount')}
+            >
+              <View style={styles.dangerBtnRow}>
+                <MaterialCommunityIcons name="delete-outline" size={22} color={colors.error} />
+                <Text style={[styles.dangerText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
+              </View>
+              <Text style={[styles.dangerDesc, { color: colors.error, opacity: 0.8 }]}>
+                Permanently remove your account and all associated data. This action cannot be undone.
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => navigation.navigate('DeleteAccount')}>
-            <MaterialCommunityIcons name="delete-outline" size={20} color={colors.error} />
-            <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
-          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
 
@@ -398,8 +407,10 @@ const styles = StyleSheet.create({
   settingTexts: { flex: 1 },
   settingTitle: { fontSize: 15, fontWeight: '700' },
   settingDesc: { fontSize: 12, marginTop: 2 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, marginTop: 10 },
-  deleteText: { fontWeight: '700', fontSize: 15 },
+  dangerBtn: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 10 },
+  dangerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  dangerText: { fontWeight: '800', fontSize: 16 },
+  dangerDesc: { fontSize: 13, lineHeight: 18 },
   disabledItem: { opacity: 0.45 },
   
   // Modals

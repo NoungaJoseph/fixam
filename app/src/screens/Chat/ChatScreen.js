@@ -318,7 +318,7 @@ const ChatScreen = ({ route, navigation }) => {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.7,
     });
     if (!result.canceled) uploadChatFile(result.assets[0].uri, 'image/jpeg', 'chat_image.jpg', 'IMAGE');

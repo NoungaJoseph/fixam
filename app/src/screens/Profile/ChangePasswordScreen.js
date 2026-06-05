@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -94,7 +94,8 @@ const ChangePasswordScreen = ({ navigation }) => {
           <View style={{ width: 42 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.lockIcon}>
             <MaterialCommunityIcons name="lock-reset" size={36} color={colors.accent} />
           </View>
@@ -128,7 +129,8 @@ const ChangePasswordScreen = ({ navigation }) => {
             <MaterialCommunityIcons name="lock-check-outline" size={20} color="#FFF" />
             <Text style={styles.saveBtnText}>{loading ? t('profile.updating') : t('profile.updatePasswordButton')}</Text>
           </TouchableOpacity>
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );

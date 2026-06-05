@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -102,7 +102,8 @@ const HelpCenterScreen = ({ navigation }) => {
           <View style={{ width: 42 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Hero */}
           <Text style={[styles.heroTitle, { color: colors.text }]}>{t('help.hero')}</Text>
           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{t('help.subtitle')}</Text>
@@ -173,7 +174,8 @@ const HelpCenterScreen = ({ navigation }) => {
           <Text style={[styles.footNote, { color: colors.textSecondary }]}>
             {t('help.footNote')}
           </Text>
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );

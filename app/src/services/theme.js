@@ -20,11 +20,11 @@ export const COLORS = {
 };
 
 export const FONTS = {
-  regular: { fontWeight: '400' },
-  medium: { fontWeight: '500' },
-  semiBold: { fontWeight: '600' },
-  bold: { fontWeight: '700' },
-  extraBold: { fontWeight: '800' },
+  regular: { fontFamily: 'Inter-Regular', fontWeight: '400' },
+  medium: { fontFamily: 'Inter-Medium', fontWeight: '500' },
+  semiBold: { fontFamily: 'Inter-SemiBold', fontWeight: '600' },
+  bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
+  extraBold: { fontFamily: 'Inter-Black', fontWeight: '800' },
 };
 
 export const theme = {

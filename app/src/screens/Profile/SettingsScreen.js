@@ -48,17 +48,19 @@ const SettingsScreen = ({ navigation, route }) => {
     const [iconColor, iconBg] = ICON_COLORS[icon] || [colors.accent, colors.accentSoft];
     return (
       <TouchableOpacity
-        style={[styles.settingRow, { borderBottomColor: colors.divider }]}
+        style={styles.settingRow}
         onPress={onPress}
         disabled={!onPress}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
-          <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
-        </View>
-        <View style={styles.settingBody}>
-          <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
-          {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
+        <View style={styles.settingRowLeft}>
+          <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
+            <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
+          </View>
+          <View style={styles.settingBody}>
+            <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
+            {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
+          </View>
         </View>
         {right || (onPress && (
           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.placeholder} />
@@ -74,15 +76,19 @@ const SettingsScreen = ({ navigation, route }) => {
     </View>
   );
 
-  const SectionCard = ({ children }) => (
-    <View style={[styles.sectionCard, {
-      backgroundColor: colors.card,
-      borderColor: colors.border,
-      shadowColor: isDarkMode ? 'transparent' : '#000',
-    }]}>
-      {children}
-    </View>
-  );
+  const SectionCard = ({ children }) => {
+    const items = React.Children.toArray(children).filter(Boolean);
+    return (
+      <View style={styles.sectionCard}>
+        {items.map((child, index) => (
+          <React.Fragment key={index}>
+            {child}
+            {index < items.length - 1 && <View style={[styles.separator, { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }]} />}
+          </React.Fragment>
+        ))}
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -213,7 +219,6 @@ const SettingsScreen = ({ navigation, route }) => {
           <SectionHeader icon="power" label={t('settings.actions')} />
           <SectionCard>
             <SettingItem icon="logout" title={t('settings.logout')} desc={t('settings.logoutDesc')} onPress={handleLogout} />
-            <SettingItem icon="delete-outline" title={t('settings.deleteAccount')} desc={t('settings.deleteAccountDesc')} onPress={() => navigation.navigate('DeleteAccount')} danger />
           </SectionCard>
 
           <Text style={[styles.version, { color: colors.placeholder }]}>{t('settings.version')}</Text>
@@ -251,7 +256,6 @@ const styles = StyleSheet.create({
   heroLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
   heroAvatarWrap: { position: 'relative' },
   heroAvatar: { width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
-  heroAvatarFallback: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
   heroInitial: { fontSize: 26, fontWeight: '900', color: '#FFF' },
   editDot: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
   heroName: { fontSize: 18, fontWeight: '800', color: '#FFF' },
@@ -263,12 +267,29 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },
   sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   sectionCard: {
-    marginHorizontal: 16, marginBottom: 20, borderRadius: 18, borderWidth: 1,
-    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, overflow: 'hidden',
+    marginBottom: 24,
   },
 
   // Row
-  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, gap: 12 },
+  settingRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 16, 
+    paddingHorizontal: 20, 
+    backgroundColor: 'transparent'
+  },
+  settingRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: 20
+  },
   iconBox: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   settingBody: { flex: 1 },
   settingTitle: { fontSize: 15, fontWeight: '700' },

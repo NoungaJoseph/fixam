@@ -26,7 +26,7 @@ const DocUploadScreen = ({ navigation, route }) => {
           onPress: async () => {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') { Alert.alert('Permission required', 'Camera access is needed.'); return; }
-            const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [4, 3] });
+            const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
             if (!result.canceled) {
               if (side === 'front') setFrontImage(result.assets[0].uri);
               else setBackImage(result.assets[0].uri);
@@ -36,7 +36,7 @@ const DocUploadScreen = ({ navigation, route }) => {
         {
           text: 'Upload from Device',
           onPress: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [4, 3], mediaTypes: ImagePicker.MediaTypeOptions.Images });
+            const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false, mediaTypes: ImagePicker.MediaTypeOptions.Images });
             if (!result.canceled) {
               if (side === 'front') setFrontImage(result.assets[0].uri);
               else setBackImage(result.assets[0].uri);

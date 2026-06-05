@@ -22,6 +22,14 @@ import axios from 'axios';
 import MaintenanceScreen from './src/screens/MaintenanceScreen';
 import notificationService from './src/services/notificationService';
 import AnimatedSplashScreen from './src/screens/Auth/AnimatedSplashScreen';
+import { 
+  useFonts, 
+  Inter_400Regular, 
+  Inter_500Medium, 
+  Inter_600SemiBold, 
+  Inter_700Bold, 
+  Inter_900Black 
+} from '@expo-google-fonts/inter';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
@@ -133,6 +141,31 @@ const AppChrome = () => {
     return <BiometricLockScreen user={user} onUnlock={() => setLocked(false)} onUsePassword={() => { setLocked(false); logout(); }} />;
   }
 
+  // Apply global default font
+  const oldTextRender = React.createElement;
+  if (!global.textFontPatched) {
+    global.textFontPatched = true;
+    const { Text, TextInput } = require('react-native');
+    const oldRender = Text.render;
+    if (oldRender) {
+      Text.render = function(...args) {
+        const origin = oldRender.call(this, ...args);
+        return React.cloneElement(origin, {
+          style: [{ fontFamily: 'Inter-Regular' }, origin.props.style]
+        });
+      };
+    }
+    const oldTextInputRender = TextInput.render;
+    if (oldTextInputRender) {
+      TextInput.render = function(...args) {
+        const origin = oldTextInputRender.call(this, ...args);
+        return React.cloneElement(origin, {
+          style: [{ fontFamily: 'Inter-Regular' }, origin.props.style]
+        });
+      };
+    }
+  }
+
   return (
     <>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={isDarkMode ? '#0B1120' : '#F8FAFC'} />
@@ -145,8 +178,16 @@ const AppChrome = () => {
 
 function App() {
   const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
+  
+  let [fontsLoaded] = useFonts({
+    'Inter-Regular': Inter_400Regular,
+    'Inter-Medium': Inter_500Medium,
+    'Inter-SemiBold': Inter_600SemiBold,
+    'Inter-Bold': Inter_700Bold,
+    'Inter-Black': Inter_900Black,
+  });
 
-  if (!appReady) {
+  if (!appReady || !fontsLoaded) {
     // Show the animated splash while the status check resolves (max 3s)
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
