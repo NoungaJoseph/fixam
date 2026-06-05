@@ -38,7 +38,6 @@ const UserAvatar = ({
   imageStyle,
   textStyle,
 }) => {
-  const avatarUri = getMediaUrl(uri);
   const borderRadius = radius ?? size / 2;
   const baseStyle = [
     styles.avatar,
@@ -51,10 +50,10 @@ const UserAvatar = ({
     },
   ];
 
-  if (avatarUri) {
+  if (uri) {
     return (
       <Image
-        source={{ uri: avatarUri }}
+        source={{ uri }}
         style={[baseStyle, imageStyle]}
         contentFit="cover"
         transition={180}
