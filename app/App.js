@@ -17,8 +17,14 @@ import CallModal from './src/components/CallModal';
 import SupportChatButton from './src/components/SupportChatButton';
 import BiometricLockScreen from './src/components/BiometricLockScreen';
 import * as SecureStore from 'expo-secure-store';
+import * as Sentry from '@sentry/react-native';
 
 import notificationService from './src/services/notificationService';
+
+Sentry.init({
+  dsn: 'https://abc@o123.ingest.sentry.io/456',
+  tracesSampleRate: 1.0,
+});
 
 const AppChrome = () => {
   const { isDarkMode } = useTheme();
@@ -80,7 +86,7 @@ const AppChrome = () => {
   );
 };
 
-export default function App() {
+function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -103,3 +109,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(App);
