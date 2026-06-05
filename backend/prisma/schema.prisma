@@ -110,6 +110,8 @@ model User {
   isBlocked     Boolean   @default(false)
   blockedReason String?
   blockedAt     DateTime?
+  welcomeCoinsGiven Boolean @default(false)
+  verificationCoinsGiven Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -186,6 +188,10 @@ model Job {
   assignments     JobAssignment[]
   reviews         Review[]
   bookings        Booking[]
+
+  @@index([clientId, status])
+  @@index([status, approvalStatus])
+  @@index([createdAt])
 }
 
 model JobAssignment {
@@ -201,6 +207,8 @@ model JobAssignment {
   provider        ProviderProfile  @relation(fields: [providerId], references: [id])
 
   @@unique([jobId, providerId])
+  @@index([providerId, status])
+  @@index([jobId, status])
 }
 
 model Wallet {
@@ -235,6 +243,9 @@ model Transaction {
   wallet          Wallet            @relation(fields: [walletId], references: [id])
   payment         Payment?
   coinPurchase    CoinPurchase?
+
+  @@index([walletId, status])
+  @@index([walletId, createdAt])
 }
 
 model Payment {
@@ -368,6 +379,8 @@ model Booking {
   @@index([clientId, createdAt])
   @@index([providerId, createdAt])
   @@index([status, bookingDate])
+  @@index([clientId, status])
+  @@index([providerId, status])
 }
 
 model CallSession {
@@ -392,6 +405,9 @@ model Notification {
   createdAt       DateTime @default(now())
 
   user            User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 model Review {
@@ -458,16 +474,18 @@ model AdminMessage {
 }
 
 model Settings {
-  id              String   @id @default("global")
-  platformName    String   @default("Fixam")
-  supportEmail    String   @default("support@fixam.cm")
-  serviceFee      Float    @default(10.0)
-  defaultLanguage String   @default("English")
-  baseCurrency    String   @default("XAF")
-  apiEndpoint     String   @default("https://api.fixam.cm/v1")
-  adminSecret     String   @default("secret")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String   @id @default("global")
+  platformName        String   @default("Fixam")
+  supportEmail        String   @default("support@fixam.cm")
+  serviceFee          Float    @default(10.0)
+  defaultLanguage     String   @default("English")
+  baseCurrency        String   @default("XAF")
+  apiEndpoint         String   @default("https://api.fixam.cm/v1")
+  adminSecret         String   @default("secret")
+  maintenanceEnabled  Boolean  @default(false)
+  maintenanceMessage  String   @default("We are improving Fixam for you. Back soon!")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
 
 model Report {

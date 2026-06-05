@@ -18,10 +18,25 @@ const adminRoutes = require('./routes/admin.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const reviewRoutes = require('./routes/review.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const systemRoutes = require('./routes/system.routes');
 const { errorHandler } = require('./middlewares/error.middleware');
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || '',
+  integrations: [
+    Sentry.expressIntegration(),
+    nodeProfilingIntegration(),
+  ],
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  enabled: !!process.env.SENTRY_DSN,
+});
 
 const app = express();
 app.set('trust proxy', 1);
+
 
 // Security Middlewares
 app.use(helmet({
@@ -45,6 +60,24 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Slow Request Logging
+app.use((req, res, next) => {
+  const start = Date.now()
+  res.on('finish', () => {
+    const duration = Date.now() - start
+    if (duration > 2000) {
+      console.warn('[SLOW REQUEST]', {
+        method: req.method,
+        path: req.path,
+        duration: duration + 'ms',
+        status: res.statusCode,
+        timestamp: new Date().toISOString()
+      })
+    }
+  })
+  next()
+})
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -60,6 +93,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/system', systemRoutes);
 
 
 // Health Check
@@ -91,6 +125,8 @@ app.get('/api/health', async (req, res) => {
 app.get('/health', (req, res) => res.redirect('/api/health'));
 
 // Error Handling Middleware
+// Sentry v8+ error handler must be registered before custom error handler
+Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 module.exports = app;
