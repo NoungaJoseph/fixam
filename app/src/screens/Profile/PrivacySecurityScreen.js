@@ -267,6 +267,8 @@ const PrivacySecurityScreen = ({ navigation }) => {
               desc={t('profile.dataUsageDesc')}
               onPress={() => {}}
             />
+          </View>
+
           <View style={[styles.section, { marginTop: 10 }]}>
             <Text style={[styles.sectionLabel, { color: colors.error }]}>DANGER ZONE</Text>
             <TouchableOpacity 
