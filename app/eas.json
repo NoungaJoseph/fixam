@@ -14,7 +14,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://fixam-backend-production.up.railway.app/api",
-        "EXPO_PUBLIC_SOCKET_URL": "https://fixam-backend-production.up.railway.app"
+        "EXPO_PUBLIC_SOCKET_URL": "https://fixam-backend-production.up.railway.app",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m"
       }
     },
     "production": {
