@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoggedOut, setHasLoggedOut] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Restore token from AsyncStorage on app startup
   useEffect(() => {
@@ -119,13 +120,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginDirect = (userData, userToken) => {
-    // Set token immediately in API headers
+  const loginDirect = (userData, userToken, newUser = false) => {
     setAuthToken(userToken);
     setUser(normalizeUser(userData));
     setToken(userToken);
     setHasLoggedOut(false);
+    setIsNewUser(newUser);
   };
+
+  const clearNewUser = () => setIsNewUser(false);
 
   const logout = () => {
     setUser(null);
@@ -173,7 +176,9 @@ export const AuthProvider = ({ children }) => {
       updateProfile, 
       refreshUser,
       uploadFile,
-      hasLoggedOut 
+      hasLoggedOut,
+      isNewUser,
+      clearNewUser,
     }}>
       {children}
     </AuthContext.Provider>

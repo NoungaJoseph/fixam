@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, Image, StatusBar, Dimensions, Platform, RefreshControl
+  TextInput, Image, StatusBar, Dimensions, Platform, RefreshControl, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -54,7 +54,7 @@ const LEARN_CARDS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
-  const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds } = useAppContext();
+  const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds, isInitialLoad } = useAppContext();
   const { user } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
@@ -139,6 +139,16 @@ const HomeScreen = ({ navigation }) => {
     }[card.id];
     return { ...card, step: copy[0], title: copy[1], desc: copy[2] };
   });
+
+  if (isInitialLoad) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text style={{ marginTop: 16, color: colors.text, fontSize: 16, fontWeight: '500' }}>{t('common.loading', 'Loading Fixam...')}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

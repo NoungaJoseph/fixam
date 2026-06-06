@@ -1,0 +1,870 @@
+=== STEP 591 (MODEL, VIEW_FILE) ===
+CONTENT: Created At: 2026-06-05T00:48:41Z
+Completed At: 2026-06-05T00:48:41Z
+File Path: `file:///C:/Users/Prova/Videos/Fixam/backend/prisma/schema.prisma`
+Total Lines: 498
+Total Bytes: 14711
+Showing lines 1 to 498
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: generator client {
+2:   provider = "prisma-client-js"
+3: }
+4: 
+5: datasource db {
+6:   provider  = "postgresql"
+7:   url       = env("DATABASE_URL")
+8:   directUrl = env("DIRECT_URL")
+9: }
+10: enum Role { 
+11:   CLIENT
+12:   PROVIDER
+13:   ADMIN
+14: }
+15: 
+16: enum JobStatus {
+17:   PENDING
+18:   ASSIGNED
+19:   IN_PROGRESS
+20:   COMPLETED
+21:   CANCELLED
+22: }
+23: 
+24: enum JobApprovalStatus {
+25:   PENDING_APPROVAL
+26:   APPROVED
+27:   REJECTED
+28: }
+29: 
+30: enum AssignmentStatus {
+31:   PENDING
+32:   ACCEPTED
+33:   REJECTED
+34: }
+35: 
+36: enum TransactionStatus {
+37:   PENDING
+38:   SUCCESS
+39:   FAILED
+40: }
+41: 
+42: enum TransactionType {
+43:   PURCHASE
+44:   DEDUCTION
+45:   REFUND
+46: }
+47: 
+48: enum PaymentMethod {
+49:   MTN_MOMO
+50:   ORANGE_MONEY
+51: }
+52: 
+53: enum PaymentStatus {
+54:   PENDING
+55:   PROCESSING
+56:   SUCCESS
+57:   FAILED
+58:   CANCELLED
+59: }
+60: 
+61: enum BookingStatus {
+62:   PENDING
+63:   ACCEPTED
+64:   REJECTED
+65:   CANCELLED
+66:   COMPLETED
+67: }
+68: 
+69: enum SupportConversationStatus {
+70:   OPEN
+71:   WAITING
+72:   RESOLVED
+73: }
+74: 
+75: enum VerificationStatus {
+76:   UNVERIFIED
+77:   PENDING
+78:   VERIFIED
+79:   REJECTED
+80: }
+81: 
+82: enum MessageType {
+83:   TEXT
+84:   IMAGE
+85:   FILE
+86:   AUDIO
+87:   AUDIO_CALL
+88:   VIDEO_CALL
+89: }
+90: 
+91: model User {
+92:   id            String    @id @default(uuid())
+93:   phone         String    @unique
+94:   fullName      String?
+95:   email         String?   @unique
+96:   password      String?
+97:   role          Role      @default(CLIENT)
+98:   avatar        String?
+99:   fcmToken      
+<truncated 13527 bytes>
+d())
+452:   userId          String
+453:   title           String
+454:   message         String
+455:   type            String   @default("GENERAL") // GENERAL, BUG, FEATURE_REQUEST, COMPLAINT
+456:   status          String   @default("NEW") // NEW, READ, RESOLVED
+457:   createdAt       DateTime @default(now())
+458:   updatedAt       DateTime @updatedAt
+459: }
+460: 
+461: model AdminMessage {
+462:   id              String   @id @default(uuid())
+463:   recipientId     String?  // NULL means broadcast to all
+464:   recipientRole   String?  // NULL means all, or "CLIENT", "PROVIDER", "BOTH"
+465:   subject         String
+466:   content         String
+467:   isRead          Boolean  @default(false)
+468:   readAt          DateTime?
+469:   sentCount       Int      @default(0)
+470:   status          String   @default("SENT")
+471:   createdAt       DateTime @default(now())
+472: }
+473: 
+474: model Settings {
+475:   id                  String   @id @default("global")
+476:   platformName        String   @default("Fixam")
+477:   supportEmail        String   @default("support@fixam.cm")
+478:   serviceFee          Float    @default(10.0)
+479:   defaultLanguage     String   @default("English")
+480:   baseCurrency        String   @default("XAF")
+481:   apiEndpoint         String   @default("https://api.fixam.cm/v1")
+482:   adminSecret         String   @default("secret")
+483:   maintenanceEnabled  Boolean  @default(false)
+484:   maintenanceMessage  String   @default("We are improving Fixam for you. Back soon!")
+485:   createdAt           DateTime @default(now())
+486:   updatedAt           DateTime @updatedAt
+487: }
+488: 
+489: model Report {
+490:   id              String   @id @default(uuid())
+491:   reporterId      String
+492:   targetUserId    String
+493:   reason          String
+494:   description     String?
+495:   status          String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+496:   createdAt       DateTime @default(now())
+497: }
+498: 
+The above content shows the entire, complete file contents of the requested file.
+
+=== STEP 592 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 593 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+**Refining Component Specificity**
+
+I'm now diving deep into component-level modifications for the settings page. I'm focusing on the SettingsScreen.js and have identified the SectionCard wrapper and SettingItem components needing refinement. I'm carefully removing borders, shadows, and elevated styles, aiming for flat, clean rows, while integrating thin separators between them, as instructed.
+
+
+**Analyzing Component Dependencies**
+
+I'm now carefully examining the dependencies between `SectionCard` and `SettingItem`. I'm going to remove `backgroundColor`, `border`, and `shadow` from `SectionCard`, making it just a View with `marginBottom: 20`. This should ensure `SettingItem` has the correct transparent background. I will directly apply the instructed styles to `SettingItem`, removing borderBottomColor/Width. I'm focusing on incorporating the separator as instructed.
+
+
+**Implementing Separator Logic**
+
+I've decided to refine the separator approach within the `SectionCard`. I'll be mapping through the children, adding a separator conditionally. This involves converting children into an array, and inserting the separator if the child is not the last one. Simultaneously, I will remove the bottom border from the `SettingItem` component. I will also be defining the necessary styles for both components.
+
+
+**Refining Item Styling**
+
+I've examined the `SettingItem` structure and determined it's satisfactory; now, I'm focusing on refining its styling. I'll modify the `settingRow` style and remove the `borderBottomColor` from the inline style of the `TouchableOpacity` component. I plan to apply FIX 1 to `SettingsScreen.js` using `replace_file_content`.
+
+
+
+TOOL CALLS: [{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Implement Fix 1 and Fix 2 on SettingsScreen\"","EndLine":"283","Instruction":"\"Update SettingsScreen.js to remove borders from list items, add separators, and remove Delete Account from main settings.\"","ReplacementContent":"\"import React, { useState } from 'react';\\nimport { SafeAreaView } from 'react-native-safe-area-context';\\nimport { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Switch, Alert, Platform } from 'react-native';\\nimport { MaterialCommunityIcons } from '@expo/vector-icons';\\nimport { LinearGradient } from 'expo-linear-gradient';\\nimport { useTheme } from '../../context/ThemeContext';\\nimport { useLanguage } from '../../context/LanguageContext';\\nimport { useAuth } from '../../context/AuthContext';\\nimport { translateStatus } from '../../i18n/translate';\\nimport UserAvatar from '../../components/UserAvatar';\\n\\nconst SettingsScreen = ({ navigation, route }) => {\\n  const { isDarkMode, colors, toggleTheme } = useTheme();\\n  const { user, logout } = useAuth();\\n  const { t } = useLanguage();\\n  const [location, setLocation] = useState(true);\\n  const isProviderMode = user?.providerProfile?.profileMode === 'WORK';\\n\\n  const handleLogout = () => {\\n    Alert.alert(t('settings.logoutConfirmTitle'), t('settings.logoutConfirmBody'), [\\n      { text: t('common.cancel'), style: 'cancel' },\\n      { text: t('settings.logout'), style: 'destructive', onPress: () => logout() },\\n    ]);\\n  };\\n\\n  const verStatus = user?.providerProfile?.verification;\\n  const verColor = verStatus === 'VERIFIED' ? '#22C55E' : verStatus === 'PENDING' ? '#F59E0B' : '#EF4444';\\n  const verBg = verStatus === 'VERIFIED' ? '#F0FDF4' : verStatus === 'PENDING' ? '#FFFBEB' : '#FEF2F2';\\n  const verLabel = translateStatus(verStatus || 'UNVERIFIED');\\n\\n  // Icon config: [iconName, bgColor]\\n  const ICON_COLORS = {\\n    'account-circle-outline': ['#0D9488', '#F0FDFA'],\\n    'lock-outline':            ['#8B5CF6', '#F5F3FF'],\\n    'check-decagram-outline':  ['#F59E0B', '#FFFBEB'],\\n    'translate':               ['#2563EB', '#EFF6FF'],\\n    'weather-night':           ['#6366F1', '#EEF2FF'],\\n    'map-marker-outline':      ['#0D9488', '#F0FDFA'],\\n    'eye-off-outline':         ['#64748B', '#F1F5F9'],\\n    'shield-check-outline':    ['#0D948\n<truncated 11940 bytes>","StartLine":"1","TargetContent":"\"import React, { useState } from 'react';\\nimport { SafeAreaView } from 'react-native-safe-area-context';\\nimport { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Switch, Alert, Platform } from 'react-native';\\nimport { MaterialCommunityIcons } from '@expo/vector-icons';\\nimport { LinearGradient } from 'expo-linear-gradient';\\nimport { useTheme } from '../../context/ThemeContext';\\nimport { useLanguage } from '../../context/LanguageContext';\\nimport { useAuth } from '../../context/AuthContext';\\nimport { translateStatus } from '../../i18n/translate';\\nimport UserAvatar from '../../components/UserAvatar';\\n\\nconst SettingsScreen = ({ navigation, route }) => {\\n  const { isDarkMode, colors, toggleTheme } = useTheme();\\n  const { user, logout } = useAuth();\\n  const { t } = useLanguage();\\n  const [location, setLocation] = useState(true);\\n  const isProviderMode = user?.providerProfile?.profileMode === 'WORK';\\n\\n  const handleLogout = () => {\\n    Alert.alert(t('settings.logoutConfirmTitle'), t('settings.logoutConfirmBody'), [\\n      { text: t('common.cancel'), style: 'cancel' },\\n      { text: t('settings.logout'), style: 'destructive', onPress: () => logout() },\\n    ]);\\n  };\\n\\n  const verStatus = user?.providerProfile?.verification;\\n  const verColor = verStatus === 'VERIFIED' ? '#22C55E' : verStatus === 'PENDING' ? '#F59E0B' : '#EF4444';\\n  const verBg = verStatus === 'VERIFIED' ? '#F0FDF4' : verStatus === 'PENDING' ? '#FFFBEB' : '#FEF2F2';\\n  const verLabel = translateStatus(verStatus || 'UNVERIFIED');\\n\\n  // Icon config: [iconName, bgColor]\\n  const ICON_COLORS = {\\n    'account-circle-outline': ['#0D9488', '#F0FDFA'],\\n    'lock-outline':            ['#8B5CF6', '#F5F3FF'],\\n    'check-decagram-outline':  ['#F59E0B', '#FFFBEB'],\\n    'translate':               ['#2563EB', '#EFF6FF'],\\n    'weather-night':           ['#6366F1', '#EEF2FF'],\\n    'map-marker-outline':      ['#0D9488', '#F0FDFA'],\\n    'eye-off-outline':         ['#64748B', '#F1F5F9'],\\n    'shield-check-outline':    ['#0D948\n<truncated 11737 bytes>","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\SettingsScreen.js\"","toolAction":"\"Applying Fix 1 and 2 to SettingsScreen.js\"","toolSummary":"\"Fix 1 and 2\""}}]
+
+=== STEP 594 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:49:41Z
+Completed At: 2026-06-05T00:49:53Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\SettingsScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -48,7 +48,7 @@
+     const [iconColor, iconBg] = ICON_COLORS[icon] || [colors.accent, colors.accentSoft];
+     return (
+       <TouchableOpacity
+-        style={[styles.settingRow, { borderBottomColor: colors.divider }]}
++        style={styles.settingRow}
+         onPress={onPress}
+         disabled={!onPress}
+         activeOpacity={0.7}
+@@ -55,9 +55,11 @@
+-        <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
+-          <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
+-        </View>
+-        <View style={styles.settingBody}>
+-          <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
+-          {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
++        <View style={styles.settingRowLeft}>
++          <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
++            <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
++          </View>
++          <View style={styles.settingBody}>
++            <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
++            {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
++          </View>
+         </View>
+         {right || (onPress && (
+           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.placeholder} />
+@@ -72,15 +72,22 @@
+     </View>
+   );
+ 
+-  const SectionCard = ({ children }) => (
+-    <View style={[styles.sectionCard, {
+-  
+<truncated 1763 bytes>
+center', justifyContent: 'center' },
+   heroInitial: { fontSize: 26, fontWeight: '900', color: '#FFF' },
+   editDot: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+   heroName: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+@@ -258,12 +258,33 @@
+   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },
+   sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+   sectionCard: {
+-    marginHorizontal: 16, marginBottom: 20, borderRadius: 18, borderWidth: 1,
+-    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, overflow: 'hidden',
++    marginBottom: 24,
++    marginHorizontal: 16, 
++    borderRadius: 18, 
++    borderWidth: 1,
++    overflow: 'hidden',
+   },
+ 
+   // Row
+-  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, gap: 12 },
++  settingRow: { 
++    flexDirection: 'row', 
++    alignItems: 'center', 
++    justifyContent: 'space-between',
++    paddingVertical: 16, 
++    paddingHorizontal: 20, 
++    backgroundColor: 'transparent'
++  },
++  settingRowLeft: {
++    flexDirection: 'row',
++    alignItems: 'center',
++    flex: 1,
++    gap: 12
++  },
++  separator: {
++    height: 1,
++    backgroundColor: '#F0F0F0',
++    marginHorizontal: 20
++  },
+   iconBox: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+   settingBody: { flex: 1 },
+   settingTitle: { fontSize: 15, fontWeight: '700' },
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+We did our best to apply changes despite some inaccuracies. Double check if the edit applied is what you intended.
+=== STEP 595 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 596 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+**Refining Code Review**
+
+I'm now deeply engaged in a targeted code review. I've re-examined the specific instructions for Fix 1, explicitly cataloging the elements to be removed and modified, such as the `borderWidth` and `borderRadius`. My immediate focus is on the `SectionCard` component within `SettingsScreen.js` to ensure a clean, flat row implementation. I need to make sure my replacement code is fully aligned with the requirements.
+
+
+
+TOOL CALLS: [{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Remove borders completely from SectionCard\"","EndLine":"265","Instruction":"\"Remove borders completely from SectionCard\"","ReplacementContent":"\"  // Section\\n  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },\\n  sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },\\n  sectionCard: {\\n    marginBottom: 24,\\n  },\"","StartLine":"258","TargetContent":"\"  // Section\\n  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },\\n  sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },\\n  sectionCard: {\\n    marginBottom: 24,\\n    marginHorizontal: 16, \\n    borderRadius: 18, \\n    borderWidth: 1,\\n    overflow: 'hidden',\\n  },\"","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\SettingsScreen.js\"","toolAction":"\"Fixing SectionCard styles\"","toolSummary":"\"Fix SectionCard styles\""}},{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Remove background from SectionCard\"","EndLine":"146","Instruction":"\"Remove background from SectionCard\"","ReplacementContent":"\"  const SectionCard = ({ children }) => {\\n    const items = React.Children.toArray(children).filter(Boolean);\\n    return (\\n      <View style={styles.sectionCard}>\\n        {items.map((child, index) => (\\n          <React.Fragment key={index}>\\n            {child}\\n            {index < items.length - 1 && <View style={[styles.separator, { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }]} />}\\n          </React.Fragment>\\n        ))}\\n      </View>\\n    );\\n  };\"","StartLine":"134","TargetContent":"\"  const SectionCard = ({ children }) => {\\n    const items = React.Children.toArray(children).filter(Boolean);\\n    return (\\n      <View style={[styles.sectionCard, {\\n        backgroundColor: colors.card,\\n        borderColor: colors.border,\\n      }]}>\\n        {items.map((child, index) => (\\n          <React.Fragment key={index}>\\n            {child}\\n            {index < items.length - 1 && <View style={[styles.separator, { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }]} />}\\n          </React.Fragment>\\n        ))}\\n      </View>\\n    );\\n  };\"","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\SettingsScreen.js\"","toolAction":"\"Fixing SectionCard wrapper\"","toolSummary":"\"Fix SectionCard wrapper\""}}]
+
+=== STEP 597 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:50:23Z
+Completed At: 2026-06-05T00:50:25Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\SettingsScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -271,10 +271,6 @@
+   sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+   sectionCard: {
+     marginBottom: 24,
+-    marginHorizontal: 16, 
+-    borderRadius: 18, 
+-    borderWidth: 1,
+-    overflow: 'hidden',
+   },
+ 
+   // Row
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+=== STEP 598 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:50:23Z
+Completed At: 2026-06-05T00:50:27Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\SettingsScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -79,10 +79,7 @@
+   const SectionCard = ({ children }) => {
+     const items = React.Children.toArray(children).filter(Boolean);
+     return (
+-      <View style={[styles.sectionCard, {
+-        backgroundColor: colors.card,
+-        borderColor: colors.border,
+-      }]}>
++      <View style={styles.sectionCard}>
+         {items.map((child, index) => (
+           <React.Fragment key={index}>
+             {child}
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+=== STEP 599 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 600 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+
+TOOL CALLS: [{"name":"list_dir","args":{"DirectoryPath":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\"","toolAction":"\"Listing Profile dir\"","toolSummary":"\"List Profile dir\""}}]
+
+=== STEP 601 (MODEL, LIST_DIRECTORY) ===
+CONTENT: Created At: 2026-06-05T00:50:31Z
+Completed At: 2026-06-05T00:50:31Z
+{"name":"ChangePasswordScreen.js","sizeBytes":"8652"}
+{"name":"ConfirmDeleteScreen.js","sizeBytes":"5707"}
+{"name":"DeleteAccountScreen.js","sizeBytes":"5893"}
+{"name":"DocUploadScreen.js","sizeBytes":"10476"}
+{"name":"FeedbackScreen.js","sizeBytes":"4846"}
+{"name":"HelpCenterScreen.js","sizeBytes":"10105"}
+{"name":"HiddenProfileScreen.js","sizeBytes":"7921"}
+{"name":"InvitationScreen.js","sizeBytes":"6820"}
+{"name":"NotificationDetailScreen.js","sizeBytes":"7554"}
+{"name":"NotificationSettingsScreen.js","sizeBytes":"5399"}
+{"name":"NotificationsScreen.js","sizeBytes":"8827"}
+{"name":"PrivacySecurityScreen.js","sizeBytes":"17626"}
+{"name":"ProfileLanguageScreen.js","sizeBytes":"4147"}
+{"name":"RatingScreen.js","sizeBytes":"10147"}
+{"name":"SelfieScreen.js","sizeBytes":"10079"}
+{"name":"SettingsScreen.js","sizeBytes":"13932"}
+{"name":"VerificationScreen.js","sizeBytes":"7119"}
+{"name":"VerificationSuccessScreen.js","sizeBytes":"7082"}
+
+Summary: This directory contains 0 subdirectories and 18 files.
+=== STEP 602 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 603 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+
+TOOL CALLS: [{"name":"view_file","args":{"AbsolutePath":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\PrivacySecurityScreen.js\"","toolAction":"\"Reading PrivacySecurityScreen.js\"","toolSummary":"\"Read PrivacySecurityScreen\""}}]
+
+=== STEP 604 (MODEL, VIEW_FILE) ===
+CONTENT: Created At: 2026-06-05T00:50:37Z
+Completed At: 2026-06-05T00:50:37Z
+File Path: `file:///C:/Users/Prova/Videos/Fixam/app/src/screens/Profile/PrivacySecurityScreen.js`
+Total Lines: 434
+Total Bytes: 17626
+Showing lines 1 to 434
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useEffect, useState, useRef } from 'react';
+2: import { SafeAreaView } from 'react-native-safe-area-context';
+3: import { Alert, StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Switch, Modal, TextInput, ActivityIndicator, Keyboard } from 'react-native';
+4: import { MaterialCommunityIcons } from '@expo/vector-icons';
+5: import * as LocalAuthentication from 'expo-local-authentication';
+6: import * as SecureStore from 'expo-secure-store';
+7: import { useTheme } from '../../context/ThemeContext';
+8: import { useLanguage } from '../../context/LanguageContext';
+9: import { useAuth } from '../../context/AuthContext';
+10: import api from '../../services/api';
+11: 
+12: const PrivacySecurityScreen = ({ navigation }) => {
+13:   const { isDarkMode, colors } = useTheme();
+14:   const { t } = useLanguage();
+15:   const { user, refreshUser } = useAuth();
+16:   const [faceId, setFaceId] = useState(false);
+17:   const [biometricAvailable, setBiometricAvailable] = useState(true);
+18:   const [twoStep, setTwoStep] = useState(user?.twoFactorEnabled || false);
+19: 
+20:   // OTP Modal State
+21:   const [otpModalVisible, setOtpModalVisible] = useState(false);
+22:   const [otp, setOtp] = useState('');
+23:   const [otpTimer, setOtpTimer] = useState(30);
+24:   const [otpLoading, setOtpLoading] = useState(false);
+25:   const [otpError, setOtpError] = useState('');
+26:   const otpInputRef = useRef(null);
+27: 
+28:   // Password Modal State
+29:   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+30:   const [password, setPassw
+<truncated 16142 bytes>
+  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, marginTop: 10 },
+402:   deleteText: { fontWeight: '700', fontSize: 15 },
+403:   disabledItem: { opacity: 0.45 },
+404:   
+405:   // Modals
+406:   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+407:   modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, alignItems: 'center' },
+408:   closeBtn: { position: 'absolute', top: 16, right: 16, padding: 8 },
+409:   modalTitle: { fontSize: 20, fontWeight: '800', marginTop: 10, marginBottom: 8 },
+410:   modalSub: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+411:   
+412:   // OTP
+413:   hiddenInput: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+414:   otpRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+415:   otpBox: { width: 45, height: 55, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+416:   otpBoxActive: { borderColor: '#0D9488', borderWidth: 2 },
+417:   otpDigit: { fontSize: 24, fontWeight: '700' },
+418:   resendWrapper: { marginBottom: 24 },
+419:   resendText: { fontSize: 14, fontWeight: '600' },
+420:   resendLink: { fontSize: 14, fontWeight: '700', textDecorationLine: 'underline' },
+421:   
+422:   // Password
+423:   inputWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, height: 50, width: '100%' },
+424:   input: { flex: 1, fontSize: 15 },
+425:   
+426:   // Shared
+427:   errorText: { color: '#EF4444', fontSize: 13, fontWeight: '600', marginTop: 8 },
+428:   primaryBtn: { width: '100%', height: 52, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+429:   disabledBtn: { opacity: 0.6 },
+430:   btnText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+431: });
+432: 
+433: export default PrivacySecurityScreen;
+434: 
+The above content shows the entire, complete file contents of the requested file.
+
+=== STEP 606 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 607 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing now on tool specificity, implementing some key optimizations. I'm actively avoiding 'cat' for file manipulation and using more direct methods like 'grep_search'. 'ls' is also off the table. I'm aiming for more streamlined, efficient operation, and keeping best practice in mind.
+
+
+**Refining Tool Usage**
+
+I'm now refining my approach to tool selection based on the specific task. I have an explicit list of tools for each task to increase efficiency. I recently implemented a more refined understanding of tool usage. It helps me to identify the tools for listing, viewing, finding, and replacing. I am also currently wrapping a `deleteBtn` in a `Danger Zone` section with red styling within `PrivacySecurityScreen.js`.
+
+
+**Styling UI Elements**
+
+I'm now focusing on styling the UI elements, specifically the `deleteBtn` within the `PrivacySecurityScreen.js` file. I'm aiming for a more prominent "Danger Zone" appearance to highlight its critical nature. I intend to style this button with red colors in the content, or background to match the instructions. I'm focusing on making it clear.
+
+
+
+TOOL CALLS: [{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Add Danger Zone section in PrivacySecurityScreen\"","EndLine":"276","Instruction":"\"Add a Danger Zone section around Delete Account with red styling\"","ReplacementContent":"\"          <View style={[styles.section, { marginTop: 10 }]}>\\n            <Text style={[styles.sectionLabel, { color: colors.error }]}>DANGER ZONE</Text>\\n            <TouchableOpacity \\n              style={[styles.dangerBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2', borderColor: 'rgba(239, 68, 68, 0.3)' }]} \\n              onPress={() => navigation.navigate('DeleteAccount')}\\n            >\\n              <View style={styles.dangerBtnRow}>\\n                <MaterialCommunityIcons name=\\\"delete-outline\\\" size={22} color={colors.error} />\\n                <Text style={[styles.dangerText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>\\n              </View>\\n              <Text style={[styles.dangerDesc, { color: colors.error, opacity: 0.8 }]}>\\n                Permanently remove your account and all associated data. This action cannot be undone.\\n              </Text>\\n            </TouchableOpacity>\\n          </View>\\n        </ScrollView>\"","StartLine":"271","TargetContent":"\"          </View>\\n\\n          <TouchableOpacity style={styles.deleteBtn} onPress={() => navigation.navigate('DeleteAccount')}>\\n            <MaterialCommunityIcons name=\\\"delete-outline\\\" size={20} color={colors.error} />\\n            <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>\\n          </TouchableOpacity>\\n        </ScrollView>\"","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\PrivacySecurityScreen.js\"","toolAction":"\"Fixing PrivacySecurityScreen.js\"","toolSummary":"\"Fix PrivacySecurityScreen\""}}]
+
+=== STEP 608 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:50:47Z
+Completed At: 2026-06-05T00:50:49Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\PrivacySecurityScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -267,12 +267,21 @@
+               desc={t('profile.dataUsageDesc')}
+               onPress={() => {}}
+             />
+-          </View>
+-
+-          <TouchableOpacity style={styles.deleteBtn} onPress={() => navigation.navigate('DeleteAccount')}>
+-            <MaterialCommunityIcons name="delete-outline" size={20} color={colors.error} />
+-            <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
+-          </TouchableOpacity>
++          <View style={[styles.section, { marginTop: 10 }]}>
++            <Text style={[styles.sectionLabel, { color: colors.error }]}>DANGER ZONE</Text>
++            <TouchableOpacity 
++              style={[styles.dangerBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2', borderColor: 'rgba(239, 68, 68, 0.3)' }]} 
++              onPress={() => navigation.navigate('DeleteAccount')}
++            >
++              <View style={styles.dangerBtnRow}>
++                <MaterialCommunityIcons name="delete-outline" size={22} color={colors.error} />
++                <Text style={[styles.dangerText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
++              </View>
++              <Text style={[styles.dangerDesc, { color: colors.error, opacity: 0.8 }]}>
++                Permanently remove your account and all associated data. This action cannot be undone.
++              </Text>
++            </TouchableOpacity>
++          </View>
+         </ScrollView>
+       </SafeAreaView>
+ 
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+=== STEP 609 (SYSTEM, CONVERSATION_HISTORY) ===
+=== STEP 610 (SYSTEM, KNOWLEDGE_ARTIFACTS) ===
+=== STEP 611 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 612 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing now on tool specificity, implementing some key optimizations. I'm actively avoiding 'cat' for file manipulation and using more direct methods like 'grep_search'. 'ls' is also off the table. I'm aiming for more streamlined, efficient operation, and keeping best practice in mind.
+
+
+
+TOOL CALLS: [{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Add danger styles in PrivacySecurityScreen\"","EndLine":"402","Instruction":"\"Add danger styles in PrivacySecurityScreen\"","ReplacementContent":"\"  settingDesc: { fontSize: 12, marginTop: 2 },\\n  dangerBtn: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 10 },\\n  dangerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },\\n  dangerText: { fontWeight: '800', fontSize: 16 },\\n  dangerDesc: { fontSize: 13, lineHeight: 18 },\\n  disabledItem: { opacity: 0.45 },\"","StartLine":"400","TargetContent":"\"  settingDesc: { fontSize: 12, marginTop: 2 },\\n  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, marginTop: 10 },\\n  deleteText: { fontWeight: '700', fontSize: 15 },\\n  disabledItem: { opacity: 0.45 },\"","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\PrivacySecurityScreen.js\"","toolAction":"\"Adding styles to PrivacySecurityScreen.js\"","toolSummary":"\"Add styles\""}}]
+
+=== STEP 613 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:50:56Z
+Completed At: 2026-06-05T00:50:57Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\PrivacySecurityScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -407,8 +407,10 @@
+   settingTexts: { flex: 1 },
+   settingTitle: { fontSize: 15, fontWeight: '700' },
+   settingDesc: { fontSize: 12, marginTop: 2 },
+-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, marginTop: 10 },
+-  deleteText: { fontWeight: '700', fontSize: 15 },
++  dangerBtn: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 10 },
++  dangerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
++  dangerText: { fontWeight: '800', fontSize: 16 },
++  dangerDesc: { fontSize: 13, lineHeight: 18 },
+   disabledItem: { opacity: 0.45 },
+   
+   // Modals
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+=== STEP 614 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 615 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+**Refining Tool Choice**
+
+I'm now prioritizing explicit tool lists before execution, ensuring the chosen tools are optimal. I'm focusing on minimizing command nesting by comparing tools. I've successfully applied keyboard avoiding to `ChangePasswordScreen.js` and `HelpCenterScreen.js`, integrating `KeyboardAvoidingView` and `ScrollView` for improved user input handling on screens with text inputs.
+
+
+**Implementing Keyboard Avoiding**
+
+I've checked `ChangePasswordScreen.js` and confirmed implementation of `KeyboardAvoidingView` to handle keyboard interactions on iOS and Android. It's properly integrated with the `ScrollView` for smooth scrolling and a better user experience. I'm now verifying this across the relevant components, looking at each file's keyboard behavior.
+
+
+
+TOOL CALLS: [{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Add KeyboardAvoidingView to ChangePasswordScreen\"","EndLine":"132","Instruction":"\"Add KeyboardAvoidingView to ChangePasswordScreen\"","ReplacementContent":"\"        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>\\n          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>\\n            <View style={styles.lockIcon}>\\n              <MaterialCommunityIcons name=\\\"lock-reset\\\" size={36} color={colors.accent} />\\n            </View>\\n            <Text style={[styles.title, { color: colors.text }]}>{t('profile.updatePassword')}</Text>\\n            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>\\n              {t('profile.passwordHelp')}\\n            </Text>\\n\\n            <InputField label={t('profile.currentPassword')} value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder={t('profile.enterCurrentPassword')} error={errors.current} />\\n            <InputField label={t('profile.newPassword')} value={newPass} onChange={setNewPass} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder={t('profile.enterNewPassword')} error={errors.newPass} />\\n\\n            {/* Strength indicator */}\\n            {newPass.length > 0 && (\\n              <View style={styles.strengthRow}>\\n                {[1, 2, 3].map(i => (\\n                  <View key={i} style={[styles.strengthBar, { backgroundColor: i <= strength ? strengthColor : colors.border }]} />\\n                ))}\\n                <Text style={[styles.strengthLabel, { color: strengthColor }]}>{strengthLabel}</Text>\\n              </View>\\n            )}\\n\\n            <InputField label={t('profile.confirmNewPassword')} value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} placeholder={t('profile.reEnterNewPassword')} error={errors.confirm} />\\n\\n            {!errors.confirm && confirm.length > 0 && newPass !== confirm && (\\n              <Text style={styles.matchError}>{t('profile.passwordMismatch')}</Text>\\n            )}\\n            {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}\\n      \n<truncated 572 bytes>","StartLine":"97","TargetContent":"\"        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>\\n          <View style={styles.lockIcon}>\\n            <MaterialCommunityIcons name=\\\"lock-reset\\\" size={36} color={colors.accent} />\\n          </View>\\n          <Text style={[styles.title, { color: colors.text }]}>{t('profile.updatePassword')}</Text>\\n          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>\\n            {t('profile.passwordHelp')}\\n          </Text>\\n\\n          <InputField label={t('profile.currentPassword')} value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder={t('profile.enterCurrentPassword')} error={errors.current} />\\n          <InputField label={t('profile.newPassword')} value={newPass} onChange={setNewPass} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder={t('profile.enterNewPassword')} error={errors.newPass} />\\n\\n          {/* Strength indicator */}\\n          {newPass.length > 0 && (\\n            <View style={styles.strengthRow}>\\n              {[1, 2, 3].map(i => (\\n                <View key={i} style={[styles.strengthBar, { backgroundColor: i <= strength ? strengthColor : colors.border }]} />\\n              ))}\\n              <Text style={[styles.strengthLabel, { color: strengthColor }]}>{strengthLabel}</Text>\\n            </View>\\n          )}\\n\\n          <InputField label={t('profile.confirmNewPassword')} value={confirm} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} placeholder={t('profile.reEnterNewPassword')} error={errors.confirm} />\\n\\n          {!errors.confirm && confirm.length > 0 && newPass !== confirm && (\\n            <Text style={styles.matchError}>{t('profile.passwordMismatch')}</Text>\\n          )}\\n          {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}\\n          {success ? <Text style={styles.successText}>{success}</Text> : null}\\n\\n          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.acc\n<truncated 370 bytes>","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\ChangePasswordScreen.js\"","toolAction":"\"Adding KeyboardAvoidingView\"","toolSummary":"\"Add KeyboardAvoidingView\""}},{"name":"replace_file_content","args":{"AllowMultiple":"false","Description":"\"Import KeyboardAvoidingView in ChangePasswordScreen\"","EndLine":"3","Instruction":"\"Import KeyboardAvoidingView in ChangePasswordScreen\"","ReplacementContent":"\"import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';\"","StartLine":"3","TargetContent":"\"import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput } from 'react-native';\"","TargetFile":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\ChangePasswordScreen.js\"","toolAction":"\"Importing KeyboardAvoidingView\"","toolSummary":"\"Import KeyboardAvoidingView\""}}]
+
+=== STEP 616 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:51:14Z
+Completed At: 2026-06-05T00:51:22Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\ChangePasswordScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -88,53 +88,15 @@
+       <SafeAreaView style={styles.container}>
+         <View style={styles.header}>
+           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+-            <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
+-          </TouchableOpacity>
+-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.changePassword')}</Text>
+-          <View style={{ width: 42 }} />
+-        </View>
+-
+-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+-          <View style={styles.lockIcon}>
+-            <MaterialCommunityIcons name="lock-reset" size={36} color={colors.accent} />
+-          </View>
+-          <Text style={[styles.title, { color: colors.text }]}>{t('profile.updatePassword')}</Text>
+-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+-            {t('profile.passwordHelp')}
+-          </Text>
+-
+-          <InputField label={t('profile.currentPassword')} value={current} onChange={setCurrent} show={showCurrent} onToggle={() => setShowCurrent(v => !v)} placeholder={t('profile.enterCurrentPassword')} error={errors.current} />
+-          <InputField label={t('profile.newPassword')} value={newPass} onChange={setNewPass} show={showNew} onToggle={() => setShowNew(v => !v)} placeholder={t('profile.enterNewPassword')} error={errors.newPass} />
+-
+-          {/* Strength indicator */}
+-          {newPass.length > 0 && (
+-            <View style={styles.strengthRow}>
+-              {[1, 2, 3].map(i => (
+-                <View key={i} style={[styles.strengthBar, { backgroundColor: i <= strength ? strengthColo
+<truncated 265 bytes>
+} onChange={setConfirm} show={showConfirm} onToggle={() => setShowConfirm(v => !v)} placeholder={t('profile.reEnterNewPassword')} error={errors.confirm} />
+-
+-          {!errors.confirm && confirm.length > 0 && newPass !== confirm && (
+-            <Text style={styles.matchError}>{t('profile.passwordMismatch')}</Text>
+-          )}
+-          {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+-          {success ? <Text style={styles.successText}>{success}</Text> : null}
+-
+-          <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.accent, opacity: loading ? 0.7 : 1 }]} onPress={handleSave} disabled={loading}>
+-            <MaterialCommunityIcons name="lock-check-outline" size={20} color="#FFF" />
+-            <Text style={styles.saveBtnText}>{loading ? t('profile.updating') : t('profile.updatePasswordButton')}</Text>
++
++  return (
++    <View style={[styles.background, { backgroundColor: colors.background }]}>
++      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
++      <SafeAreaView style={styles.container}>
++        <View style={styles.header}>
++          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
++            <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
+           </TouchableOpacity>
+-        </ScrollView>
+-      </SafeAreaView>
+-    </View>
+-  );
+-};
+-
+-const styles = StyleSheet.create({
+   background: { flex: 1 },
+   container: { flex: 1 },
+   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+We did our best to apply changes despite some inaccuracies. Double check if the edit applied is what you intended.
+=== STEP 617 (MODEL, CODE_ACTION) ===
+CONTENT: Created At: 2026-06-05T00:51:14Z
+Completed At: 2026-06-05T00:51:24Z
+The following changes were made by the replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\ChangePasswordScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -1,6 +1,6 @@
+ import React, { useState } from 'react';
+ import { SafeAreaView } from 'react-native-safe-area-context';
+-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput } from 'react-native';
++import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+ import { MaterialCommunityIcons } from '@expo/vector-icons';
+ import { useTheme } from '../../context/ThemeContext';
+ import { useAuth } from '../../context/AuthContext';
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+=== STEP 618 (SYSTEM, EPHEMERAL_MESSAGE) ===
+CONTENT: The following is an <EPHEMERAL_MESSAGE> not actually sent by the user. It is provided by the system as a set of reminders and general important information to pay attention to. Do NOT respond to this message, just act accordingly.
+
+<EPHEMERAL_MESSAGE>
+<planning_mode>
+You're in planning mode. Exercise judgement on whether the user's last request warrants a plan and take action accordingly.
+If the user's request warrants a plan then follow this workflow:
+1. Research first before taking actions. Do not use your code editing tools or run modifying commands during this time.
+2. Create an implementation plan artifact with `request_feedback = true` to request approval. Include any open questions for the user directly in the implementation plan. Don't use the ask_question tool to ask these questions. Stop calling tools and allow the user to review the plan and provide feedback or approval.
+3. After receiving approval, begin execution. Create and update the task artifact as you work.
+4. Verify any work that you have done.
+5. Create a walkthrough artifact to present your work to the user. When writing artifacts, make sure to follow the artifact formatting guidelines and use github alerts to highlight critical sections.
+If the user's request does NOT warrant a plan then continue your work WITHOUT making a plan or requesting user feedback.
+</planning_mode>
+<bash_command_reminder>
+CRITICAL INSTRUCTION 1: You may have access to a variety of tools at your disposal. Some tools may be for a specific task such as 'view_file' (for viewing contents of a file). Others may be very broadly applicable such as the ability to run a command on a terminal. Always prioritize using the most specific tool you can for the task at hand. Here are some rules: (a) NEVER run cat inside a bash command to create a new file or append to an existing file. (b) ALWAYS use grep_search instead of running grep inside a bash command unless absolutely needed. (c) DO NOT use ls for listing, cat for viewing, grep for finding, sed for replacing. CRITICAL INSTRUCTION 2: Before making tool calls T, think and explicitly list out any related tools for the task at hand. You can only execute a set of tools T if all other tools in the list are either more generic or cannot be used for the task at hand. ALWAYS START your thought with recalling critical instructions 1 and 2. In particular, the format for the start of your thought block must be '...94>thought
+CRITICAL INSTRUCTION 1: ...
+CRITICAL INSTRUCTION 2: ...'.
+</bash_command_reminder>
+</EPHEMERAL_MESSAGE>
+=== STEP 619 (MODEL, PLANNER_RESPONSE) ===
+THINKING: **Prioritizing Tool Specificity**
+
+I'm focusing now on tool specificity, implementing some key optimizations. I'm actively avoiding 'cat' for file manipulation and using more direct methods like 'grep_search'. 'ls' is also off the table. I'm aiming for more streamlined, efficient operation, and keeping best practice in mind.
+
+
+**Analyzing Tool Functionality**
+
+I'm now carefully analyzing the specific functionality of each tool before usage, with a focus on comprehensive coverage. I'm prioritizing explicit tool listing before execution, and avoiding tools that don't match the goal. My recent replacement attempt failed; I'm re-evaluating the choice of 'sed' and considering alternatives after a weird failure.
+
+
+
+TOOL CALLS: [{"name":"view_file","args":{"AbsolutePath":"\"C:\\\\Users\\\\Prova\\\\Videos\\\\Fixam\\\\app\\\\src\\\\screens\\\\Profile\\\\ChangePasswordScreen.js\"","toolAction":"\"Reading ChangePasswordScreen.js\"","toolSummary":"\"Read ChangePasswordScreen\""}}]
+
+=== STEP 620 (MODEL, VIEW_FILE) ===
+CONTENT: Created At: 2026-06-05T00:51:30Z
+Completed At: 2026-06-05T00:51:30Z
+File Path: `file:///C:/Users/Prova/Videos/Fixam/app/src/screens/Profile/ChangePasswordScreen.js`
+Total Lines: 125
+Total Bytes: 6436
+Showing lines 1 to 125
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useState } from 'react';
+2: import { SafeAreaView } from 'react-native-safe-area-context';
+3: import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+4: import { MaterialCommunityIcons } from '@expo/vector-icons';
+5: import { useTheme } from '../../context/ThemeContext';
+6: import { useAuth } from '../../context/AuthContext';
+7: import { useLanguage } from '../../context/LanguageContext';
+8: import api from '../../services/api';
+9: 
+10: const ChangePasswordScreen = ({ navigation }) => {
+11:   const { colors, isDarkMode } = useTheme();
+12:   const { refreshUser } = useAuth();
+13:   const { t } = useLanguage();
+14:   const [current, setCurrent] = useState('');
+15:   const [newPass, setNewPass] = useState('');
+16:   const [confirm, setConfirm] = useState('');
+17:   const [showCurrent, setShowCurrent] = useState(false);
+18:   const [showNew, setShowNew] = useState(false);
+19:   const [showConfirm, setShowConfirm] = useState(false);
+20:   const [loading, setLoading] = useState(false);
+21:   const [errors, setErrors] = useState({});
+22:   const [success, setSuccess] = useState('');
+23: 
+24:   const hasMinLength = newPass.length >= 8;
+25:   const hasNumber = /\d/.test(newPass);
+26:   const hasSpecial = /[^A-Za-z0-9]/.test(newPass);
+27:   const strength = !newPass ? 0 : hasMinLength && hasNumber && hasSpecial ? 3 : hasMinLength && (hasNumber || hasSpecial) ? 2 : 1;
+28:   const strengthColor = ['#E5E7EB', '#EF4444', '#F97316', '#22C55E'][strength];
+29:  
+<truncated 3405 bytes>
+ { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+103:   backBtn: { width: 42, height: 42, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+104:   headerTitle: { fontSize: 18, fontWeight: '800' },
+105:   content: { padding: 24, paddingBottom: 48 },
+106:   lockIcon: { width: 70, height: 70, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 18, alignSelf: 'center' },
+107:   title: { fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 10 },
+108:   subtitle: { fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 30 },
+109:   field: { marginBottom: 18 },
+110:   label: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8, textTransform: 'uppercase' },
+111:   inputWrap: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, borderWidth: 1, paddingHorizontal: 16, height: 52 },
+112:   input: { flex: 1, fontSize: 15, fontWeight: '500' },
+113:   strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -8, marginBottom: 16 },
+114:   strengthBar: { flex: 1, height: 4, borderRadius: 2 },
+115:   strengthLabel: { fontSize: 12, fontWeight: '700' },
+116:   matchError: { color: '#EF4444', fontSize: 12, fontWeight: '600', marginTop: -12, marginBottom: 12 },
+117:   inlineError: { color: '#EF4444', fontSize: 12, fontWeight: '600', marginTop: 6 },
+118:   formError: { color: '#EF4444', fontSize: 13, fontWeight: '700', marginBottom: 12, textAlign: 'center' },
+119:   successText: { color: '#22C55E', fontSize: 13, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
+120:   saveBtn: { height: 56, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
+121:   saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '900' },
+122: });
+123: 
+124: export default ChangePasswordScreen;
+125: 
+The above content shows the entire, complete file contents of the requested file.
+

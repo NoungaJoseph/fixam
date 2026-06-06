@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity, ScrollView,
-  TextInput, StatusBar, Platform, Image, Dimensions, Switch, Modal
+  TextInput, StatusBar, Platform, Image, Dimensions, Switch, Modal, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getProviderProgress } from '../../utils/providerProgress';
 import { translateService } from '../../i18n/translate';
+import WelcomeModal from '../../components/Common/WelcomeModal';
+import ProviderTour from '../../components/Common/ProviderTour';
 
 const { width } = Dimensions.get('window');
 
@@ -62,9 +64,9 @@ const LEARN_CARDS = [
 const ProviderHomeScreen = ({ navigation }) => {
   const {
     isProviderOnline, updateProviderStatus,
-    walletBalance, visibleJobs, notificationCount, unreadCount,
+    walletBalance, visibleJobs, notificationCount, unreadCount, isInitialLoad
   } = useAppContext();
-  const { user } = useAuth();
+  const { user, isNewUser, clearNewUser } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
 
@@ -77,8 +79,52 @@ const ProviderHomeScreen = ({ navigation }) => {
   const [favorites, setFavorites] = useState([]);
   const [dismissed, setDismissed] = useState([]);
   const [rankModalVisible, setRankModalVisible] = useState(false);
-  
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  // Refs for tour highlights
+  const topUpRef = useRef(null);
+  const viewAllJobsRef = useRef(null);
+  const onlineToggleRef = useRef(null);
+  const findJobsRef = useRef(null);
+  const myJobsRef = useRef(null);
+  const providerMainScrollRef = useRef(null);
+
   const [myJobs, setMyJobs] = useState([]);
+
+  const tourSteps = useMemo(() => [
+    {
+      ref: topUpRef,
+      icon: 'wallet-plus-outline',
+      title: t('tour.providerTopUpTitle'),
+      text: t('tour.providerTopUpText'),
+    },
+    {
+      ref: onlineToggleRef,
+      icon: 'circle-slice-8',
+      title: t('tour.providerOnlineTitle'),
+      text: t('tour.providerOnlineText'),
+    },
+    {
+      ref: findJobsRef,
+      icon: 'briefcase-search-outline',
+      title: t('tour.providerFindJobsTitle'),
+      text: t('tour.providerFindJobsText'),
+    },
+    {
+      ref: viewAllJobsRef,
+      icon: 'fire',
+      title: t('tour.providerViewAllTitle'),
+      text: t('tour.providerViewAllText'),
+    },
+  ], [t]);
+
+  useEffect(() => {
+    if (isNewUser) {
+      const timer = setTimeout(() => setShowWelcome(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewUser]);
 
   const fetchMyJobs = React.useCallback(async () => {
     try {
@@ -294,12 +340,22 @@ const ProviderHomeScreen = ({ navigation }) => {
     );
   };
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+  if (isInitialLoad) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+        <ActivityIndicator size="large" color="#0D9488" />
+        <Text style={{ marginTop: 16, color: colors.text, fontSize: 16, fontWeight: '500' }}>{t('common.loading', 'Loading Fixam...')}</Text>
+      </View>
+    );
+  }
 
-      {/* Scrollable Dashboard */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { backgroundColor: colors.background }]}>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
+
+      {/* FIXED FLOATING SEARCH/FILTER AT TOP */}
+      <ScrollView ref={providerMainScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { backgroundColor: colors.background }]}>
 
         {/* ÔöÇÔöÇ 1. PREMIUM HEADER SECTION ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <View style={styles.headerTop}>
@@ -381,6 +437,7 @@ const ProviderHomeScreen = ({ navigation }) => {
             <Text style={styles.cardLabel}>{t('home.yourBalance')}</Text>
             <Text style={styles.cardValue}>{walletBalance} {t('payments.coins')}</Text>
             <TouchableOpacity
+              ref={topUpRef}
               style={styles.topUpBtn}
               onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}
             >
@@ -434,6 +491,7 @@ const ProviderHomeScreen = ({ navigation }) => {
               </View>
             </View>
             <Switch
+              ref={onlineToggleRef}
               value={isProviderOnline}
               onValueChange={updateProviderStatus}
               trackColor={{ true: '#10B981', false: '#CBD5E1' }}
@@ -444,7 +502,7 @@ const ProviderHomeScreen = ({ navigation }) => {
           {/* Bottom Section: Quick Nav Grid */}
           <View style={styles.quickNavGridContainer}>
             {/* Find Jobs */}
-            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.navigate('FindJobs')}>
+            <TouchableOpacity ref={findJobsRef} style={styles.quickNavCard} onPress={() => navigation.navigate('FindJobs')}>
               <View style={[styles.quickNavIconWrap, { backgroundColor: '#E6FDF3' }]}>
                 <MaterialCommunityIcons name="briefcase" size={24} color="#0D9488" />
               </View>
@@ -452,7 +510,7 @@ const ProviderHomeScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             {/* Messages */}
-            <TouchableOpacity style={styles.quickNavCard} onPress={() => navigation.navigate('Messages')}>
+            <TouchableOpacity ref={myJobsRef} style={styles.quickNavCard} onPress={() => navigation.navigate('Messages')}>
               <View style={[styles.quickNavIconWrap, { backgroundColor: '#F3E8FF' }]}>
                 <MaterialCommunityIcons name="message-text" size={24} color="#7C3AED" />
                 {unreadCount > 0 && (
@@ -578,7 +636,7 @@ const ProviderHomeScreen = ({ navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('home.liveJobsNearYou')}</Text>
             <Text style={styles.liveCountText}>• {t('home.jobsAvailable', { count: filteredJobs.length })}</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('FindJobs')}>
+          <TouchableOpacity ref={viewAllJobsRef} onPress={() => navigation.navigate('FindJobs')}>
             <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
           </TouchableOpacity>
         </View>
@@ -612,6 +670,27 @@ const ProviderHomeScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Welcome celebration modal */}
+      <WelcomeModal
+        visible={showWelcome}
+        name={firstName}
+        role={user?.role}
+        onDone={() => {
+          setShowWelcome(false);
+          clearNewUser();
+          setTimeout(() => setShowTour(true), 400);
+        }}
+      />
+
+      {/* Provider quick tour */}
+      <ProviderTour
+        steps={tourSteps}
+        userId={user?.id}
+        visible={showTour}
+        onDone={() => setShowTour(false)}
+        scrollViewRef={providerMainScrollRef}
+      />
     </SafeAreaView>
   );
 };

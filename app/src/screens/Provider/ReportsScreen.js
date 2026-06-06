@@ -97,7 +97,7 @@ const ReportsScreen = ({ navigation }) => {
           )}
         </View>
 
-        <TouchableOpacity style={[styles.generateBtn, { backgroundColor: colors.primary }]} onPress={() => handleDownload('')}>
+        <TouchableOpacity style={[styles.generateBtn, { backgroundColor: colors.accent || '#0D9488' }]} onPress={() => handleDownload('')}>
           <Text style={styles.generateBtnText}>{t('home.generateReport')}</Text>
           <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#FFF" />
         </TouchableOpacity>

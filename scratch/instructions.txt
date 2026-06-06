@@ -1,0 +1,86 @@
+<USER_REQUEST>
+You are making specific UI and feature improvements to 
+the Fixam mobile app and backend.
+
+CRITICAL: Backend and app are TWO SEPARATE git repos.
+Push each repo's changes separately. Never mix commits.
+
+Read every referenced file before writing any code.
+Report what you found, then implement in order.
+
+═══════════════════════════════════════════════════════════
+BEFORE ANYTHING — READ THESE FILES FIRST
+═══════════════════════════════════════════════════════════
+
+APP:
+1. app/src/screens/Settings/SettingsScreen.js — full
+2. app/src/screens/Settings/ChangePasswordScreen.js
+3. app/src/screens/Profile/VerificationScreen.js or 
+   wherever identity verification is
+4. app/src/screens/Settings/HelpCenterScreen.js
+5. app/src/screens/Profile/UploadDocumentsScreen.js 
+   or wherever document upload happens
+6. app/src/theme/ — colors, fonts, typography files
+7. app/src/navigation/ — find where Delete Account 
+   is currently placed
+8. app/package.json — check installed font packages
+9. app/app.json — check loaded fonts
+
+BACKEND:
+10. backend/src/controllers/auth.controller.js — 
+    find registration and OTP verification logic
+11. backend/src/controllers/wallet.controller.js
+12. backend/src/services/notification.service.js
+13. prisma/schema.prisma — User, Wallet, Transaction
+
+After reading, confirm what you found before coding.
+
+═══════════════════════════════════════════════════════════
+FIX 1 — SETTINGS PAGE: REMOVE BORDERS FROM LIST ITEMS
+═══════════════════════════════════════════════════════════
+
+PROBLEM: Settings list items (Pr
+<truncated 16919 bytes>
+only
+   Never mix commits.
+
+5. Fix 4 (Typography) is the most impactful visually.
+   Be thorough — apply to all major screens.
+   But do NOT change any colors or layouts.
+   Font changes only.
+
+6. Fix 6 (Free Coins) must NEVER cause registration 
+   to fail. Wrap ALL coin-giving logic in try/catch.
+   A coin award failure must be silent — 
+   log it but never throw.
+
+7. Schema changes: show SQL first.
+   ADD only. Never DROP or ALTER existing columns.
+
+8. The welcomeCoinsGiven check is critical — 
+   without it, every login gives free coins.
+   Implement the check properly.
+
+9. For Fix 5 (documents): allowsEditing: false 
+   is the most important change. This single line 
+   removes the crop UI entirely.
+
+10. Push each repo after all its changes:
+    App: git add . && git commit -m "fix: settings UI, fonts, scrollable screens, document upload" && git push origin main
+    Backend: git add . && git commit -m "feat: welcome coins for new users" && git push origin main
+
+11. If you hit a blocker: STOP and report 
+    the exact error immediately.
+One thing to flag — for Fix 4 (Typography), after your agent installs the Inter fonts and pushes, you will need to rebuild your APK because font changes require a new native build. The fonts will not show in a regular over-the-air update. Tell your agent to confirm the fonts are properly loaded in app.json under the expo-font plugin so the next APK build includes them.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-05T01:47:27+01:00.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\Prova\Videos\Fixam\backend\src\routes\chat.routes.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\Prova\Videos\Fixam\app\src\navigation\TabNavigator.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\Prova\Videos\Fixam\app\src\screens\Profile\ProfileLanguageScreen.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\Prova\Videos\Fixam\app\src\i18n\en.json (LANGUAGE_JSON)
+- c:\Users\Prova\Videos\Fixam\app\src\screens\Auth\OnboardingScreen.js (LANGUAGE_JAVASCRIPT)
+</ADDITIONAL_METADATA>

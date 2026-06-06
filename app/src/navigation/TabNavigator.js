@@ -41,8 +41,7 @@ import HiddenProfileScreen from '../screens/Profile/HiddenProfileScreen';
 import ChangePasswordScreen from '../screens/Profile/ChangePasswordScreen';
 import HelpCenterScreen from '../screens/Profile/HelpCenterScreen';
 import InvitationScreen from '../screens/Profile/InvitationScreen';
-import DeleteAccountScreen from '../screens/Profile/DeleteAccountScreen';
-import ConfirmDeleteScreen from '../screens/Profile/ConfirmDeleteScreen';
+
 import TopUpScreen from '../screens/Wallet/TopUpScreen';
 import TopUpAmountScreen from '../screens/Wallet/TopUpAmountScreen';
 import TopUpPaymentScreen from '../screens/Wallet/TopUpPaymentScreen';
@@ -98,8 +97,7 @@ const ProfileStack = () => (
     <Stack.Screen name="HiddenProfile" component={HiddenProfileScreen} />
     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
-    <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
-    <Stack.Screen name="ConfirmDelete" component={ConfirmDeleteScreen} />
+
   </Stack.Navigator>
 );
 
@@ -141,6 +139,43 @@ const MessagesStack = () => (
   </Stack.Navigator>
 );
 
+const HIDE_TAB_ROUTES = [
+  'Chat',
+  'DocUpload',
+  'Selfie',
+  'VerificationSuccess',
+  'ProviderList',
+  'PopularServices',
+  'ProviderProfile',
+  'TaskDetails',
+  'BookingForm',
+  'Rating',
+  'TopUp',
+  'TopUpAmount',
+  'TopUpPayment',
+  'TopUpSuccess',
+  'CoinPaymentForm',
+  'CoinPaymentSuccess',
+  'CoinPaymentFailed',
+  'HelpCenter',
+  'UserProfile',
+  'ProviderProfileEditItem',
+  'ProviderProfileSectionEdit',
+  'Notifications',
+  'NotificationDetail',
+  'NotificationSettings',
+  'PrivacySecurity',
+  'LanguageSelection',
+  'Feedback',
+  'Verification',
+  'HiddenProfile',
+  'ChangePassword',
+
+  'LiveTaskMap',
+  'JobStatus',
+  'TaskSuccess',
+];
+
 const BottomTabNavigator = () => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
@@ -150,17 +185,7 @@ const BottomTabNavigator = () => {
     <Tab.Navigator
       screenOptions={({ route }) => {
         const routeName = getFocusedRouteNameFromRoute(route) ?? route.name;
-        const hideTabBar = [
-          'Chat', 
-          'DocUpload', 
-          'Selfie', 
-          'VerificationSuccess', 
-          'ProviderList', 
-          'PopularServices',
-          'ProviderProfile',
-          'TaskDetails',
-          'BookingForm'
-        ].includes(routeName);
+        const hideTabBar = HIDE_TAB_ROUTES.includes(routeName);
         return {
           headerShown: false,
           tabBarActiveTintColor: '#0D9488',

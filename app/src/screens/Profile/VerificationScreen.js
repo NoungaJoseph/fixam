@@ -4,26 +4,27 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const DOCS = [
   {
     id: 'id',
-    title: 'National ID Card',
-    subtitle: 'Front & back required',
+    titleKey: 'profile.verificationNationalId',
+    subtitleKey: 'profile.verificationFrontBack',
     icon: 'card-account-details-outline',
     sides: 2,
   },
   {
     id: 'passport',
-    title: 'Passport',
-    subtitle: 'Data page only',
+    titleKey: 'profile.verificationPassport',
+    subtitleKey: 'profile.verificationDataPage',
     icon: 'passport',
     sides: 1,
   },
   {
     id: 'license',
-    title: "Driver's License",
-    subtitle: 'Front & back required',
+    titleKey: 'profile.verificationLicense',
+    subtitleKey: 'profile.verificationFrontBack',
     icon: 'card-account-details',
     sides: 2,
   },
@@ -31,11 +32,12 @@ const DOCS = [
 
 const VerificationScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const [selectedDoc, setSelectedDoc] = useState(null);
 
   const handleContinue = () => {
     if (!selectedDoc) {
-      Alert.alert('Select a Document', 'Please select an identity document type to continue.');
+      Alert.alert(t('profile.verificationSelectTitle'), t('profile.verificationSelectBody'));
       return;
     }
     navigation.navigate('DocUpload', { docType: selectedDoc });
@@ -52,7 +54,7 @@ const VerificationScreen = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Verify Identity</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.verificationHeader')}</Text>
           <View style={{ width: 42 }} />
         </View>
 
@@ -65,16 +67,16 @@ const VerificationScreen = ({ navigation }) => {
                   <Text style={[styles.progressNum, { color: step === 1 ? '#FFF' : colors.textSecondary }]}>{step}</Text>
                 </View>
                 <Text style={[styles.progressLabel, { color: step === 1 ? colors.accent : colors.textSecondary }]}>
-                  {step === 1 ? 'Document' : step === 2 ? 'Selfie' : 'Done'}
+                  {step === 1 ? t('profile.verificationStepDocument') : step === 2 ? t('profile.verificationStepSelfie') : t('profile.verificationStepDone')}
                 </Text>
                 {step < 3 && <View style={[styles.progressLine, { backgroundColor: colors.border }]} />}
               </View>
             ))}
           </View>
 
-          <Text style={[styles.title, { color: colors.text }]}>Choose Document Type</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{t('profile.verificationChooseDocument')}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Select the official identity document you'd like to submit. Make sure it is valid and not expired.
+            {t('profile.verificationChooseSubtitle')}
           </Text>
 
           {/* Document cards */}
@@ -90,8 +92,8 @@ const VerificationScreen = ({ navigation }) => {
                   <MaterialCommunityIcons name={doc.icon} size={26} color={isSelected ? colors.accent : colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.docTitle, { color: colors.text }]}>{doc.title}</Text>
-                  <Text style={[styles.docSubtitle, { color: colors.textSecondary }]}>{doc.subtitle}</Text>
+                  <Text style={[styles.docTitle, { color: colors.text }]}>{t(doc.titleKey)}</Text>
+                  <Text style={[styles.docSubtitle, { color: colors.textSecondary }]}>{t(doc.subtitleKey)}</Text>
                 </View>
                 <MaterialCommunityIcons
                   name={isSelected ? 'check-circle' : 'circle-outline'}
@@ -106,7 +108,7 @@ const VerificationScreen = ({ navigation }) => {
           <View style={[styles.infoBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#EEF4FF', borderColor: colors.accent + '40' }]}>
             <MaterialCommunityIcons name="information-outline" size={20} color={colors.accent} />
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              Your documents are encrypted and stored securely. They are only used for identity verification and will not be shared with third parties.
+              {t('profile.verificationSecurityNote')}
             </Text>
           </View>
 
@@ -114,7 +116,7 @@ const VerificationScreen = ({ navigation }) => {
             style={[styles.continueBtn, { backgroundColor: selectedDoc ? colors.accent : colors.border }]}
             onPress={handleContinue}
           >
-            <Text style={styles.continueBtnText}>Continue</Text>
+            <Text style={styles.continueBtnText}>{t('common.continue')}</Text>
             <MaterialCommunityIcons name="arrow-right" size={20} color="#FFF" />
           </TouchableOpacity>
         </ScrollView>

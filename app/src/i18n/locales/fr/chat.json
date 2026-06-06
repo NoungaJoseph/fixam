@@ -37,7 +37,10 @@
     "bookingUnavailableTitle": "Réservation indisponible",
     "bookingUnavailableBody": "Ouvrez une conversation directe avec un prestataire avant de réserver un service.",
     "sendFailed": "Impossible d'envoyer le message. Veuillez réessayer.",
-    "permissionRequired": "Autorisez l'accès à la galerie pour envoyer des images."
+    "permissionRequired": "Autorisez l'accès à la galerie pour envoyer des images.",
+    "activeTaskRequired": "La messagerie est disponible uniquement pendant une réservation active ou une mission sélectionnée en cours.",
+    "mustBookProvider": "Vous devez réserver ce prestataire pour lui envoyer un message.",
+    "bookToMessage": "Réserver pour écrire"
   },
   "support": {
     "title": "Assistance Fixam",

@@ -1,0 +1,1642 @@
+diff --git a/app/App.js b/app/App.js
+index a80b879..708a180 100644
+--- a/app/App.js
++++ b/app/App.js
+@@ -22,6 +22,14 @@ import axios from 'axios';
+ import MaintenanceScreen from './src/screens/MaintenanceScreen';
+ import notificationService from './src/services/notificationService';
+ import AnimatedSplashScreen from './src/screens/Auth/AnimatedSplashScreen';
++import { 
++  useFonts, 
++  Inter_400Regular, 
++  Inter_500Medium, 
++  Inter_600SemiBold, 
++  Inter_700Bold, 
++  Inter_900Black 
++} from '@expo-google-fonts/inter';
+ 
+ Sentry.init({
+   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+@@ -133,6 +141,31 @@ const AppChrome = () => {
+     return <BiometricLockScreen user={user} onUnlock={() => setLocked(false)} onUsePassword={() => { setLocked(false); logout(); }} />;
+   }
+ 
++  // Apply global default font
++  const oldTextRender = React.createElement;
++  if (!global.textFontPatched) {
++    global.textFontPatched = true;
++    const { Text, TextInput } = require('react-native');
++    const oldRender = Text.render;
++    if (oldRender) {
++      Text.render = function(...args) {
++        const origin = oldRender.call(this, ...args);
++        return React.cloneElement(origin, {
++          style: [{ fontFamily: 'Inter-Regular' }, origin.props.style]
++        });
++      };
++    }
++    const oldTextInputRender = TextInput.render;
++    if (oldTextInputRender) {
++      TextInput.render = function(...args) {
++        const origin = oldTextInputRender.call(this, ...args);
++        return React.cloneElement(origin, {
++          style: [{ fontFamily: 'Inter-Regular' }, origin.props.style]
++        });
++      };
++    }
++  }
++
+   return (
+     <>
+       <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={isDarkMode ? '#0B1120' : '#F8FAFC'} />
+@@ -145,8 +178,16 @@ const AppChrome = () => {
+ 
+ function App() {
+   const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
+-
+-  if (!appReady) {
++  
++  let [fontsLoaded] = useFonts({
++    'Inter-Regular': Inter_400Regular,
++    'Inter-Medium': Inter_500Medium,
++    'Inter-SemiBold': Inter_600SemiBold,
++    'Inter-Bold': Inter_700Bold,
++    'Inter-Black': Inter_900Black,
++  });
++
++  if (!appReady || !fontsLoaded) {
+     // Show the animated splash while the status check resolves (max 3s)
+     return (
+       <GestureHandlerRootView style={{ flex: 1 }}>
+diff --git a/app/package-lock.json b/app/package-lock.json
+index 3847d9e..4ab2941 100644
+--- a/app/package-lock.json
++++ b/app/package-lock.json
+@@ -8,6 +8,7 @@
+       "name": "fixam",
+       "version": "1.0.0",
+       "dependencies": {
++        "@expo-google-fonts/inter": "^0.4.2",
+         "@expo/metro-config": "~54.0.14",
+         "@expo/vector-icons": "^15.1.1",
+         "@react-native-async-storage/async-storage": "2.2.0",
+@@ -1671,6 +1672,12 @@
+         "node": ">=0.8.0"
+       }
+     },
++    "node_modules/@expo-google-fonts/inter": {
++      "version": "0.4.2",
++      "resolved": "https://registry.npmjs.org/@expo-google-fonts/inter/-/inter-0.4.2.tgz",
++      "integrity": "sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==",
++      "license": "MIT AND OFL-1.1"
++    },
+     "node_modules/@expo/cli": {
+       "version": "54.0.24",
+       "resolved": "https://registry.npmjs.org/@expo/cli/-/cli-54.0.24.tgz",
+diff --git a/app/package.json b/app/package.json
+index b24d559..0ddb597 100644
+--- a/app/package.json
++++ b/app/package.json
+@@ -9,6 +9,7 @@
+     "web": "expo start --web"
+   },
+   "dependencies": {
++    "@expo-google-fonts/inter": "^0.4.2",
+     "@expo/metro-config": "~54.0.14",
+     "@expo/vector-icons": "^15.1.1",
+     "@react-native-async-storage/async-storage": "2.2.0",
+diff --git a/app/src/screens/Profile/ChangePasswordScreen.js b/app/src/screens/Profile/ChangePasswordScreen.js
+index 0082b99..8620373 100644
+--- a/app/src/screens/Profile/ChangePasswordScreen.js
++++ b/app/src/screens/Profile/ChangePasswordScreen.js
+@@ -1,6 +1,6 @@
+ import React, { useState } from 'react';
+ import { SafeAreaView } from 'react-native-safe-area-context';
+-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput } from 'react-native';
++import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+ import { MaterialCommunityIcons } from '@expo/vector-icons';
+ import { useTheme } from '../../context/ThemeContext';
+ import { useAuth } from '../../context/AuthContext';
+@@ -94,7 +94,8 @@ const ChangePasswordScreen = ({ navigation }) => {
+           <View style={{ width: 42 }} />
+         </View>
+ 
+-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
++        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
++          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+           <View style={styles.lockIcon}>
+             <MaterialCommunityIcons name="lock-reset" size={36} color={colors.accent} />
+           </View>
+@@ -128,7 +129,8 @@ const ChangePasswordScreen = ({ navigation }) => {
+             <MaterialCommunityIcons name="lock-check-outline" size={20} color="#FFF" />
+             <Text style={styles.saveBtnText}>{loading ? t('profile.updating') : t('profile.updatePasswordButton')}</Text>
+           </TouchableOpacity>
+-        </ScrollView>
++          </ScrollView>
++        </KeyboardAvoidingView>
+       </SafeAreaView>
+     </View>
+   );
+diff --git a/app/src/screens/Profile/DocUploadScreen.js b/app/src/screens/Profile/DocUploadScreen.js
+index cfbf5a9..742f87c 100644
+--- a/app/src/screens/Profile/DocUploadScreen.js
++++ b/app/src/screens/Profile/DocUploadScreen.js
+@@ -26,7 +26,7 @@ const DocUploadScreen = ({ navigation, route }) => {
+           onPress: async () => {
+             const { status } = await ImagePicker.requestCameraPermissionsAsync();
+             if (status !== 'granted') { Alert.alert('Permission required', 'Camera access is needed.'); return; }
+-            const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [4, 3] });
++            const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
+             if (!result.canceled) {
+               if (side === 'front') setFrontImage(result.assets[0].uri);
+               else setBackImage(result.assets[0].uri);
+@@ -36,7 +36,7 @@ const DocUploadScreen = ({ navigation, route }) => {
+         {
+           text: 'Upload from Device',
+           onPress: async () => {
+-            const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [4, 3], mediaTypes: ImagePicker.MediaTypeOptions.Images });
++            const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+             if (!result.canceled) {
+               if (side === 'front') setFrontImage(result.assets[0].uri);
+               else setBackImage(result.assets[0].uri);
+@@ -183,21 +183,6 @@ const styles = StyleSheet.create({
+   progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
+   progressItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+   progressDot: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+-  progressNum: { fontSize: 14, fontWeight: '800' },
+-  progressLabel: { fontSize: 12, fontWeight: '700' },
+-  progressLine: { width: 28, height: 2, borderRadius: 1, marginHorizontal: 4 },
+-  uploadSection: { marginBottom: 24 },
+-  uploadLabel: { fontSize: 17, fontWeight: '900', marginBottom: 6 },
+-  uploadInstruction: { fontSize: 13, lineHeight: 20, marginBottom: 14 },
+-  uploadBox: {
+-    borderWidth: 2, borderStyle: 'dashed', borderRadius: 22,
+-    minHeight: 180, justifyContent: 'center', alignItems: 'center', padding: 20,
+-  },
+-  uploadIconCircle: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+-  uploadBoxTitle: { fontSize: 16, fontWeight: '800', marginBottom: 6 },
+-  uploadBoxHint: { fontSize: 13, textAlign: 'center' },
+-  imagePreviewWrap: { width: '100%', alignItems: 'center' },
+-  imagePreview: { width: '100%', height: 200, borderRadius: 16, resizeMode: 'cover' },
+   retakeBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 12 },
+   retakeBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
+   tipsBox: { borderWidth: 1, borderRadius: 18, padding: 18, marginBottom: 22 },
+diff --git a/app/src/screens/Profile/HelpCenterScreen.js b/app/src/screens/Profile/HelpCenterScreen.js
+index b32f9d1..8db005c 100644
+--- a/app/src/screens/Profile/HelpCenterScreen.js
++++ b/app/src/screens/Profile/HelpCenterScreen.js
+@@ -1,6 +1,6 @@
+ import React, { useState } from 'react';
+ import { SafeAreaView } from 'react-native-safe-area-context';
+-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
++import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+ import { MaterialCommunityIcons } from '@expo/vector-icons';
+ import { useTheme } from '../../context/ThemeContext';
+ import { useLanguage } from '../../context/LanguageContext';
+@@ -102,7 +102,8 @@ const HelpCenterScreen = ({ navigation }) => {
+           <View style={{ width: 42 }} />
+         </View>
+ 
+-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
++        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
++          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+           {/* Hero */}
+           <Text style={[styles.heroTitle, { color: colors.text }]}>{t('help.hero')}</Text>
+           <Text style={[styles.heroSub, { color: colors.textSecondary }]}>{t('help.subtitle')}</Text>
+@@ -173,7 +174,8 @@ const HelpCenterScreen = ({ navigation }) => {
+           <Text style={[styles.footNote, { color: colors.textSecondary }]}>
+             {t('help.footNote')}
+           </Text>
+-        </ScrollView>
++          </ScrollView>
++        </KeyboardAvoidingView>
+       </SafeAreaView>
+     </View>
+   );
+diff --git a/app/src/screens/Profile/PrivacySecurityScreen.js b/app/src/screens/Profile/PrivacySecurityScreen.js
+index f36ae0c..901ad6a 100644
+--- a/app/src/screens/Profile/PrivacySecurityScreen.js
++++ b/app/src/screens/Profile/PrivacySecurityScreen.js
+@@ -267,12 +267,21 @@ const PrivacySecurityScreen = ({ navigation }) => {
+               desc={t('profile.dataUsageDesc')}
+               onPress={() => {}}
+             />
++          <View style={[styles.section, { marginTop: 10 }]}>
++            <Text style={[styles.sectionLabel, { color: colors.error }]}>DANGER ZONE</Text>
++            <TouchableOpacity 
++              style={[styles.dangerBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2', borderColor: 'rgba(239, 68, 68, 0.3)' }]} 
++              onPress={() => navigation.navigate('DeleteAccount')}
++            >
++              <View style={styles.dangerBtnRow}>
++                <MaterialCommunityIcons name="delete-outline" size={22} color={colors.error} />
++                <Text style={[styles.dangerText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
++              </View>
++              <Text style={[styles.dangerDesc, { color: colors.error, opacity: 0.8 }]}>
++                Permanently remove your account and all associated data. This action cannot be undone.
++              </Text>
++            </TouchableOpacity>
+           </View>
+-
+-          <TouchableOpacity style={styles.deleteBtn} onPress={() => navigation.navigate('DeleteAccount')}>
+-            <MaterialCommunityIcons name="delete-outline" size={20} color={colors.error} />
+-            <Text style={[styles.deleteText, { color: colors.error }]}>{t('profile.deleteAccount')}</Text>
+-          </TouchableOpacity>
+         </ScrollView>
+       </SafeAreaView>
+ 
+@@ -398,8 +407,10 @@ const styles = StyleSheet.create({
+   settingTexts: { flex: 1 },
+   settingTitle: { fontSize: 15, fontWeight: '700' },
+   settingDesc: { fontSize: 12, marginTop: 2 },
+-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20, marginTop: 10 },
+-  deleteText: { fontWeight: '700', fontSize: 15 },
++  dangerBtn: { padding: 16, borderRadius: 12, borderWidth: 1, marginTop: 10 },
++  dangerBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
++  dangerText: { fontWeight: '800', fontSize: 16 },
++  dangerDesc: { fontSize: 13, lineHeight: 18 },
+   disabledItem: { opacity: 0.45 },
+   
+   // Modals
+diff --git a/app/src/screens/Profile/SettingsScreen.js b/app/src/screens/Profile/SettingsScreen.js
+index e2e8572..c26768e 100644
+--- a/app/src/screens/Profile/SettingsScreen.js
++++ b/app/src/screens/Profile/SettingsScreen.js
+@@ -48,17 +48,19 @@ const SettingsScreen = ({ navigation, route }) => {
+     const [iconColor, iconBg] = ICON_COLORS[icon] || [colors.accent, colors.accentSoft];
+     return (
+       <TouchableOpacity
+-        style={[styles.settingRow, { borderBottomColor: colors.divider }]}
++        style={styles.settingRow}
+         onPress={onPress}
+         disabled={!onPress}
+         activeOpacity={0.7}
+       >
+-        <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
+-          <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
+-        </View>
+-        <View style={styles.settingBody}>
+-          <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
+-          {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
++        <View style={styles.settingRowLeft}>
++          <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.07)' : iconBg }]}>
++            <MaterialCommunityIcons name={icon} size={20} color={danger ? '#EF4444' : iconColor} />
++          </View>
++          <View style={styles.settingBody}>
++            <Text style={[styles.settingTitle, { color: danger ? '#EF4444' : colors.text }]}>{title}</Text>
++            {desc ? <Text style={[styles.settingDesc, { color: colors.textSecondary }]}>{desc}</Text> : null}
++          </View>
+         </View>
+         {right || (onPress && (
+           <MaterialCommunityIcons name="chevron-right" size={20} color={colors.placeholder} />
+@@ -74,15 +76,19 @@ const SettingsScreen = ({ navigation, route }) => {
+     </View>
+   );
+ 
+-  const SectionCard = ({ children }) => (
+-    <View style={[styles.sectionCard, {
+-      backgroundColor: colors.card,
+-      borderColor: colors.border,
+-      shadowColor: isDarkMode ? 'transparent' : '#000',
+-    }]}>
+-      {children}
+-    </View>
+-  );
++  const SectionCard = ({ children }) => {
++    const items = React.Children.toArray(children).filter(Boolean);
++    return (
++      <View style={styles.sectionCard}>
++        {items.map((child, index) => (
++          <React.Fragment key={index}>
++            {child}
++            {index < items.length - 1 && <View style={[styles.separator, { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }]} />}
++          </React.Fragment>
++        ))}
++      </View>
++    );
++  };
+ 
+   return (
+     <View style={[styles.container, { backgroundColor: colors.background }]}>
+@@ -213,7 +219,6 @@ const SettingsScreen = ({ navigation, route }) => {
+           <SectionHeader icon="power" label={t('settings.actions')} />
+           <SectionCard>
+             <SettingItem icon="logout" title={t('settings.logout')} desc={t('settings.logoutDesc')} onPress={handleLogout} />
+-            <SettingItem icon="delete-outline" title={t('settings.deleteAccount')} desc={t('settings.deleteAccountDesc')} onPress={() => navigation.navigate('DeleteAccount')} danger />
+           </SectionCard>
+ 
+           <Text style={[styles.version, { color: colors.placeholder }]}>{t('settings.version')}</Text>
+@@ -251,7 +256,6 @@ const styles = StyleSheet.create({
+   heroLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+   heroAvatarWrap: { position: 'relative' },
+   heroAvatar: { width: 66, height: 66, borderRadius: 33, borderWidth: 3, borderColor: 'rgba(255,255,255,0.5)' },
+-  heroAvatarFallback: { width: 66, height: 66, borderRadius: 33, alignItems: 'center', justifyContent: 'center' },
+   heroInitial: { fontSize: 26, fontWeight: '900', color: '#FFF' },
+   editDot: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+   heroName: { fontSize: 18, fontWeight: '800', color: '#FFF' },
+@@ -263,12 +267,29 @@ const styles = StyleSheet.create({
+   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 20, marginBottom: 8 },
+   sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+   sectionCard: {
+-    marginHorizontal: 16, marginBottom: 20, borderRadius: 18, borderWidth: 1,
+-    shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, overflow: 'hidden',
++    marginBottom: 24,
+   },
+ 
+   // Row
+-  settingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, gap: 12 },
++  settingRow: { 
++    flexDirection: 'row', 
++    alignItems: 'center', 
++    justifyContent: 'space-between',
++    paddingVertical: 16, 
++    paddingHorizontal: 20, 
++    backgroundColor: 'transparent'
++  },
++  settingRowLeft: {
++    flexDirection: 'row',
++    alignItems: 'center',
++    flex: 1,
++    gap: 12
++  },
++  separator: {
++    height: 1,
++    backgroundColor: '#F0F0F0',
++    marginHorizontal: 20
++  },
+   iconBox: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+   settingBody: { flex: 1 },
+   settingTitle: { fontSize: 15, fontWeight: '700' },
+diff --git a/app/src/services/theme.js b/app/src/services/theme.js
+index 66a692a..6c197a3 100644
+--- a/app/src/services/theme.js
++++ b/app/src/services/theme.js
+@@ -20,11 +20,11 @@ export const COLORS = {
+ };
+ 
+ export const FONTS = {
+-  regular: { fontWeight: '400' },
+-  medium: { fontWeight: '500' },
+-  semiBold: { fontWeight: '600' },
+-  bold: { fontWeight: '700' },
+-  extraBold: { fontWeight: '800' },
++  regular: { fontFamily: 'Inter-Regular', fontWeight: '400' },
++  medium: { fontFamily: 'Inter-Medium', fontWeight: '500' },
++  semiBold: { fontFamily: 'Inter-SemiBold', fontWeight: '600' },
++  bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
++  extraBold: { fontFamily: 'Inter-Black', fontWeight: '800' },
+ };
+ 
+ export const theme = {
+diff --git a/backend/package-lock.json b/backend/package-lock.json
+index 2aebb51..209ac87 100644
+--- a/backend/package-lock.json
++++ b/backend/package-lock.json
+@@ -11,6 +11,8 @@
+       "license": "ISC",
+       "dependencies": {
+         "@prisma/client": "^5.10.2",
++        "@sentry/node": "^10.56.0",
++        "@sentry/profiling-node": "^10.56.0",
+         "@supabase/supabase-js": "^2.105.3",
+         "axios": "^1.16.0",
+         "bcrypt": "^6.0.0",
+@@ -344,11 +346,96 @@
+       "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.9.1.tgz",
+       "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==",
+       "license": "Apache-2.0",
+-      "optional": true,
+       "engines": {
+         "node": ">=8.0.0"
+       }
+     },
++    "node_modules/@opentelemetry/api-logs": {
++      "version": "0.214.0",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/api-logs/-/api-logs-0.214.0.tgz",
++      "integrity": "sha512-40lSJeqYO8Uz2Yj7u94/SJWE/wONa7rmMKjI1ZcIjgf3MHNHv1OZUCrCETGuaRF62d5pQD1wKIW+L4lmSMTzZA==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@opentelemetry/api": "^1.3.0"
++      },
++      "engines": {
++        "node": ">=8.0.0"
++      }
++    },
++    "node_modules/@opentelemetry/core": {
++      "version": "2.7.1",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/core/-/core-2.7.1.tgz",
++      "integrity": "sha512-QAqIj32AtK6+pEVNG7EOVxHdE06RP+FM5qpiEJ4RtDcFIqKUZHYhl7/7UY5efhwmwNAg7j8QbJVBLxMerc0+gw==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@opentelemetry/semantic-conventions": "^1.29.0"
++      },
++      "engines": {
++        "node": "^18.19.0 || >=20.6.0"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": ">=1.0.0 <1.10.0"
++      }
++    },
++    "node_modules/@opentelemetry/instrumentation": {
++      "version": "0.214.0",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/instrumentation/-/instrumentation-0.214.0.tgz",
++      "integrity": "sha512-MHqEX5Dk59cqVah5LiARMACku7jXSVk9iVDWOea4x3cr7VfdByeDCURK6o1lntT1JS/Tsovw01UJrBhN3/uC5w==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@opentelemetry/api-logs": "0.214.0",
++        "import-in-the-middle": "^3.0.0",
++        "require-in-the-middle": "^8.0.0"
++      },
++      "engines": {
++        "node": "^18.19.0 || >=20.6.0"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": "^1.3.0"
++      }
++    },
++    "node_modules/@opentelemetry/resources": {
++      "version": "2.7.1",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/resources/-/resources-2.7.1.tgz",
++      "integrity": "sha512-DeT6KKolmC4e/dRQvMQ/RwlnzhaqeiFOXY5ngoOPJ07GgVVKxZOg9EcrNZb5aTzUn+iCrJldAgOfQm1O/QfPAQ==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@opentelemetry/core": "2.7.1",
++        "@opentelemetry/semantic-conventions": "^1.29.0"
++      },
++      "engines": {
++        "node": "^18.19.0 || >=20.6.0"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": ">=1.3.0 <1.10.0"
++      }
++    },
++    "node_modules/@opentelemetry/sdk-trace-base": {
++      "version": "2.7.1",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/sdk-trace-base/-/sdk-trace-base-2.7.1.tgz",
++      "integrity": "sha512-NAYIlsF8MPUsKqJMiDQJTMPOmlbawC1Iz/omMLygZ1C9am8fTKYjTaI+OZM+WTY3t3Glo0wnOg/6/pac6RGPPw==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "@opentelemetry/core": "2.7.1",
++        "@opentelemetry/resources": "2.7.1",
++        "@opentelemetry/semantic-conventions": "^1.29.0"
++      },
++      "engines": {
++        "node": "^18.19.0 || >=20.6.0"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": ">=1.3.0 <1.10.0"
++      }
++    },
++    "node_modules/@opentelemetry/semantic-conventions": {
++      "version": "1.41.1",
++      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.41.1.tgz",
++      "integrity": "sha512-/UhIkaZgPutTFmQ7RnIJGgDXZmtEJ7Dvi86xNTFWcnRxVRNk/aotsqDJYeEvDP+FSMB2SdW+pQzNMcWP0rwuNA==",
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=14"
++      }
++    },
+     "node_modules/@prisma/client": {
+       "version": "5.10.2",
+       "resolved": "https://registry.npmjs.org/@prisma/client/-/client-5.10.2.tgz",
+@@ -485,6 +572,139 @@
+       "license": "BSD-3-Clause",
+       "optional": true
+     },
++    "node_modules/@sentry-internal/node-cpu-profiler": {
++      "version": "2.4.1",
++      "resolved": "https://registry.npmjs.org/@sentry-internal/node-cpu-profiler/-/node-cpu-profiler-2.4.1.tgz",
++      "integrity": "sha512-Wnkik+RLvRUZEB8Zx5ofgPdcC8bCSoiUUiyH6TorrLK6PBPerbjK48c2GsJf6l5Hc5GAhA3fitueVLATB0XhWQ==",
++      "hasInstallScript": true,
++      "license": "MIT",
++      "dependencies": {
++        "detect-libc": "^2.0.3",
++        "node-abi": "^3.73.0"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@sentry-internal/server-utils": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry-internal/server-utils/-/server-utils-10.56.0.tgz",
++      "integrity": "sha512-6kuZI/vAjyVKMm1cTzc2pdUmVR4Px4etMG6wnCPyFnwEaGbUKQnTynUBFpTuo/q6Js6QBQvhLNoAnO4YsOfW4w==",
++      "license": "MIT",
++      "dependencies": {
++        "@sentry/core": "10.56.0"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@sentry/core": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry/core/-/core-10.56.0.tgz",
++      "integrity": "sha512-L+u1dIz5SANrmST5jhIwETtt4apILgKrylv12X4hKJU0PvZl+NorjeV/ty3MwzpKQPg6b6q6qMOSLc1rLpy3iQ==",
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@sentry/node": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry/node/-/node-10.56.0.tgz",
++      "integrity": "sha512-qvgtXHkcR4CH3fh0VEVyw4Ysc6MMiAnm727NdTTm0yU5e53erCeo2521+yfJkqmRTGiOSgwA7B5Bs+ot9j0vFQ==",
++      "license": "MIT",
++      "dependencies": {
++        "@opentelemetry/api": "^1.9.1",
++        "@opentelemetry/core": "^2.6.1",
++        "@opentelemetry/instrumentation": "^0.214.0",
++        "@opentelemetry/sdk-trace-base": "^2.6.1",
++        "@opentelemetry/semantic-conventions": "^1.40.0",
++        "@sentry-internal/server-utils": "10.56.0",
++        "@sentry/core": "10.56.0",
++        "@sentry/node-core": "10.56.0",
++        "@sentry/opentelemetry": "10.56.0",
++        "import-in-the-middle": "^3.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
++    "node_modules/@sentry/node-core": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry/node-core/-/node-core-10.56.0.tgz",
++      "integrity": "sha512-61lD2Wjtv5Lw2F3lJarcD0ORjR4GlVxrEd6w6Of/uF3DH73dD6K3n/3wXEeCIRfV/kgiCFIrCIq76nz0LVgE5g==",
++      "license": "MIT",
++      "dependencies": {
++        "@sentry/core": "10.56.0",
++        "@sentry/opentelemetry": "10.56.0",
++        "import-in-the-middle": "^3.0.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": "^1.9.0",
++        "@opentelemetry/core": "^1.30.1 || ^2.1.0",
++        "@opentelemetry/exporter-trace-otlp-http": ">=0.57.0 <1",
++        "@opentelemetry/instrumentation": ">=0.57.1 <1",
++        "@opentelemetry/sdk-trace-base": "^1.30.1 || ^2.1.0",
++        "@opentelemetry/semantic-conventions": "^1.39.0"
++      },
++      "peerDependenciesMeta": {
++        "@opentelemetry/api": {
++          "optional": true
++        },
++        "@opentelemetry/core": {
++          "optional": true
++        },
++        "@opentelemetry/exporter-trace-otlp-http": {
++          "optional": true
++        },
++        "@opentelemetry/instrumentation": {
++          "optional": true
++        },
++        "@opentelemetry/sdk-trace-base": {
++          "optional": true
++        },
++        "@opentelemetry/semantic-conventions": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/@sentry/opentelemetry": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry/opentelemetry/-/opentelemetry-10.56.0.tgz",
++      "integrity": "sha512-PtMudApHMHvttjos3b7JZ2gJ+nstHAOYE3vKPYB5o0WQO95ldiaYnpLKMCRIGZWF3Dk7ynrqqnBpn8LZLt+Mrg==",
++      "license": "MIT",
++      "dependencies": {
++        "@sentry/core": "10.56.0"
++      },
++      "engines": {
++        "node": ">=18"
++      },
++      "peerDependencies": {
++        "@opentelemetry/api": "^1.9.0",
++        "@opentelemetry/core": "^1.30.1 || ^2.1.0",
++        "@opentelemetry/sdk-trace-base": "^1.30.1 || ^2.1.0",
++        "@opentelemetry/semantic-conventions": "^1.39.0"
++      }
++    },
++    "node_modules/@sentry/profiling-node": {
++      "version": "10.56.0",
++      "resolved": "https://registry.npmjs.org/@sentry/profiling-node/-/profiling-node-10.56.0.tgz",
++      "integrity": "sha512-AmcUrvqJcvl39fNzoXBCPp8iGStRSmpBYqQCPz1mlDUw/n/iWpLq5+8iHecXyT5oOST4xHjNIyb7AA/fj0Pxzw==",
++      "license": "MIT",
++      "dependencies": {
++        "@sentry-internal/node-cpu-profiler": "^2.4.0",
++        "@sentry/core": "10.56.0",
++        "@sentry/node": "10.56.0"
++      },
++      "bin": {
++        "sentry-prune-profiler-binaries": "scripts/prune-profiler-binaries.js"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/@socket.io/component-emitter": {
+       "version": "3.1.2",
+       "resolved": "https://registry.npmjs.org/@socket.io/component-emitter/-/component-emitter-3.1.2.tgz",
+@@ -729,6 +949,27 @@
+         "node": ">= 0.6"
+       }
+     },
++    "node_modules/acorn": {
++      "version": "8.16.0",
++      "resolved": "https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz",
++      "integrity": "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==",
++      "license": "MIT",
++      "bin": {
++        "acorn": "bin/acorn"
++      },
++      "engines": {
++        "node": ">=0.4.0"
++      }
++    },
++    "node_modules/acorn-import-attributes": {
++      "version": "1.9.5",
++      "resolved": "https://registry.npmjs.org/acorn-import-attributes/-/acorn-import-attributes-1.9.5.tgz",
++      "integrity": "sha512-n02Vykv5uA3eHGM/Z2dQrcD56kL8TyDb2p1+0P83PClMnC/nc+anbQRhIOWnSq4Ke/KvDPrY3C9hDtC/A3eHnQ==",
++      "license": "MIT",
++      "peerDependencies": {
++        "acorn": "^8"
++      }
++    },
+     "node_modules/agent-base": {
+       "version": "6.0.2",
+       "resolved": "https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz",
+@@ -1048,6 +1289,12 @@
+         "fsevents": "~2.3.2"
+       }
+     },
++    "node_modules/cjs-module-lexer": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/cjs-module-lexer/-/cjs-module-lexer-2.2.0.tgz",
++      "integrity": "sha512-4bHTS2YuzUvtoLjdy+98ykbNB5jS0+07EvFNXerqZQJ89F7DI6ET7OQo/HJuW6K0aVsKA9hj9/RVb2kQVOrPDQ==",
++      "license": "MIT"
++    },
+     "node_modules/cliui": {
+       "version": "8.0.1",
+       "resolved": "https://registry.npmjs.org/cliui/-/cliui-8.0.1.tgz",
+@@ -1217,6 +1464,15 @@
+         "node": ">= 0.8"
+       }
+     },
++    "node_modules/detect-libc": {
++      "version": "2.1.2",
++      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
++      "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=8"
++      }
++    },
+     "node_modules/dotenv": {
+       "version": "17.4.2",
+       "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-17.4.2.tgz",
+@@ -2313,6 +2569,21 @@
+       "integrity": "sha512-Ius2VYcGNk7T90CppJqcIkS5ooHUZyIQK+ClZfMfMNFEF9VSE73Fq+906u/CWu92x4gzZMWOwfFYckPObzdEbA==",
+       "license": "ISC"
+     },
++    "node_modules/import-in-the-middle": {
++      "version": "3.0.1",
++      "resolved": "https://registry.npmjs.org/import-in-the-middle/-/import-in-the-middle-3.0.1.tgz",
++      "integrity": "sha512-pYkiyXVL2Mf3pozdlDGV6NAObxQx13Ae8knZk1UJRJ6uRW/ZRmTGHlQYtrsSl7ubuE5F8CD1z+s1n4RHNuTtuA==",
++      "license": "Apache-2.0",
++      "dependencies": {
++        "acorn": "^8.15.0",
++        "acorn-import-attributes": "^1.9.5",
++        "cjs-module-lexer": "^2.2.0",
++        "module-details-from-path": "^1.0.4"
++      },
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/inherits": {
+       "version": "2.0.4",
+       "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
+@@ -2657,6 +2928,12 @@
+         "url": "https://github.com/sponsors/isaacs"
+       }
+     },
++    "node_modules/module-details-from-path": {
++      "version": "1.0.4",
++      "resolved": "https://registry.npmjs.org/module-details-from-path/-/module-details-from-path-1.0.4.tgz",
++      "integrity": "sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w==",
++      "license": "MIT"
++    },
+     "node_modules/morgan": {
+       "version": "1.10.1",
+       "resolved": "https://registry.npmjs.org/morgan/-/morgan-1.10.1.tgz",
+@@ -2777,6 +3054,18 @@
+         "node": ">= 0.6"
+       }
+     },
++    "node_modules/node-abi": {
++      "version": "3.92.0",
++      "resolved": "https://registry.npmjs.org/node-abi/-/node-abi-3.92.0.tgz",
++      "integrity": "sha512-KdHvFWZjEKDf0cakgFjebl371GPsISX2oZHcuyKqM7DtogIsHrqKeLTo8wBHxaXRAQlY2PsPlZmfo+9ZCxEREQ==",
++      "license": "MIT",
++      "dependencies": {
++        "semver": "^7.3.5"
++      },
++      "engines": {
++        "node": ">=10"
++      }
++    },
+     "node_modules/node-addon-api": {
+       "version": "8.8.0",
+       "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.8.0.tgz",
+@@ -3165,6 +3454,19 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/require-in-the-middle": {
++      "version": "8.0.1",
++      "resolved": "https://registry.npmjs.org/require-in-the-middle/-/require-in-the-middle-8.0.1.tgz",
++      "integrity": "sha512-QT7FVMXfWOYFbeRBF6nu+I6tr2Tf3u0q8RIEjNob/heKY/nh7drD/k7eeMFmSQgnTtCzLDcCu/XEnpW2wk4xCQ==",
++      "license": "MIT",
++      "dependencies": {
++        "debug": "^4.3.5",
++        "module-details-from-path": "^1.0.3"
++      },
++      "engines": {
++        "node": ">=9.3.0 || >=8.10.0 <9.0.0"
++      }
++    },
+     "node_modules/retry": {
+       "version": "0.13.1",
+       "resolved": "https://registry.npmjs.org/retry/-/retry-0.13.1.tgz",
+@@ -3736,7 +4038,6 @@
+       "integrity": "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==",
+       "deprecated": "uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).",
+       "license": "MIT",
+-      "optional": true,
+       "bin": {
+         "uuid": "dist/bin/uuid"
+       }
+diff --git a/backend/package.json b/backend/package.json
+index f374c19..ca80753 100644
+--- a/backend/package.json
++++ b/backend/package.json
+@@ -18,6 +18,8 @@
+   "type": "commonjs",
+   "dependencies": {
+     "@prisma/client": "^5.10.2",
++    "@sentry/node": "^10.56.0",
++    "@sentry/profiling-node": "^10.56.0",
+     "@supabase/supabase-js": "^2.105.3",
+     "axios": "^1.16.0",
+     "bcrypt": "^6.0.0",
+diff --git a/backend/prisma/schema.prisma b/backend/prisma/schema.prisma
+index 04a70a9..295089c 100644
+--- a/backend/prisma/schema.prisma
++++ b/backend/prisma/schema.prisma
+@@ -186,6 +186,10 @@ model Job {
+   assignments     JobAssignment[]
+   reviews         Review[]
+   bookings        Booking[]
++
++  @@index([clientId, status])
++  @@index([status, approvalStatus])
++  @@index([createdAt])
+ }
+ 
+ model JobAssignment {
+@@ -201,6 +205,8 @@ model JobAssignment {
+   provider        ProviderProfile  @relation(fields: [providerId], references: [id])
+ 
+   @@unique([jobId, providerId])
++  @@index([providerId, status])
++  @@index([jobId, status])
+ }
+ 
+ model Wallet {
+@@ -235,6 +241,9 @@ model Transaction {
+   wallet          Wallet            @relation(fields: [walletId], references: [id])
+   payment         Payment?
+   coinPurchase    CoinPurchase?
++
++  @@index([walletId, status])
++  @@index([walletId, createdAt])
+ }
+ 
+ model Payment {
+@@ -368,6 +377,8 @@ model Booking {
+   @@index([clientId, createdAt])
+   @@index([providerId, createdAt])
+   @@index([status, bookingDate])
++  @@index([clientId, status])
++  @@index([providerId, status])
+ }
+ 
+ model CallSession {
+@@ -392,6 +403,9 @@ model Notification {
+   createdAt       DateTime @default(now())
+ 
+   user            User     @relation(fields: [userId], references: [id])
++
++  @@index([userId, isRead])
++  @@index([userId, createdAt])
+ }
+ 
+ model Review {
+@@ -458,16 +472,18 @@ model AdminMessage {
+ }
+ 
+ model Settings {
+-  id              String   @id @default("global")
+-  platformName    String   @default("Fixam")
+-  supportEmail    String   @default("support@fixam.cm")
+-  serviceFee      Float    @default(10.0)
+-  defaultLanguage String   @default("English")
+-  baseCurrency    String   @default("XAF")
+-  apiEndpoint     String   @default("https://api.fixam.cm/v1")
+-  adminSecret     String   @default("secret")
+-  createdAt       DateTime @default(now())
+-  updatedAt       DateTime @updatedAt
++  id                  String   @id @default("global")
++  platformName        String   @default("Fixam")
++  supportEmail        String   @default("support@fixam.cm")
++  serviceFee          Float    @default(10.0)
++  defaultLanguage     String   @default("English")
++  baseCurrency        String   @default("XAF")
++  apiEndpoint         String   @default("https://api.fixam.cm/v1")
++  adminSecret         String   @default("secret")
++  maintenanceEnabled  Boolean  @default(false)
++  maintenanceMessage  String   @default("We are improving Fixam for you. Back soon!")
++  createdAt           DateTime @default(now())
++  updatedAt           DateTime @updatedAt
+ }
+ 
+ model Report {
+diff --git a/backend/src/app.js b/backend/src/app.js
+index 751d95a..a0df762 100644
+--- a/backend/src/app.js
++++ b/backend/src/app.js
+@@ -18,11 +18,26 @@ const adminRoutes = require('./routes/admin.routes');
+ const notificationRoutes = require('./routes/notification.routes');
+ const reviewRoutes = require('./routes/review.routes');
+ const paymentRoutes = require('./routes/payment.routes');
++const systemRoutes = require('./routes/system.routes');
+ const { errorHandler } = require('./middlewares/error.middleware');
++const Sentry = require('@sentry/node');
++const { nodeProfilingIntegration } = require('@sentry/profiling-node');
++
++Sentry.init({
++  dsn: process.env.SENTRY_DSN || '',
++  integrations: [
++    Sentry.expressIntegration(),
++    nodeProfilingIntegration(),
++  ],
++  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
++  profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
++  enabled: !!process.env.SENTRY_DSN,
++});
+ 
+ const app = express();
+ app.set('trust proxy', 1);
+ 
++
+ // Security Middlewares
+ app.use(helmet({
+   crossOriginResourcePolicy: { policy: 'cross-origin' }
+@@ -45,6 +60,24 @@ const limiter = rateLimit({
+ });
+ app.use('/api/', limiter);
+ 
++// Slow Request Logging
++app.use((req, res, next) => {
++  const start = Date.now()
++  res.on('finish', () => {
++    const duration = Date.now() - start
++    if (duration > 2000) {
++      console.warn('[SLOW REQUEST]', {
++        method: req.method,
++        path: req.path,
++        duration: duration + 'ms',
++        status: res.statusCode,
++        timestamp: new Date().toISOString()
++      })
++    }
++  })
++  next()
++})
++
+ // Routes
+ app.use('/api/auth', authRoutes);
+ app.use('/api/users', userRoutes);
+@@ -60,6 +93,7 @@ app.use('/api/admin', adminRoutes);
+ app.use('/api/notifications', notificationRoutes);
+ app.use('/api/reviews', reviewRoutes);
+ app.use('/api/payments', paymentRoutes);
++app.use('/api/system', systemRoutes);
+ 
+ 
+ // Health Check
+@@ -91,6 +125,8 @@ app.get('/api/health', async (req, res) => {
+ app.get('/health', (req, res) => res.redirect('/api/health'));
+ 
+ // Error Handling Middleware
++// Sentry v8+ error handler must be registered before custom error handler
++Sentry.setupExpressErrorHandler(app);
+ app.use(errorHandler);
+ 
+ module.exports = app;
+diff --git a/backend/src/controllers/booking.controller.js b/backend/src/controllers/booking.controller.js
+index efd31d6..e8c82cf 100644
+--- a/backend/src/controllers/booking.controller.js
++++ b/backend/src/controllers/booking.controller.js
+@@ -1,5 +1,6 @@
+ const prisma = require('../config/prisma');
+ const { getIO } = require('../services/socket.service');
++const { sendBookingNotification } = require('../services/notification.service');
+ 
+ const emitBooking = (booking) => {
+   try {
+@@ -19,14 +20,25 @@ const includeBooking = {
+ 
+ const createBooking = async (req, res, next) => {
+   try {
++    console.log('[Booking] Request body:', JSON.stringify(req.body));
++    console.log('[Booking] User:', req.user.id);
++
+     const { providerId, taskId, bookingDate, bookingTime, budget, location, notes } = req.body;
+-    if (!providerId || !bookingDate || !bookingTime || !budget || !location) {
+-      return res.status(400).json({ success: false, message: 'Provider, date, time, budget and location are required.' });
++    if (!providerId || !bookingDate || !bookingTime || budget === undefined || budget === null) {
++      return res.status(400).json({ success: false, message: 'Provider, date, time and budget are required.' });
+     }
+ 
+-    const provider = await prisma.user.findFirst({ where: { id: providerId, role: 'PROVIDER' } });
++    const provider = await prisma.user.findFirst({
++      where: { id: providerId, role: 'PROVIDER' },
++      include: { providerProfile: true },
++    });
+     if (!provider) return res.status(404).json({ success: false, message: 'Provider not found.' });
+ 
++    const providerProfile = await prisma.providerProfile.findUnique({ where: { userId: providerId } });
++    if (!providerProfile) {
++      return res.status(404).json({ success: false, message: 'Provider profile not found.' });
++    }
++
+     if (taskId) {
+       const task = await prisma.job.findUnique({ where: { id: taskId } });
+       if (!task || task.clientId !== req.user.id) {
+@@ -34,18 +46,49 @@ const createBooking = async (req, res, next) => {
+       }
+     }
+ 
+-    const booking = await prisma.booking.create({
+-      data: {
+-        clientId: req.user.id,
+-        providerId,
+-        taskId: taskId || null,
+-        bookingDate: new Date(bookingDate),
+-        bookingTime,
+-        budget: Number(budget),
+-        location,
+-        notes,
+-      },
+-      include: includeBooking,
++    const bookingBudget = Number(budget);
++    if (Number.isNaN(bookingBudget)) {
++      return res.status(400).json({ success: false, message: 'Budget must be a valid number.' });
++    }
++
++    const booking = await prisma.$transaction(async (tx) => {
++      const wallet = await tx.wallet.findUnique({ where: { userId: req.user.id } });
++      if (!wallet || wallet.balance < 1) {
++        const error = new Error('Insufficient coins. You need 1 coin to book a provider.');
++        error.statusCode = 400;
++        throw error;
++      }
++
++      const newBooking = await tx.booking.create({
++        data: {
++          clientId: req.user.id,
++          providerId,
++          taskId: taskId || null,
++          bookingDate: new Date(bookingDate),
++          bookingTime,
++          budget: bookingBudget,
++          location: location || '',
++          notes: notes || '',
++        },
++        include: includeBooking,
++      });
++
++      await tx.wallet.update({
++        where: { userId: req.user.id },
++        data: { balance: { decrement: 1 } },
++      });
++
++      await tx.transaction.create({
++        data: {
++          walletId: wallet.id,
++          amount: 1,
++          type: 'DEDUCTION',
++          status: 'SUCCESS',
++          description: `Booking: ${provider.fullName || provider.phone || 'Provider'}`,
++        },
++      });
++
++      return newBooking;
+     });
+ 
+     const notification = await prisma.notification.create({
+@@ -61,14 +104,22 @@ const createBooking = async (req, res, next) => {
+     try { getIO().to(providerId).emit('notification:new', notification); } catch (_) {}
+ 
+     // Send FCM Push Notification
+-    if (provider.fcmToken) {
+-      const { sendBookingNotification } = require('../services/notification.service');
+-      await sendBookingNotification(provider.fcmToken, notification.title, notification.body, booking.id);
++    try {
++      if (provider.fcmToken) {
++        await sendBookingNotification(provider.fcmToken, notification.title, notification.body, booking.id);
++      }
++    } catch (notifError) {
++      console.error('[Booking] Notification failed:', notifError.message);
+     }
+ 
+     res.status(201).json({ success: true, data: booking });
+   } catch (error) {
+-    next(error);
++    console.error('[Booking] Creation error:', error.message);
++    console.error('[Booking] Full error:', error);
++    return res.status(error.statusCode || 500).json({
++      success: false,
++      message: error.message,
++    });
+   }
+ };
+ 
+diff --git a/backend/src/controllers/chat.controller.js b/backend/src/controllers/chat.controller.js
+index 27fc7a8..3b1bf1f 100644
+--- a/backend/src/controllers/chat.controller.js
++++ b/backend/src/controllers/chat.controller.js
+@@ -163,10 +163,11 @@ const getConversations = async (req, res, next) => {
+             unreadCount: true,
+             user: {
+               select: { 
+-                id: true, 
+-                fullName: true, 
+-                avatar: true, 
+-                isOnline: true, 
++                id: true,
++                fullName: true,
++                phone: true,
++                avatar: true,
++                isOnline: true,
+                 role: true,
+                 providerProfile: {
+                   select: { profileMode: true }
+@@ -630,8 +631,74 @@ const checkBooking = async (req, res, next) => {
+   }
+ };
+ 
++const getConversationById = async (req, res, next) => {
++  try {
++    const { conversationId } = req.params;
++
++    const conversation = await prisma.conversation.findFirst({
++      where: {
++        id: conversationId,
++        participants: { some: { userId: req.user.id } },
++      },
++      select: {
++        id: true,
++        lastMessageAt: true,
++        createdAt: true,
++        updatedAt: true,
++        support: { select: { id: true } },
++        participants: {
++          select: {
++            userId: true,
++            unreadCount: true,
++            user: {
++              select: {
++                id: true,
++                fullName: true,
++                avatar: true,
++                isOnline: true,
++                role: true,
++                providerProfile: {
++                  select: {
++                    id: true,
++                    rating: true,
++                    skillRank: true,
++                    verification: true,
++                    profileMode: true,
++                  },
++                },
++              },
++            },
++          },
++        },
++      },
++    });
++
++    if (!conversation) {
++      return res.status(404).json({ success: false, message: 'Conversation not found' });
++    }
++
++    const formatted = {
++      id: conversation.id,
++      lastMessageAt: conversation.lastMessageAt,
++      createdAt: conversation.createdAt,
++      updatedAt: conversation.updatedAt,
++      isSystem: Boolean(conversation.support),
++      participants: conversation.participants.map((p) => ({
++        userId: p.userId,
++        unreadCount: p.unreadCount,
++        user: p.user,
++      })),
++    };
++
++    res.status(200).json({ success: true, data: formatted });
++  } catch (error) {
++    next(error);
++  }
++};
++
+ module.exports = {
+   getConversations,
++  getConversationById,
+   openSupportConversation,
+   createConversation,
+   getActiveTaskForChat,
+diff --git a/backend/src/controllers/job.controller.js b/backend/src/controllers/job.controller.js
+index c3a359d..71f560b 100644
+--- a/backend/src/controllers/job.controller.js
++++ b/backend/src/controllers/job.controller.js
+@@ -58,20 +58,40 @@ const createJob = async (req, res, next) => {
+ 
+ const getClientJobs = async (req, res, next) => {
+   try {
+-    const jobs = await prisma.job.findMany({
+-      where: { clientId: req.user.id },
+-      include: {
+-        _count: { select: { assignments: true } },
+-        assignments: {
+-          include: {
+-            provider: { include: { user: true, documents: true } }
+-          },
+-          orderBy: { assignedAt: 'desc' }
+-        }
+-      },
+-      orderBy: { createdAt: 'desc' }
++    const page = parseInt(req.query.page) || 1;
++    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
++    const skip = (page - 1) * limit;
++
++    const [items, total] = await prisma.$transaction([
++      prisma.job.findMany({
++        where: { clientId: req.user.id },
++        include: {
++          _count: { select: { assignments: true } },
++          assignments: {
++            include: {
++              provider: { include: { user: true, documents: true } }
++            },
++            orderBy: { assignedAt: 'desc' }
++          }
++        },
++        orderBy: { createdAt: 'desc' },
++        skip,
++        take: limit
++      }),
++      prisma.job.count({ where: { clientId: req.user.id } })
++    ]);
++
++    res.status(200).json({
++      success: true,
++      data: items,
++      pagination: {
++        page,
++        limit,
++        total,
++        pages: Math.ceil(total / limit),
++        hasMore: page * limit < total
++      }
+     });
+-    res.status(200).json({ success: true, data: jobs });
+   } catch (error) {
+     next(error);
+   }
+@@ -537,14 +557,34 @@ const updateJob = async (req, res, next) => {
+ 
+ const getAllJobs = async (req, res, next) => {
+   try {
+-    const jobs = await prisma.job.findMany({
+-      include: { 
+-        client: { select: { id: true, fullName: true, email: true, avatar: true } },
+-        assignments: { include: { provider: { include: { user: { select: { id: true, fullName: true, avatar: true } } } } } }
+-      },
+-      orderBy: { createdAt: 'desc' }
++    const page = parseInt(req.query.page) || 1;
++    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
++    const skip = (page - 1) * limit;
++
++    const [items, total] = await prisma.$transaction([
++      prisma.job.findMany({
++        include: { 
++          client: { select: { id: true, fullName: true, email: true, avatar: true } },
++          assignments: { include: { provider: { include: { user: { select: { id: true, fullName: true, avatar: true } } } } } }
++        },
++        orderBy: { createdAt: 'desc' },
++        skip,
++        take: limit
++      }),
++      prisma.job.count()
++    ]);
++
++    res.status(200).json({
++      success: true,
++      data: items,
++      pagination: {
++        page,
++        limit,
++        total,
++        pages: Math.ceil(total / limit),
++        hasMore: page * limit < total
++      }
+     });
+-    res.status(200).json({ success: true, data: jobs });
+   } catch (error) {
+     next(error);
+   }
+@@ -553,27 +593,46 @@ const getAllJobs = async (req, res, next) => {
+ const getProviderJobs = async (req, res, next) => {
+   try {
+     const providerId = req.user.providerProfile.id;
+-    const assignments = await prisma.jobAssignment.findMany({
+-      where: { providerId },
+-      include: { 
+-        job: { 
+-          include: { 
+-            client: { select: { id: true, fullName: true, avatar: true, phone: true } },
+-            assignments: { select: { id: true, providerId: true, status: true } }
+-          } 
+-        } 
+-      },
+-      orderBy: { assignedAt: 'desc' }
+-    });
++    const page = parseInt(req.query.page) || 1;
++    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
++    const skip = (page - 1) * limit;
+ 
+-    const jobs = assignments.map(a => ({
++    const [assignments, total] = await prisma.$transaction([
++      prisma.jobAssignment.findMany({
++        where: { providerId },
++        include: { 
++          job: { 
++            include: { 
++              client: { select: { id: true, fullName: true, avatar: true, phone: true } },
++              assignments: { select: { id: true, providerId: true, status: true } }
++            } 
++          } 
++        },
++        orderBy: { assignedAt: 'desc' },
++        skip,
++        take: limit
++      }),
++      prisma.jobAssignment.count({ where: { providerId } })
++    ]);
++
++    const items = assignments.map(a => ({
+       ...a.job,
+       clientId: a.job.clientId || a.job.client?.id,
+       assignmentId: a.id,
+       assignmentStatus: a.status
+     }));
+ 
+-    res.status(200).json({ success: true, data: jobs });
++    res.status(200).json({
++      success: true,
++      data: items,
++      pagination: {
++        page,
++        limit,
++        total,
++        pages: Math.ceil(total / limit),
++        hasMore: page * limit < total
++      }
++    });
+   } catch (error) {
+     next(error);
+   }
+diff --git a/backend/src/controllers/notification.controller.js b/backend/src/controllers/notification.controller.js
+index 7684284..92a92a1 100644
+--- a/backend/src/controllers/notification.controller.js
++++ b/backend/src/controllers/notification.controller.js
+@@ -2,11 +2,33 @@ const prisma = require('../config/prisma');
+ 
+ const getNotifications = async (req, res, next) => {
+   try {
+-    const notifications = await prisma.notification.findMany({
+-      where: { userId: req.user.id, archivedAt: null },
+-      orderBy: { createdAt: 'desc' }
++    const page = parseInt(req.query.page) || 1;
++    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
++    const skip = (page - 1) * limit;
++
++    const [items, total] = await prisma.$transaction([
++      prisma.notification.findMany({
++        where: { userId: req.user.id, archivedAt: null },
++        orderBy: { createdAt: 'desc' },
++        skip,
++        take: limit
++      }),
++      prisma.notification.count({
++        where: { userId: req.user.id, archivedAt: null }
++      })
++    ]);
++
++    res.status(200).json({
++      success: true,
++      data: items,
++      pagination: {
++        page,
++        limit,
++        total,
++        pages: Math.ceil(total / limit),
++        hasMore: page * limit < total
++      }
+     });
+-    res.status(200).json({ success: true, data: notifications });
+   } catch (error) {
+     next(error);
+   }
+diff --git a/backend/src/controllers/upload.controller.js b/backend/src/controllers/upload.controller.js
+index 58569a4..00efc47 100644
+--- a/backend/src/controllers/upload.controller.js
++++ b/backend/src/controllers/upload.controller.js
+@@ -5,7 +5,7 @@ const uploadProfileImage = async (req, res, next) => {
+     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+     
+     const url = await uploadFile(req.file, 'profile-images', { requireCloud: true });
+-    res.status(200).json({ success: true, url });
++    res.status(200).json({ success: true, url, path: req.file.originalname });
+   } catch (error) {
+     next(error);
+   }
+diff --git a/backend/src/controllers/wallet.controller.js b/backend/src/controllers/wallet.controller.js
+index 5236524..24a576f 100644
+--- a/backend/src/controllers/wallet.controller.js
++++ b/backend/src/controllers/wallet.controller.js
+@@ -413,15 +413,37 @@ const requestCoinsWithReceipt = async (req, res, next) => {
+ 
+ const getCoinTransactions = async (req, res, next) => {
+   try {
+-    const transactions = await prisma.transaction.findMany({
+-      where: {
+-        wallet: { userId: req.user.id }
+-      },
+-      orderBy: { createdAt: 'desc' },
+-      take: 50
+-    });
++    const page = parseInt(req.query.page) || 1;
++    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
++    const skip = (page - 1) * limit;
++
++    const [items, total] = await prisma.$transaction([
++      prisma.transaction.findMany({
++        where: {
++          wallet: { userId: req.user.id }
++        },
++        orderBy: { createdAt: 'desc' },
++        skip,
++        take: limit
++      }),
++      prisma.transaction.count({
++        where: {
++          wallet: { userId: req.user.id }
++        }
++      })
++    ]);
+ 
+-    res.status(200).json({ success: true, data: transactions });
++    res.status(200).json({
++      success: true,
++      data: items,
++      pagination: {
++        page,
++        limit,
++        total,
++        pages: Math.ceil(total / limit),
++        hasMore: page * limit < total
++      }
++    });
+   } catch (error) {
+     next(error);
+   }
+diff --git a/backend/src/middlewares/error.middleware.js b/backend/src/middlewares/error.middleware.js
+index 5246156..f692de3 100644
+--- a/backend/src/middlewares/error.middleware.js
++++ b/backend/src/middlewares/error.middleware.js
+@@ -1,22 +1,73 @@
+ const errorHandler = (err, req, res, next) => {
+-  console.error('[Error Middleware]', {
++  const isDev = process.env.NODE_ENV !== 'production'
++  
++  // Always log the full error
++  console.error('[Error]', {
+     message: err.message,
+-    code: err.code,
+-    status: err.statusCode || 500,
+     path: req.path,
+     method: req.method,
+-    userId: req.user?.id,
+-    stack: err.stack
+-  });
+-
+-  const statusCode = err.statusCode || 500;
+-  const message = err.message || 'Internal Server Error';
+-
+-  res.status(statusCode).json({
++    userId: req.user?.id || 'unauthenticated',
++    timestamp: new Date().toISOString(),
++    ...(isDev && { stack: err.stack })
++  })
++  
++  // Prisma: duplicate record
++  if (err.code === 'P2002') {
++    return res.status(409).json({
++      success: false,
++      message: 'This record already exists'
++    })
++  }
++  
++  // Prisma: record not found
++  if (err.code === 'P2025') {
++    return res.status(404).json({
++      success: false,
++      message: 'Record not found'
++    })
++  }
++  
++  // Prisma: missing required field
++  if (err.code === 'P2011' || err.code === 'P2012') {
++    return res.status(400).json({
++      success: false,
++      message: 'Required field is missing'
++    })
++  }
++  
++  // JWT errors
++  if (err.name === 'JsonWebTokenError') {
++    return res.status(401).json({
++      success: false,
++      message: 'Invalid token. Please log in again.'
++    })
++  }
++  
++  if (err.name === 'TokenExpiredError') {
++    return res.status(401).json({
++      success: false,
++      message: 'Session expired. Please log in again.'
++    })
++  }
++  
++  // Validation errors
++  if (err.name === 'ValidationError') {
++    return res.status(400).json({
++      success: false,
++      message: err.message
++    })
++  }
++  
++  // Default error response
++  const statusCode = err.statusCode || err.status || 500
++  return res.status(statusCode).json({
+     success: false,
+-    message,
+-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+-  });
+-};
++    message: isDev 
++      ? err.message 
++      : statusCode === 500 
++        ? 'Something went wrong. Please try again.'
++        : err.message
++  })
++}
+ 
+ module.exports = { errorHandler };
+diff --git a/backend/src/routes/chat.routes.js b/backend/src/routes/chat.routes.js
+index 5696c51..babae33 100644
+--- a/backend/src/routes/chat.routes.js
++++ b/backend/src/routes/chat.routes.js
+@@ -6,6 +6,7 @@ const { protect, authorize } = require('../middlewares/auth.middleware');
+ router.use(protect);
+ 
+ router.get('/conversations', chatController.getConversations);
++router.get('/conversations/:conversationId', chatController.getConversationById);
+ router.get('/unread-count', authorize('ADMIN'), chatController.getUnreadCount);
+ router.post('/conversations', chatController.createConversation);
+ router.get('/check-booking/:providerId', chatController.checkBooking);
+diff --git a/backend/src/routes/notification.routes.js b/backend/src/routes/notification.routes.js
+index a1e6b52..e143c93 100644
+--- a/backend/src/routes/notification.routes.js
++++ b/backend/src/routes/notification.routes.js
+@@ -8,6 +8,7 @@ router.use(protect);
+ 
+ router.get('/', notificationController.getNotifications);
+ router.put('/:id/read', notificationController.markAsRead);
++router.patch('/:id/read', notificationController.markAsRead);
+ router.put('/:id/archive', notificationController.archiveNotification);
+ router.delete('/clear', notificationController.clearNotifications);
+ router.post('/test-push', protect, adminOnly, notificationController.testPush);
+diff --git a/dashboard/src/app/dashboard/layout.jsx b/dashboard/src/app/dashboard/layout.jsx
+index 5477470..da9c808 100644
+--- a/dashboard/src/app/dashboard/layout.jsx
++++ b/dashboard/src/app/dashboard/layout.jsx
+@@ -5,14 +5,25 @@ import { Bell, Search, User, Globe, LogOut, PanelLeftClose, PanelLeftOpen } from
+ import { useSocket } from "@/hooks/useSocket"
+ import { useEffect, useState } from "react"
+ import { toast } from "sonner"
++import { dashboardService } from "@/services/api"
+ 
+ export default function DashboardLayout({ children }) {
+   const [token] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null)
+   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
++  const [isMaintenance, setIsMaintenance] = useState(false)
+ 
+   const { isConnected, on } = useSocket(token)
+ 
+   useEffect(() => {
++    // Check maintenance mode on load
++    dashboardService.getSettings?.()
++      .then(res => {
++        if (res.data?.data?.maintenanceEnabled) {
++          setIsMaintenance(true)
++        }
++      })
++      .catch(() => {})
++
+     if (isConnected) {
+       console.log("Realtime Dashboard Connected")
+     }
+@@ -36,8 +47,14 @@ export default function DashboardLayout({ children }) {
+       
+       <div className="flex flex-1 flex-col overflow-hidden">
+         {/* Header */}
+-        <header className="flex h-16 items-center justify-between border-b border-[#E2E8F0] bg-white px-8">
+-          <div className="flex items-center gap-4">
++        <header className="flex flex-col border-b border-[#E2E8F0] bg-white">
++          {isMaintenance && (
++            <div className="bg-rose-600 text-white text-xs font-bold text-center py-1.5 px-4 animate-pulse">
++              ⚠️ MAINTENANCE MODE IS ACTIVE — Users cannot access the app
++            </div>
++          )}
++          <div className="flex h-16 items-center justify-between px-8">
++            <div className="flex items-center gap-4">
+             <button onClick={() => setSidebarCollapsed((value) => !value)} className="p-2 text-slate-500 hover:bg-[#ECFDF5] hover:text-[#0D9488]">
+               {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+             </button>
+diff --git a/dashboard/src/app/dashboard/settings/page.jsx b/dashboard/src/app/dashboard/settings/page.jsx
+index 2695f23..4c6a909 100644
+--- a/dashboard/src/app/dashboard/settings/page.jsx
++++ b/dashboard/src/app/dashboard/settings/page.jsx
+@@ -139,6 +139,36 @@ export default function SettingsPage() {
+                     </div>
+                   </div>
+                 </div>
++
++                <div className="pt-4 border-t space-y-4">
++                  <h4 className="font-bold text-slate-800">System State</h4>
++                  <div className="p-6 bg-rose-50 border border-rose-100 rounded-2xl space-y-4">
++                    <div className="flex items-center justify-between">
++                      <div>
++                        <h4 className="text-sm font-bold text-rose-900">Maintenance Mode</h4>
++                        <p className="text-xs text-rose-700 mt-1">If enabled, the app will show a maintenance screen and reject all normal traffic.</p>
++                      </div>
++                      <button
++                        onClick={() => updateSetting('maintenanceEnabled', !settings.maintenanceEnabled)}
++                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.maintenanceEnabled ? 'bg-rose-600' : 'bg-slate-300'}`}
++                      >
++                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.maintenanceEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
++                      </button>
++                    </div>
++                    {settings.maintenanceEnabled && (
++                      <div className="space-y-2 pt-2">
++                        <label className="text-xs font-bold text-rose-800 uppercase tracking-wider">Maintenance Message</label>
++                        <input 
++                          type="text" 
++                          value={settings.maintenanceMessage || ''} 
++                          onChange={(e) => updateSetting('maintenanceMessage', e.target.value)} 
++                          className="w-full bg-white border border-rose-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-rose-500 text-rose-900" 
++                          placeholder="We are improving Fixam for you. Back soon!"
++                        />
++                      </div>
++                    )}
++                  </div>
++                </div>
+               </div>
+             )}
+ 

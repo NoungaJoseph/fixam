@@ -26,6 +26,19 @@ const STATUS_CONFIG = {
   Cancelled: { label: 'Cancelled',   color: '#EF4444', bg: '#FEF2F2', icon: 'close-circle-outline' },
 };
 
+const CATEGORY_ICONS = {
+  PLUMBING: 'pipe-wrench',
+  ELECTRICAL: 'lightning-bolt-circle',
+  CLEANING: 'broom',
+  PAINTING: 'format-paint',
+  CARPENTRY: 'hammer',
+  GARDENING: 'flower',
+  MOVING: 'truck-outline',
+  APPLIANCE: 'fridge-outline',
+  REPAIR: 'wrench',
+  BOOKING: 'calendar-check-outline',
+};
+
 const MyJobsScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const { transactions, notificationCount } = useAppContext();
@@ -74,6 +87,7 @@ const MyJobsScreen = ({ navigation }) => {
       location: job.location || t('jobs.onSite'),
       description: job.description,
       category: job.category,
+      image: job.photos?.[0] || job.image || null,
       rawJob: job,
     };
   });
@@ -88,6 +102,7 @@ const MyJobsScreen = ({ navigation }) => {
     location: booking.location || t('jobs.onSite'),
     description: booking.notes,
     category: 'booking',
+    image: booking.image || null,
     rawJob: booking,
     isBooking: true,
   }));
@@ -137,17 +152,27 @@ const MyJobsScreen = ({ navigation }) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Requests;
     const statusLabel = t(`jobs.statusLabels.${item.status}`);
     const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
+    const canChat = item.isBooking
+      ? ['Requests', 'Booked'].includes(item.status)
+      : ['Booked', 'Active'].includes(item.status);
     return (
       <TouchableOpacity
-        style={[styles.jobCard, { backgroundColor: colors.card, shadowColor: isDarkMode ? 'transparent' : '#000' }]}
+        style={[styles.jobCard, { backgroundColor: colors.card, borderBottomColor: colors.border, shadowColor: isDarkMode ? 'transparent' : '#000' }]}
         onPress={() => item.isBooking ? null : navigation.navigate('TaskDetails', { task: item.rawJob })}
         activeOpacity={0.85}
       >
         <View style={styles.jobRow}>
-          <Image
-            source={{ uri: `https://source.unsplash.com/160x120/?${item.category || 'work'}` }}
-            style={styles.jobImg}
-          />
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.jobImg} />
+          ) : (
+            <View style={[styles.jobImgFallback, { backgroundColor: isDarkMode ? 'rgba(13,148,136,0.16)' : '#E6FDF3' }]}>
+              <MaterialCommunityIcons
+                name={CATEGORY_ICONS[String(item.category || '').toUpperCase()] || 'briefcase-outline'}
+                size={42}
+                color={colors.accent}
+              />
+            </View>
+          )}
           <View style={styles.jobContent}>
             <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
             <View style={styles.metaRow}>
@@ -177,18 +202,20 @@ const MyJobsScreen = ({ navigation }) => {
         </View>
 
         <View style={[styles.actionRow, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            style={[styles.chatBtn, { borderColor: colors.border }]}
-              onPress={() => navigation.navigate('Chat', {
-              receiverId: item.isBooking ? item.rawJob.clientId : item.rawJob.clientId,
-              userName: item.client,
-              avatar: item.avatar,
-              task: item.rawJob,
-            })}
-          >
-            <MaterialCommunityIcons name="message-text-outline" size={16} color={colors.accent} />
-            <Text style={[styles.chatBtnText, { color: colors.accent }]}>{t('tabs.messages')}</Text>
-          </TouchableOpacity>
+          {canChat ? (
+            <TouchableOpacity
+              style={[styles.chatBtn, { borderColor: colors.border }]}
+                onPress={() => navigation.navigate('Chat', {
+                receiverId: item.isBooking ? item.rawJob.clientId : item.rawJob.clientId,
+                userName: item.client,
+                avatar: item.avatar,
+                task: item.rawJob,
+              })}
+            >
+              <MaterialCommunityIcons name="message-text-outline" size={16} color={colors.accent} />
+              <Text style={[styles.chatBtnText, { color: colors.accent }]}>{t('tabs.messages')}</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {item.status === 'Requests' && (
             <TouchableOpacity
@@ -451,25 +478,26 @@ const styles = StyleSheet.create({
   },
 
   // Jobs
-  listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 110 },
-  jobCard: { borderRadius: 18, marginBottom: 14, overflow: 'hidden', shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
+  listContent: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 110 },
+  jobCard: { borderRadius: 0, marginBottom: 0, overflow: 'hidden', shadowOpacity: 0, shadowRadius: 0, elevation: 0, borderBottomWidth: 1 },
   jobRow: { flexDirection: 'row' },
   jobImg: { width: 110, height: 130 },
+  jobImgFallback: { width: 110, height: 130, alignItems: 'center', justifyContent: 'center' },
   jobContent: { flex: 1, padding: 12 },
   jobTitle: { fontSize: 14, fontWeight: '800', marginBottom: 6 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
   metaText: { fontSize: 12, flex: 1 },
   jobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 },
-  budgetBox: { borderRadius: 10, padding: 6, alignItems: 'center' },
+  budgetBox: { borderRadius: 0, padding: 6, alignItems: 'center' },
   budgetText: { fontSize: 13, fontWeight: '800' },
   estimatedText: { fontSize: 10, fontWeight: '500', marginTop: 1 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 0 },
   statusText: { fontSize: 10, fontWeight: '800' },
   statusSub: { fontSize: 10, textAlign: 'right', marginTop: 2 },
   actionRow: { flexDirection: 'row', gap: 8, padding: 12, borderTopWidth: 1 },
-  chatBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 38, borderRadius: 12, borderWidth: 1.5 },
+  chatBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 38, borderRadius: 0, borderWidth: 1.5 },
   chatBtnText: { fontSize: 13, fontWeight: '700' },
-  primaryBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 38, borderRadius: 12 },
+  primaryBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 38, borderRadius: 0 },
   primaryBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
 
   // Empty

@@ -22,6 +22,18 @@ const formatDate = (value, locale = 'en') => {
   return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const CATEGORY_ICONS = {
+  PLUMBING: 'pipe-wrench',
+  ELECTRICAL: 'lightning-bolt-circle',
+  CLEANING: 'broom',
+  PAINTING: 'format-paint',
+  CARPENTRY: 'hammer',
+  GARDENING: 'flower',
+  MOVING: 'truck-outline',
+  APPLIANCE: 'fridge-outline',
+  REPAIR: 'wrench',
+};
+
 const TaskDetailsScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const task = route.params?.task || route.params?.job || {};
@@ -46,6 +58,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     ? `${budgetMin.toLocaleString()} - ${budgetMax.toLocaleString()} XAF`
     : `${budget.toLocaleString()} XAF`;
   const photos = task.photos?.length ? task.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : [];
+  const fallbackIcon = CATEGORY_ICONS[String(task.category || '').toUpperCase()] || 'briefcase-outline';
   const postedOn = formatDate(task.createdAt, locale);
   const preferredDate = formatDate(task.scheduledTime, locale);
   const hasApplied = applied || appliedJobIds?.includes(task.id) || task.assignments?.some((assignment) => (
@@ -60,7 +73,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     assignment.id === task.assignmentId
   ));
   const assignmentStatus = String(task.assignmentStatus || providerAssignment?.status || '').toUpperCase();
-  const canMessageClient = assignmentStatus === 'ACCEPTED';
+  const canMessageClient = assignmentStatus === 'ACCEPTED' && ['ASSIGNED', 'IN_PROGRESS'].includes(String(task.status || '').toUpperCase());
   const hasLocationCoords = task.latitude != null && task.longitude != null;
   const canViewLocation = canMessageClient && ['ASSIGNED', 'IN_PROGRESS'].includes(String(task.status || '').toUpperCase()) && hasLocationCoords;
 
@@ -227,19 +240,24 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             </>
           ) : null}
 
-          {photos.length > 0 ? (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.photos')}</Text>
-              <View style={styles.photoRow}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.photos')}</Text>
+          <View style={styles.photoRow}>
+            {photos.length > 0 ? (
+              <>
                 {photos.slice(0, 4).map((uri, index) => (
                   <View key={`${uri.uri || index}-${index}`} style={[styles.photoWrap, { backgroundColor: colors.border }]}>
                     <Image source={uri} style={styles.photo} />
                     {index === 3 && photos.length > 4 && <Text style={styles.morePhotos}>+{photos.length - 4}</Text>}
                   </View>
                 ))}
+              </>
+            ) : (
+              <View style={[styles.photoFallback, { backgroundColor: isDarkMode ? 'rgba(13,148,136,0.16)' : '#E6FDF3', borderColor: colors.border }]}>
+                <MaterialCommunityIcons name={fallbackIcon} size={38} color={colors.accent} />
+                <Text style={[styles.photoFallbackText, { color: colors.textSecondary }]}>{translateService(task.category || t('jobs.taskDetails'))}</Text>
               </View>
-            </>
-          ) : null}
+            )}
+          </View>
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.details')}</Text>
           <View style={styles.detailList}>
@@ -361,6 +379,8 @@ const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   photoWrap: { flex: 1, aspectRatio: 1.35, borderRadius: 9, overflow: 'hidden', backgroundColor: '#E2E8F0' },
   photo: { width: '100%', height: '100%' },
+  photoFallback: { width: '100%', minHeight: 112, borderRadius: 0, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  photoFallbackText: { fontSize: 13, fontWeight: '900', textTransform: 'uppercase' },
   morePhotos: { position: 'absolute', right: 10, bottom: 10, color: '#FFFFFF', fontWeight: '900', fontSize: 17 },
   detailList: { marginBottom: 24 },
   detailLine: { minHeight: 48, borderBottomWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14 },

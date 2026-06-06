@@ -52,6 +52,7 @@ const ChatListScreen = ({ navigation }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { on } = useSocket();
+  const { jobs } = useAppContext();
 
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,18 +137,56 @@ const ChatListScreen = ({ navigation }) => {
     return () => off?.();
   }, [fetchConversations, on]);
 
+  const helperGetJob = useCallback((c) => {
+    const directJob = c.task || c.job || c.activeJob || c.activeTask || c.booking;
+    if (directJob) return directJob;
+
+    const other = c.participants?.[0] || {};
+    return jobs.find((job) => {
+      const providerUserId = job.provider?.user?.id || job.booking?.provider?.user?.id;
+      const providerId = job.provider?.id || job.providerId || job.booking?.providerId;
+      const clientId = job.client?.id || job.clientId || job.booking?.clientId;
+      return [providerUserId, providerId, clientId].filter(Boolean).includes(other.id);
+    });
+  }, [jobs]);
+
+  const helperIsOngoingJob = useCallback((t) => {
+    if (!t) return false;
+    const status = String(t.status || t.assignmentStatus || t.booking?.status || '').toUpperCase();
+    const assignmentOngoing = t.assignments?.some((assignment) => (
+      ['IN_PROGRESS', 'ONGOING', 'STARTED'].includes(String(assignment.status || '').toUpperCase())
+    ));
+    return ['IN_PROGRESS', 'ONGOING', 'ACTIVE', 'STARTED'].includes(status) || assignmentOngoing;
+  }, []);
+
+  const helperIsBooked = useCallback((t) => {
+    if (!t || helperIsOngoingJob(t)) return false;
+    const status = String(t.status || t.booking?.status || '').toUpperCase();
+    return Boolean(
+      t.isBooking ||
+      t.booking ||
+      t.scheduledTime ||
+      t.bookingDate ||
+      ['SCHEDULED', 'BOOKED', 'PENDING', 'REQUESTED'].includes(status)
+    );
+  }, [helperIsOngoingJob]);
+
+  const helperIsJob = useCallback((t) => {
+    if (!t || helperIsBooked(t)) return false;
+    const status = String(t.status || t.assignmentStatus || '').toUpperCase();
+    return helperIsOngoingJob(t) || ['ASSIGNED', 'ACCEPTED', 'APPROVED'].includes(status);
+  }, [helperIsBooked, helperIsOngoingJob]);
+
+  const helperIsSystem = useCallback((c) => {
+    const other = c.participants?.[0] || {};
+    const name = (other.fullName || '').toLowerCase();
+    const email = (other.email || '').toLowerCase();
+    return c.isSystem || other.role === 'ADMIN' || name.includes('fixam') || email.includes('fixam');
+  }, []);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = conversations;
-
-    const helperGetJob = (c) => c.task || c.job || c.activeJob || c.activeTask;
-    const helperIsBooked = (t) => t && (t.status === 'SCHEDULED' || t.status === 'BOOKED' || t.scheduledTime);
-    const helperIsSystem = (c) => {
-      const other = c.participants?.[0] || {};
-      const name = (other.fullName || '').toLowerCase();
-      const email = (other.email || '').toLowerCase();
-      return c.isSystem || other.role === 'ADMIN' || name.includes('fixam') || email.includes('fixam');
-    };
 
     if (activeFilter === 'archive') {
       // ONLY show archived conversations
@@ -161,7 +200,7 @@ const ChatListScreen = ({ navigation }) => {
       } else if (activeFilter === 'jobs') {
         list = list.filter(c => {
           const j = helperGetJob(c);
-          return !!j && !helperIsBooked(j);
+          return helperIsJob(j);
         });
       } else if (activeFilter === 'bookings') {
         list = list.filter(c => {
@@ -179,33 +218,21 @@ const ChatListScreen = ({ navigation }) => {
       const last = (c.lastMessage?.content || '').toLowerCase();
       return name.includes(q) || last.includes(q);
     });
-  }, [conversations, search, activeFilter, archivedIds]);
-
-  const { jobs } = useAppContext();
-
-  // Dynamic counting helper functions
-  const helperGetJob = (c) => c.task || c.job || c.activeJob || c.activeTask;
-  const helperIsBooked = (t) => t && (t.status === 'SCHEDULED' || t.status === 'BOOKED' || t.scheduledTime);
-  const helperIsSystem = (c) => {
-    const other = c.participants?.[0] || {};
-    const name = (other.fullName || '').toLowerCase();
-    const email = (other.email || '').toLowerCase();
-    return c.isSystem || other.role === 'ADMIN' || name.includes('fixam') || email.includes('fixam');
-  };
+  }, [conversations, search, activeFilter, archivedIds, helperGetJob, helperIsBooked, helperIsJob, helperIsSystem]);
 
   const unreadTotal = useMemo(() => conversations.reduce((s, c) => s + (c.unreadCount || 0), 0), [conversations]);
   
   const jobChats = useMemo(() => conversations.filter(c => {
     const j = helperGetJob(c);
-    return !!j && !helperIsBooked(j);
-  }).length, [conversations]);
+    return helperIsJob(j);
+  }).length, [conversations, helperGetJob, helperIsJob]);
 
   const activeBookings = useMemo(() => conversations.filter(c => {
     const j = helperGetJob(c);
     return !!j && helperIsBooked(j);
-  }).length, [conversations]);
+  }).length, [conversations, helperGetJob, helperIsBooked]);
 
-  const systemChats = useMemo(() => conversations.filter(c => helperIsSystem(c)).length, [conversations]);
+  const systemChats = useMemo(() => conversations.filter(c => helperIsSystem(c)).length, [conversations, helperIsSystem]);
 
   const renderItem = ({ item }) => {
     const other = item.participants?.[0] || {};
@@ -359,7 +386,7 @@ const ChatListScreen = ({ navigation }) => {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsRow}
-          style={{ flexGrow: 0, marginBottom: 6 }}
+          style={styles.chipsScroller}
         >
           {FILTER_CHIPS.map(chip => {
             const active = activeFilter === chip.key;
@@ -508,7 +535,8 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 20, height: 48, borderRadius: 14, paddingHorizontal: 14, borderWidth: 1, marginBottom: 12 },
   searchInput: { flex: 1, fontSize: 15 },
 
-  chipsRow: { paddingHorizontal: 20, gap: 6 },
+  chipsScroller: { flexGrow: 0, marginBottom: 12 },
+  chipsRow: { paddingHorizontal: 20, paddingBottom: 4, gap: 6 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 18, borderRadius: 19, borderWidth: 1 },
   chipText: { fontSize: 13.5, fontWeight: '700', includeFontPadding: false, textAlignVertical: 'center' },
   chipBadge: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -526,7 +554,7 @@ const styles = StyleSheet.create({
   statSub: { fontSize: 9.5, fontWeight: '600', lineHeight: 11 },
   statArrowCircle: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 
-  listContent: { paddingBottom: 110 },
+  listContent: { paddingTop: 8, paddingBottom: 110 },
   chatRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
   avatarWrap: { position: 'relative', marginRight: 14 },
   avatar: { width: 54, height: 54, borderRadius: 27 },

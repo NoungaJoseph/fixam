@@ -30,8 +30,6 @@ const TopUpScreen = ({ navigation }) => {
     navigation.navigate('CoinPaymentForm', { package: pkg });
   };
 
-  const estimatedFcfa = (walletBalance || 0) * 500;
-
   // Branded Payment Provider Logos
   const paymentLogos = [
     { name: 'MTN MoMo', uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/MTN_Logo.svg/320px-MTN_Logo.svg.png' },
@@ -59,10 +57,10 @@ const TopUpScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
-            onPress={() => navigation.openDrawer()} 
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.openDrawer?.()} 
             style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}
           >
-            <MaterialCommunityIcons name="menu" size={22} color={isDarkMode ? '#FFF' : '#0F172A'} />
+            <MaterialCommunityIcons name={navigation.canGoBack() ? "arrow-left" : "menu"} size={22} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
           
           <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('wallet.topUpCoins')}</Text>
@@ -94,7 +92,6 @@ const TopUpScreen = ({ navigation }) => {
                 <Text style={styles.balanceValue}>{walletBalance || 0}</Text>
                 <Text style={styles.balanceUnit}>{t('wallet.coins')}</Text>
               </View>
-              <Text style={styles.estimatedText}>≈ {estimatedFcfa.toLocaleString()} FCFA</Text>
             </View>
 
             <View style={styles.balanceRight}>
@@ -266,7 +263,7 @@ const TopUpScreen = ({ navigation }) => {
               <Text style={[styles.emptyHistoryText, { color: isDarkMode ? '#94A3B8' : '#64748B' }]}>{t('payments.noTransactions')}</Text>
             </View>
           ) : (
-            <View style={[styles.txListContainer, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}>
+            <View style={styles.txListContainer}>
               {transactions.slice(0, 10).map((tx, i) => (
                 <View 
                   key={tx.id || i} 
@@ -398,12 +395,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     marginLeft: 6,
-  },
-  estimatedText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 4,
   },
   balanceRight: {
     justifyContent: 'space-between',
@@ -694,14 +685,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' 
   },
   txListContainer: {
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.01,
-    shadowRadius: 3,
-    elevation: 1,
+    overflow: 'visible',
   },
   txRow: { 
     flexDirection: 'row', 

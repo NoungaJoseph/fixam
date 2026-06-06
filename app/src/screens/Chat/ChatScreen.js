@@ -219,9 +219,12 @@ const ChatScreen = ({ route, navigation }) => {
     trackingTask?.id &&
     (
       ['ACCEPTED', 'ASSIGNED', 'IN_PROGRESS', 'ONGOING'].includes(String(trackingTask.status || '').toUpperCase()) ||
+      (trackingTask.isBooking && ['PENDING', 'ACCEPTED'].includes(String(trackingTask.status || '').toUpperCase())) ||
       trackingTask.assignments?.some((assignment) => ['ACCEPTED', 'IN_PROGRESS'].includes(String(assignment.status || '').toUpperCase()))
     )
   );
+  const isDirectConversation = !isSupportConversation && otherParticipant?.role !== 'ADMIN';
+  const chatLocked = isDirectConversation && !hasAcceptedWork;
 
   const openTaskTracker = () => {
     if (!trackingTask?.id) {
@@ -389,7 +392,7 @@ const ChatScreen = ({ route, navigation }) => {
             accessibilityRole="button"
             accessibilityLabel={user?.role === 'PROVIDER' ? 'Track client on map' : 'Track provider on map'}
           >
-            <MaterialCommunityIcons name="map-outline" size={22} color={colors.text} />
+            <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.text} />
             <Text style={[styles.trackCompactCaption, { color: colors.textSecondary }]} numberOfLines={1}>
               {user?.role === 'PROVIDER' ? 'Track client' : 'Track provider'}
             </Text>
@@ -419,13 +422,19 @@ const ChatScreen = ({ route, navigation }) => {
           <FlatList ref={flatListRef} data={messages} keyExtractor={item => item.id} renderItem={renderMessage} contentContainerStyle={styles.messageList} showsVerticalScrollIndicator={false} onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })} />
         )}
 
-        {currentUser.role === 'CLIENT' && otherParticipant?.role === 'PROVIDER' && !isSupportConversation && !hasAcceptedWork ? (
+        {chatLocked ? (
           <View style={[styles.bookingBanner, { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 16) }]}>
             <MaterialCommunityIcons name="calendar-lock" size={28} color={colors.placeholder} style={{ marginBottom: 8 }} />
-            <Text style={[styles.bookingBannerText, { color: colors.textSecondary }]}>{t('messages.mustBookProvider', 'You must book this provider to message them.')}</Text>
-            <TouchableOpacity style={[styles.bannerBookBtn, { backgroundColor: colors.accent }]} onPress={openBookingForm}>
-              <Text style={styles.bannerBookBtnText}>{t('messages.bookToMessage', 'Book to Message')}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.bookingBannerText, { color: colors.textSecondary }]}>
+              {currentUser.role === 'CLIENT' && otherParticipant?.role === 'PROVIDER'
+                ? t('messages.mustBookProvider', 'You must book this provider to message them.')
+                : t('messages.activeTaskRequired', 'Messaging is available only while an active booking or selected task is in progress.')}
+            </Text>
+            {currentUser.role === 'CLIENT' && otherParticipant?.role === 'PROVIDER' ? (
+              <TouchableOpacity style={[styles.bannerBookBtn, { backgroundColor: colors.accent }]} onPress={openBookingForm}>
+                <Text style={styles.bannerBookBtnText}>{t('messages.bookToMessage', 'Book to Message')}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : (
           <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>

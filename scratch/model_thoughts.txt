@@ -1,0 +1,201 @@
+=== STEP 580 ===
+ Created At: 2026-06-05T00:48:16Z
+Completed At: 2026-06-05T00:48:16Z
+File Path: `file:///C:/Users/Prova/Videos/Fixam/app/src/screens/Profile/HelpCenterScreen.js`
+Total Lines: 208
+Total Bytes: 10105
+Showing lines 1 to 208
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useState } from 'react';
+2: import { SafeAreaView } from 'react-native-safe-area-context';
+3: import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+4: import { MaterialCommunityIcons } from '@expo/vector-icons';
+5: import { useTheme } from '../../context/ThemeContext';
+6: import { useLanguage } from '../../context/LanguageContext';
+7: import api from '../../services/api';
+8: 
+9: const FAQS = [
+10:   {
+11:     q: 'How do I post a task?',
+12:     a: 'Tap "Post a Task" from the home screen or the side menu. Fill in the task title, description, location and budget. Professionals nearby will send you quotes.',
+13:   },
+14:   {
+15:     q: 'How does payment work?',
+16:     a: 'Payments are made securely through the Fixam wallet. Funds are only released to the professional once you confirm the task is completed to your satisfaction.',
+17:   },
+18:   {
+19:     q: 'How are professionals verified?',
+20:     a: 'All professionals on Fixam go through an identity verification process including ID/passport check and a live selfie. Certified professionals also submit trade documents.',
+21:   },
+22:   {
+23:     q: 'Can I cancel a task?',
+24:     a: 'Yes, you can cancel a task before a professional is assigned at no charge. After assignment, a cancellation fee may apply depending on the stage of the job.',
+25:   },
+26:   {
+27:     q: 'What is the Fixam coin system?',
+28:     a: 'Fixam Coins are the in-app currency. Professionals use coins to unlock job requests. You can top 
+<truncated 7486 bytes>
+footNote, { color: colors.textSecondary }]}>
+174:             {t('help.footNote')}
+175:           </Text>
+176:         </ScrollView>
+177:       </SafeAreaView>
+178:     </View>
+179:   );
+180: };
+181: 
+182: const styles = StyleSheet.create({
+183:   background: { flex: 1 },
+184:   container: { flex: 1 },
+185:   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+186:   backBtn: { width: 42, height: 42, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+187:   headerTitle: { fontSize: 18, fontWeight: '800' },
+188:   content: { padding: 22, paddingBottom: 48 },
+189:   heroTitle: { fontSize: 20, fontWeight: '900', marginBottom: 6 },
+190:   heroSub: { fontSize: 14, marginBottom: 18 },
+191:   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, height: 48, borderRadius: 8, borderWidth: 1, marginBottom: 22 },
+192:   searchInput: { flex: 1, fontSize: 15 },
+193:   sectionTitle: { fontSize: 17, fontWeight: '900', marginBottom: 14 },
+194:   faqCard: { borderBottomWidth: 1, paddingVertical: 16 },
+195:   faqQuestion: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+196:   faqQ: { fontSize: 14, fontWeight: '700', lineHeight: 20 },
+197:   faqA: { fontSize: 13, lineHeight: 21, marginTop: 12 },
+198:   emptyState: { alignItems: 'center', paddingVertical: 30 },
+199:   emptyText: { fontSize: 14, marginTop: 10 },
+200:   contactCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderBottomWidth: 1, paddingVertical: 16 },
+201:   contactIcon: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+202:   contactLabel: { fontSize: 15, fontWeight: '800', marginBottom: 3 },
+203:   contactSub: { fontSize: 13 },
+204:   footNote: { fontSize: 12, textAlign: 'center', marginTop: 20, lineHeight: 18 },
+205: });
+206: 
+207: export default HelpCenterScreen;
+208: 
+The above content shows the entire, complete file contents of the requested file.
+
+
+=== STEP 593 ===
+**Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+**Refining Component Specificity**
+
+I'm now diving deep into component-level modifications for the settings page. I'm focusing on the SettingsScreen.js and have identified the SectionCard wrapper and SettingItem components needing refinement. I'm carefully removing borders, shadows, and elevated styles, aiming for flat, clean rows, while integrating thin separators between them, as instructed.
+
+
+**Analyzing Component Dependencies**
+
+I'm now carefully examining the dependencies between `SectionCard` and `SettingItem`. I'm going to remove `backgroundColor`, `border`, and `shadow` from `SectionCard`, making it just a View with `marginBottom: 20`. This should ensure `SettingItem` has the correct transparent background. I will directly apply the instructed styles to `SettingItem`, removing borderBottomColor/Width. I'm focusing on incorporating the separator as instructed.
+
+
+**Implementing Separator Logic**
+
+I've decided to refine the separator approach within the `SectionCard`. I'll be mapping through the children, adding a separator conditionally. This involves converting children into an array, and inserting the separator if the child is not the last one. Simultaneously, I will remove the bottom border from the `SettingItem` component. I will also be defining the necessary styles for both components.
+
+
+**Refining Item Styling**
+
+I've examined the `SettingItem` structure and determined it's satisfactory; now, I'm focusing on refining its styling. I'll modify the `settingRow` style and remove the `borderBottomColor` from the inline style of the `TouchableOpacity` component. I plan to apply FIX 1 to `SettingsScreen.js` using `replace_file_content`.
+
+
+ 
+
+=== STEP 596 ===
+**Prioritizing Tool Specificity**
+
+I'm focusing intently on tool selection to streamline my processes. Avoiding `cat` for file creation or appending is now second nature. I'm also actively implementing `grep_search` whenever possible to minimize nested bash commands. I have successfully stopped using `ls` in my scripts.
+
+
+**Refining Code Review**
+
+I'm now deeply engaged in a targeted code review. I've re-examined the specific instructions for Fix 1, explicitly cataloging the elements to be removed and modified, such as the `borderWidth` and `borderRadius`. My immediate focus is on the `SectionCard` component within `SettingsScreen.js` to ensure a clean, flat row implementation. I need to make sure my replacement code is fully aligned with the requirements.
+
+
+ 
+
+=== STEP 633 ===
+ Created At: 2026-06-05T00:53:00Z
+Completed At: 2026-06-05T00:53:09Z
+The following changes were made by the multi_replace_file_content tool to: C:\Users\Prova\Videos\Fixam\app\src\screens\Profile\HelpCenterScreen.js. If relevant, proactively run terminal commands to execute this code for the USER. Don't ask for permission.
+[diff_block_start]
+@@ -1,185 +1,5 @@
+-import React, { useState } from 'react';
++import React, { useState } from 'react';
+ import { SafeAreaView } from 'react-native-safe-area-context';
+-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert } from 'react-native';
+-import { MaterialCommunityIcons } from '@expo/vector-icons';
+-import { useTheme } from '../../context/ThemeContext';
+-import { useLanguage } from '../../context/LanguageContext';
+-import api from '../../services/api';
+-
+-const FAQS = [
+-  {
+-    q: 'How do I post a task?',
+-    a: 'Tap "Post a Task" from the home screen or the side menu. Fill in the task title, description, location and budget. Professionals nearby will send you quotes.',
+-  },
+-  {
+-    q: 'How does payment work?',
+-    a: 'Payments are made securely through the Fixam wallet. Funds are only released to the professional once you confirm the task is completed to your satisfaction.',
+-  },
+-  {
+-    q: 'How are professionals verified?',
+-    a: 'All professionals on Fixam go through an identity verification process including ID/passport check and a live selfie. Certified professionals also submit trade documents.',
+-  },
+-  {
+-    q: 'Can I cancel a task?',
+-    a: 'Yes, you can cancel a task before a professional is assigned at no charge. After assignment, a cancellation fee may apply depending on the stage of the job.',
+-  },
+-  {
+-    q: 'What is the Fixam coin system?',
+-    a: 'Fixam Coins are the in-app currency. Professionals use coins to unlock job requests. You can top up your coin balance in the Wallet section.',
+-  },
+-  {
+-    q: 'How do I report an issue with a professional?',
+-    a: 'Go to t
+<truncated 5564 bytes>
+i && (
+-                <Text style={[styles.faqA, { color: colors.textSecondary }]}>{faq.a}</Text>
+-              )}
+-            </TouchableOpacity>
+-          ))}
+-
+-          {/* Contact options */}
+-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 22 }]}>{t('help.contact')}</Text>
+-          {contactOptions.map((opt, i) => (
+-            <TouchableOpacity
+-              key={i}
+-              style={[styles.contactCard, { borderBottomColor: colors.border }]}
+-              onPress={opt.type === 'chat' ? openLiveChat : undefined}
+-            >
+-              <View style={styles.contactIcon}>
+-                <MaterialCommunityIcons name={opt.icon} size={24} color={opt.color} />
+-              </View>
+-              <View style={{ flex: 1 }}>
+-                <Text style={[styles.contactLabel, { color: colors.text }]}>{opt.label}</Text>
+-                <Text style={[styles.contactSub, { color: colors.textSecondary }]}>{opt.type === 'chat' && openingChat ? t('help.openingSupport') : opt.sub}</Text>
+-              </View>
+-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+-            </TouchableOpacity>
+-          ))}
+-
+-          <Text style={[styles.footNote, { color: colors.textSecondary }]}>
+-            {t('help.footNote')}
+-          </Text>
+-        </ScrollView>
+-      </SafeAreaView>
+-    </View>
+-  );
+-};
+-
+-const styles = StyleSheet.create({
+   background: { flex: 1 },
+   container: { flex: 1 },
+   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+[diff_block_end]
+
+Please note that the above snippet only shows the MODIFIED lines from the last change. It shows up to 3 lines of unchanged lines before and after the modified lines. The actual file contents may have many more lines not shown.
+
+We did our best to apply changes despite some inaccuracies. Double check if the edit applied is what you intended.
+

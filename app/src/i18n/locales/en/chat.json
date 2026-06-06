@@ -37,7 +37,10 @@
     "bookingUnavailableTitle": "Booking unavailable",
     "bookingUnavailableBody": "Open a direct provider chat before scheduling a service.",
     "sendFailed": "Failed to send message. Please try again.",
-    "permissionRequired": "Please allow photo library access to send images."
+    "permissionRequired": "Please allow photo library access to send images.",
+    "activeTaskRequired": "Messaging is available only while an active booking or selected task is in progress.",
+    "mustBookProvider": "You must book this provider to message them.",
+    "bookToMessage": "Book to Message"
   },
   "support": {
     "title": "Fixam Support",

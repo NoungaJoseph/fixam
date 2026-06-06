@@ -80,7 +80,7 @@ const PostRegistrationOnboardingScreen = ({ navigation, route }) => {
         ...userData,
         role: role.toUpperCase()
       });
-      loginDirect(res.data.user, res.data.token);
+      loginDirect(res.data.user, res.data.token, true);
     } catch (error) {
       console.log('Registration error:', error.response?.data || error.message);
       alert(error.response?.data?.message || 'Failed to complete registration. Please try again.');

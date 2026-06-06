@@ -98,13 +98,7 @@ const SettingsScreen = ({ navigation, route }) => {
 
           {/* Page Title */}
           <View style={styles.pageHeader}>
-            <View style={styles.headerTopRow}>
-              <Text style={[styles.pageTitle, { color: colors.text }]}>{t('settings.title')}</Text>
-              <TouchableOpacity style={[styles.bellBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('Notifications')}>
-                <MaterialCommunityIcons name="bell-outline" size={22} color={colors.text} />
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.pageTitle, { color: colors.text }]}>{t('settings.title')}</Text>
             <Text style={[styles.pageSub, { color: colors.textSecondary }]}>{t('settings.subtitle')}</Text>
           </View>
 
@@ -238,16 +232,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? 16 : 8,
     paddingBottom: 12,
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 4,
-  },
   pageTitle: { fontSize: 28, fontWeight: '900' },
   pageSub: { fontSize: 13 },
-  bellBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 
   // Hero card
   heroWrapper: { marginHorizontal: 16, marginBottom: 24, borderRadius: 20, overflow: 'hidden' },
