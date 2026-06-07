@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.185:50
 export const SOCKET_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 seconds
+  timeout: 30000, // 30 seconds
 });
 
 // Add a request interceptor for logging
