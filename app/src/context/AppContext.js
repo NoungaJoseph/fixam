@@ -137,6 +137,9 @@ export const AppProvider = ({ children }) => {
       });
 
       const offNewNotification = on('notification:new', (notif) => {
+        const type = notif.data?.type || notif.type;
+        if (type === 'NEW_MESSAGE' || type === 'MESSAGE') return;
+
         setNotifications(prev => {
           // Prevent duplicates by checking if notification with same ID already exists
           const exists = prev.some(n => n.id === notif.id);
@@ -291,6 +294,9 @@ export const AppProvider = ({ children }) => {
       const res = await api.get('/notifications');
       const seen = new Set();
       const unique = (res.data.data || []).filter((notif) => {
+        const type = notif.data?.type || notif.type;
+        if (type === 'NEW_MESSAGE' || type === 'MESSAGE') return false;
+
         const key = notif.data?.transactionId && notif.data?.status
           ? `${notif.data.type}-${notif.data.transactionId}-${notif.data.status}`
           : notif.id;

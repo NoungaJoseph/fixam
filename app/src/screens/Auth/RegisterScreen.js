@@ -120,7 +120,7 @@ const RegisterScreen = ({ navigation, route }) => {
       end={{ x: 1, y: 1 }}
       style={styles.background}
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

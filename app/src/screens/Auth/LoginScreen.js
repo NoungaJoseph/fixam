@@ -88,7 +88,7 @@ const LoginScreen = ({ navigation }) => {
       end={{ x: 1, y: 1 }}
       style={styles.mainContainer}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}

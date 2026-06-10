@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../../components/Common/TealSafeAreaView';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -117,7 +117,7 @@ const BookingFormScreen = ({ route, navigation }) => {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} translucent backgroundColor="transparent" />
+      
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
