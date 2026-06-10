@@ -278,7 +278,17 @@ const BottomTabNavigator = () => {
         component={MessagesStack}
         options={{
           title: t('tabs.messages'),
-          tabBarBadge: unreadCount > 0 ? unreadCount : null,
+          tabBarBadge: unreadCount > 0
+            ? (unreadCount > 99 ? '99+' : unreadCount)
+            : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#EF4444',
+            color: 'white',
+            fontSize: 10,
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"} size={22} color={color} />
           )
