@@ -53,7 +53,6 @@ export const AppProvider = ({ children }) => {
   const [jobs, setJobs] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletDetails, setWalletDetails] = useState(null);
   const [hiddenJobIds, setHiddenJobIds] = useState([]);
@@ -96,7 +95,6 @@ export const AppProvider = ({ children }) => {
       loadCached().then(() => {
         fetchAppData(true);
         fetchNotifications();
-        fetchUnreadMessageCount();
       });
     } else {
       fetchProviders();
@@ -136,7 +134,6 @@ export const AppProvider = ({ children }) => {
     if (token) {
       const offNewMessage = on('message:new', () => {
         fetchConversations();
-        fetchUnreadMessageCount();
       });
 
       const offNewNotification = on('notification:new', (notif) => {
@@ -176,7 +173,6 @@ export const AppProvider = ({ children }) => {
       const offChatNotification = on('notification:chat', () => {
         fetchConversations();
         fetchNotifications();
-        fetchUnreadMessageCount();
       });
 
       const offJobApproved = on('job:approved', () => {
@@ -309,12 +305,7 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   const fetchUnreadMessageCount = useCallback(async () => {
-    try {
-      const res = await api.get('/chat/unread-count');
-      setUnreadMessageCount(res.data.data?.totalUnread || 0);
-    } catch (error) {
-      // Silent fail — badge is not critical
-    }
+    // No-op — unreadCount is derived from conversations (see below).
   }, []);
 
   const fetchConversations = useCallback(async () => {
@@ -326,11 +317,11 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  // unreadCount = total unread messages (fetched from API); falls back to
-  // conversation-level count when the API count hasn't loaded yet.
-  const unreadCount = unreadMessageCount > 0
-    ? unreadMessageCount
-    : conversations.filter(c => c.unreadCount > 0).length;
+  // unreadCount = number of distinct conversations that have ≥1 unread message.
+  // If 3 different people each text you 10 messages → badge shows 3, not 30.
+  const unreadCount = useMemo(() => {
+    return conversations.filter(c => c.unreadCount > 0).length;
+  }, [conversations]);
 
   const notificationCount = useMemo(() => {
     return notifications.filter(n => !n.isRead).length;
