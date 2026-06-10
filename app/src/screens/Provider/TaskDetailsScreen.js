@@ -45,7 +45,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [applicationCount, setApplicationCount] = useState(task.assignments?.length || task.proposals || 0);
   const [applied, setApplied] = useState(false);
-  const coinCost = task.coinCost || 1;
+  const coinCost = 1;
   const isFavorite = favoriteJobIds?.includes(task.id);
   const clientName = typeof task.client === 'object' ? (task.client?.fullName || t('common.client')) : (task.client || t('common.client'));
   const clientId = typeof task.client === 'object' ? task.client?.id : task.clientId;
