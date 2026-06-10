@@ -59,7 +59,7 @@ const HIDDEN_FAQS = [
   },
   {
     q: 'How long does it take for a professional to respond?',
-    a: 'Most professionals respond within 30 minutes. Average response time is shown on each provider's profile.',
+    a: 'Most professionals respond within 30 minutes. Average response time is shown on each provider\'s profile.',
     tags: ['response', 'time', 'fast', 'quick', 'wait'],
   },
   {
