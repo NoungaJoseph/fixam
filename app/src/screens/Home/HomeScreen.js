@@ -14,6 +14,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateService } from '../../i18n/translate';
 import UserAvatar from '../../components/UserAvatar';
+import WelcomeModal from '../../components/Common/WelcomeModal';
+import FirstRunGuide from '../../components/Common/FirstRunGuide';
 import { POPULAR_SERVICE_CATALOG, POPULAR_SERVICE_IMAGES } from '../../data/popularServices';
 
 const { width } = Dimensions.get('window');
@@ -57,13 +59,21 @@ const LEARN_CARDS = [
 
 const HomeScreen = ({ navigation }) => {
   const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds, isInitialLoad, hasLoadedData } = useAppContext();
-  const { user } = useAuth();
+  const { user, isNewUser, clearNewUser } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(false);
   const learnScrollRef = useRef(null);
+
+  useEffect(() => {
+    if (isNewUser && !isInitialLoad) {
+      const timer = setTimeout(() => setShowWelcome(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewUser, isInitialLoad]);
 
   useFocusEffect(
     useCallback(() => {
@@ -265,7 +275,7 @@ const HomeScreen = ({ navigation }) => {
         {/* ═══ 2. WALLET BALANCE CARD ═══ */}
         <TouchableOpacity
           style={[styles.walletCard, { backgroundColor: isDarkMode ? '#134E4A' : '#0D9488' }]}
-          onPress={() => navigation.navigate('TopUp')}
+          onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'TopUp' })}
           activeOpacity={0.85}
         >
           {/* Left Column: Wallet Balance & Top Up stacked */}
@@ -280,7 +290,7 @@ const HomeScreen = ({ navigation }) => {
             
             <TouchableOpacity
               style={styles.topUpBtn}
-              onPress={() => navigation.navigate('TopUp')}
+              onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'TopUp' })}
             >
               <Text style={styles.topUpText}>{t('home.topUp')}</Text>
               <MaterialCommunityIcons name="plus" size={14} color="#0D9488" />
@@ -522,6 +532,20 @@ const HomeScreen = ({ navigation }) => {
         {/* Space at the bottom to avoid tabbar overlap */}
         <View style={{ height: 120 }} />
       </ScrollView>
+      
+      {/* Welcome celebration modal */}
+      <WelcomeModal
+        visible={showWelcome}
+        name={firstName}
+        role={user?.role}
+        onDone={() => {
+          setShowWelcome(false);
+          clearNewUser();
+        }}
+      />
+      
+      {/* First Run Guide (Client Tour) */}
+      {!showWelcome && <FirstRunGuide user={user} />}
       </View>
     </SafeAreaView>
     </>

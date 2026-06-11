@@ -121,11 +121,11 @@ const ProviderHomeScreen = ({ navigation }) => {
   ], [t]);
 
   useEffect(() => {
-    if (isNewUser) {
+    if (isNewUser && !isInitialLoad) {
       const timer = setTimeout(() => setShowWelcome(true), 600);
       return () => clearTimeout(timer);
     }
-  }, [isNewUser]);
+  }, [isNewUser, isInitialLoad]);
 
   const fetchMyJobs = React.useCallback(async () => {
     try {

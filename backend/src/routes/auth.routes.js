@@ -10,6 +10,11 @@ router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/request-otp', authController.requestOTP);
 router.post('/verify-otp', authController.verifyOTP);
+router.post('/verify-email-otp', authController.verifyEmailOTP);
+
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/verify-reset-otp', authController.verifyResetOtp);
+router.post('/reset-password', authController.resetPassword);
 
 // 2FA Routes
 router.post('/2fa/send-otp', protect, authController.enableTwoFactorOTP);

@@ -1,7 +1,7 @@
 const prisma = require('../config/prisma');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { sendOTP } = require('../services/email.service');
+const { sendOTP, sendWelcomeEmail, sendSuspiciousLoginAlert } = require('../services/email.service');
 const { registerSchema } = require('../validators/auth.validator');
 const twilio = require('twilio');
 const { sendPushNotification } = require('../services/notification.service');
@@ -24,7 +24,7 @@ const sendSMSOTP = async (phoneNumber, otp) => {
     const formattedPhone = formatPhone(phoneNumber);
     await twilioClient.messages.create({
       body: `Your Fixam verification code is: ${otp}. Valid for 10 minutes. Do not share this code.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: process.env.TWILIO_PHONE_NUMBER.trim(),
       to: formattedPhone
     });
     console.log(`[SMS] OTP sent to ${formattedPhone}`);
@@ -155,46 +155,23 @@ const register = async (req, res, next) => {
       return newUser;
     });
 
-    // Give welcome coins AFTER transaction completes (safe to use prisma here)
-    try {
-      const freshWallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
-      if (freshWallet && !user.welcomeCoinsGiven) {
-        await prisma.wallet.update({
-          where: { id: freshWallet.id },
-          data: { balance: { increment: 1 } }
-        });
-        await prisma.transaction.create({
-          data: {
-            walletId: freshWallet.id,
-            amount: 1,
-            type: 'PURCHASE',
-            status: 'SUCCESS',
-            description: 'Welcome bonus — thank you for joining Fixam!',
-            reference: 'WELCOME_' + user.id + '_' + Date.now()
-          }
-        });
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { welcomeCoinsGiven: true }
-        });
-        sendPushNotification(
-          user.id,
-          '🎉 Welcome to Fixam!',
-          'You received 1 free coin for joining Fixam!',
-          { type: 'COINS_ADDED', coins: '1' }
-        ).catch(() => {});
-      }
-    } catch (welcomeErr) {
-      console.error('[Welcome Coins] Error (non-fatal):', welcomeErr.message);
-    }
+    // Welcome coins logic removed from here, moved to verifyEmailOTP
 
     const freshUser = await prisma.user.findUnique({
       where: { id: user.id },
       include: { wallet: true, providerProfile: true }
     });
-    const token = generateToken(freshUser.id, freshUser.role);
-    debugLog('User registered successfully:', freshUser.id);
-    res.status(201).json({ success: true, token, user: freshUser });
+
+    if (freshUser.email) {
+      sendWelcomeEmail(freshUser.email, freshUser.fullName).catch(e => console.error('[WelcomeEmail] error:', e.message));
+      
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpCache.set(freshUser.email, { otp, expires: Date.now() + 600000, type: 'registration' });
+      await sendOTP(freshUser.email, otp);
+    }
+
+    debugLog('User registered successfully, pending email verification:', freshUser.id);
+    res.status(201).json({ success: true, requiresEmailVerification: true, email: freshUser.email, user: freshUser });
   } catch (error) {
     console.error('Registration error details:', error);
     next(error);
@@ -228,6 +205,13 @@ const login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
+    if (!user.isEmailVerified && user.email) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpCache.set(user.email, { otp, expires: Date.now() + 600000, type: 'registration' });
+      await sendOTP(user.email, otp);
+      return res.status(403).json({ success: false, requiresEmailVerification: true, email: user.email, message: 'Please verify your email to continue.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     debugLog('Password match result:', isMatch);
     
@@ -250,7 +234,7 @@ const login = async (req, res, next) => {
       if (user.email) {
         await sendOTP(user.email, otp);
       } else {
-        await sendSMSOTP(user.phone, otp);
+        // SMS disabled: await sendSMSOTP(user.phone, otp);
       }
 
       const tempToken = jwt.sign({ id: user.id, role: user.role, type: '2fa' }, process.env.JWT_SECRET, { expiresIn: '10m' });
@@ -258,6 +242,23 @@ const login = async (req, res, next) => {
     }
 
     const token = generateToken(user.id, user.role);
+
+    // IP Tracking & Alert Logic
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    if (clientIp && user.lastIpAddress && user.lastIpAddress !== clientIp && user.email) {
+      sendSuspiciousLoginAlert(user.email, {
+        ip: clientIp,
+        time: new Date().toLocaleString()
+      }).catch(err => console.error('[LoginAlert] failed:', err.message));
+    }
+
+    if (clientIp && user.lastIpAddress !== clientIp) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastIpAddress: clientIp }
+      });
+    }
+
     res.status(200).json({ success: true, token, user });
   } catch (error) {
     console.error('Login error details:', error);
@@ -345,8 +346,8 @@ const enableTwoFactorOTP = async (req, res, next) => {
       await sendOTP(user.email, otp);
       return res.status(200).json({ success: true, message: 'OTP sent to your email' });
     } else {
-      await sendSMSOTP(user.phone, otp);
-      return res.status(200).json({ success: true, message: 'OTP sent to your phone' });
+      // SMS disabled
+      return res.status(400).json({ success: false, message: 'No email found to send OTP' });
     }
   } catch (error) {
     next(error);
@@ -486,6 +487,181 @@ const resendLoginOTP = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    
+    const user = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase() } });
+    if (!user) {
+      return res.status(200).json({ success: true, message: 'If an account exists, an OTP has been sent to that email' });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: user.blockedReason || 'This account has been blocked.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpCache.set(email, { otp, expires: Date.now() + 600000 });
+
+    sendOTP(email, otp).catch(err => {
+      console.error('[ForgotPassword] Email failed:', err.message);
+    });
+
+    return res.json({
+      success: true,
+      message: 'If an account exists with this information, you will receive a reset code shortly.'
+    });
+  } catch (error) {
+    console.error('[ForgotPassword] Error:', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Something went wrong. Please try again.'
+    });
+  }
+};
+
+const verifyResetOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+
+    const cached = otpCache.get(email);
+    if (!cached || cached.otp !== otp || Date.now() > cached.expires) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Delete OTP after successful verification
+    otpCache.delete(email);
+
+    const user = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase() } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Generate a temporary token that allows password reset for 15 mins
+    const resetToken = jwt.sign({ id: user.id, purpose: 'password_reset' }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    
+    res.status(200).json({ success: true, resetToken });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Reset token and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+      if (decoded.purpose !== 'password_reset') throw new Error('Invalid token purpose');
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired reset token' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: decoded.id },
+      data: {
+        password: hashedPassword,
+        lastPasswordChange: new Date()
+      }
+    });
+
+    res.status(200).json({ success: true, message: 'Password has been successfully updated' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyEmailOTP = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+
+    const cached = otpCache.get(email);
+    if (!cached || cached.otp !== otp || Date.now() > cached.expires) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    otpCache.delete(email);
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { wallet: true, providerProfile: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isEmailVerified: true }
+    });
+
+    // Give welcome coins upon successful email verification
+    try {
+      const freshWallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
+      if (freshWallet && !user.welcomeCoinsGiven) {
+        await prisma.wallet.update({
+          where: { id: freshWallet.id },
+          data: { balance: { increment: 1 } }
+        });
+        await prisma.transaction.create({
+          data: {
+            walletId: freshWallet.id,
+            amount: 1,
+            type: 'PURCHASE',
+            status: 'SUCCESS',
+            description: 'Welcome bonus — thank you for joining Fixam!',
+            reference: 'WELCOME_' + user.id + '_' + Date.now()
+          }
+        });
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { welcomeCoinsGiven: true }
+        });
+        sendPushNotification(
+          user.id,
+          '🎉 Welcome to Fixam!',
+          'You received 1 free coin for joining Fixam!',
+          { type: 'COINS_ADDED', coins: '1' }
+        ).catch(() => {});
+      }
+    } catch (welcomeErr) {
+      console.error('[Welcome Coins] Error (non-fatal):', welcomeErr.message);
+    }
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { email },
+      include: { wallet: true, providerProfile: true }
+    });
+
+    const token = generateToken(updatedUser.id, updatedUser.role);
+    res.status(200).json({ success: true, token, user: updatedUser });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -495,5 +671,9 @@ module.exports = {
   enableTwoFactor,
   disableTwoFactor,
   verifyLoginTwoFactor,
-  resendLoginOTP
+  resendLoginOTP,
+  forgotPassword,
+  verifyResetOtp,
+  resetPassword,
+  verifyEmailOTP
 };
