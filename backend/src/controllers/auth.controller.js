@@ -61,16 +61,8 @@ const register = async (req, res, next) => {
     });
 
     if (existing) {
-      if (!existing.isEmailVerified) {
-        // Delete the unverified user and its associated records so they can try registering again
-        debugLog('Deleting existing unverified user to allow re-registration:', existing.id);
-        await prisma.wallet.deleteMany({ where: { userId: existing.id } });
-        await prisma.providerProfile.deleteMany({ where: { userId: existing.id } });
-        await prisma.user.delete({ where: { id: existing.id } });
-      } else {
-        debugLog('User already exists and is verified:', email, phone);
-        return res.status(400).json({ success: false, message: 'User with this email or phone already exists' });
-      }
+      debugLog('User already exists:', email, phone);
+      return res.status(400).json({ success: false, message: 'User with this email or phone already exists' });
     }
 
     const generatedReferralCode = `FIXAM-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -214,18 +206,18 @@ const login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    if (!user.isEmailVerified && user.email) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      otpCache.set(user.email, { otp, expires: Date.now() + 600000, type: 'registration' });
-      await sendOTP(user.email, otp, user.preferredLanguage);
-      return res.status(403).json({ success: false, requiresEmailVerification: true, email: user.email, message: 'Please verify your email to continue.' });
-    }
-
     const isMatch = await bcrypt.compare(password, user.password);
     debugLog('Password match result:', isMatch);
     
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (!user.isEmailVerified && user.email) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpCache.set(user.email, { otp, expires: Date.now() + 600000, type: 'registration' });
+      await sendOTP(user.email, otp, user.preferredLanguage);
+      return res.status(403).json({ success: false, requiresEmailVerification: true, email: user.email, message: 'Please verify your email to continue.' });
     }
 
     if (user.twoFactorEnabled) {
