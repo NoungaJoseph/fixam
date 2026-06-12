@@ -61,8 +61,16 @@ const register = async (req, res, next) => {
     });
 
     if (existing) {
-      debugLog('User already exists:', email, phone);
-      return res.status(400).json({ success: false, message: 'User with this email or phone already exists' });
+      if (!existing.isEmailVerified) {
+        // Delete the unverified user and its associated records so they can try registering again
+        debugLog('Deleting existing unverified user to allow re-registration:', existing.id);
+        await prisma.wallet.deleteMany({ where: { userId: existing.id } });
+        await prisma.providerProfile.deleteMany({ where: { userId: existing.id } });
+        await prisma.user.delete({ where: { id: existing.id } });
+      } else {
+        debugLog('User already exists and is verified:', email, phone);
+        return res.status(400).json({ success: false, message: 'User with this email or phone already exists' });
+      }
     }
 
     const generatedReferralCode = `FIXAM-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
