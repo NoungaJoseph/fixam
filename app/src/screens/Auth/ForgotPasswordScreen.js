@@ -10,7 +10,7 @@ const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -34,7 +34,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     try {
       // Assuming you have an api service configured
       const api = require('../../services/api').default;
-      const res = await api.post('/auth/forgot-password', { email });
+      const res = await api.post('/auth/forgot-password', { email, language });
       if (res.data.success) {
         // Navigate to OTP screen passing the email
         navigation.navigate('ForgotPasswordOTP', { email });

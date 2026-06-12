@@ -434,6 +434,7 @@ const ProviderHomeScreen = ({ navigation }) => {
 
         {/* ÔöÇÔöÇ 3. PREMIUM BALANCE STATS CARD ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
         <LinearGradient
+          ref={topUpRef}
           colors={['#1D4ED8', '#0D9488']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.statsCard}
@@ -443,7 +444,6 @@ const ProviderHomeScreen = ({ navigation }) => {
             <Text style={styles.cardLabel}>{t('home.yourBalance')}</Text>
             <Text style={styles.cardValue}>{walletBalance} {t('payments.coins')}</Text>
             <TouchableOpacity
-              ref={topUpRef}
               style={styles.topUpBtn}
               onPress={() => navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' })}
             >

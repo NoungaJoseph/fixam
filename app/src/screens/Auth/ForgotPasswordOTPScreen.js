@@ -9,7 +9,7 @@ import api from '../../services/api';
 const ForgotPasswordOTPScreen = ({ route, navigation }) => {
   const { email } = route.params;
   const { isDarkMode, colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ const ForgotPasswordOTPScreen = ({ route, navigation }) => {
     if (countdown > 0) return;
     setCountdown(60);
     try {
-      await api.post('/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email, language });
     } catch (error) {
       setErrorMsg(t('forgotPassword.serverError'));
     }
