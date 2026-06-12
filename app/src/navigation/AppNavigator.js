@@ -27,7 +27,7 @@ const AppNavigator = () => {
     setCurrentRouteName(navigationRef.current?.getCurrentRoute?.()?.name || null);
   }, [setCurrentRouteName]);
 
-  if (isLoading || isRestoring) {
+  if (isRestoring) {
     return <AnimatedSplashScreen onFinish={() => {}} navigation={{ replace: () => {} }} />;
   }
 
