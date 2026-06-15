@@ -23,8 +23,8 @@
     "servicePayment": "Paiement de service",
     "coinSpent": "Crédits utilisés",
     "earnFreeCoins": "Gagner des crédits",
-    "inviteEarn": "Invitez un ami sur Fixam et gagnez 1 crédit."
-    ,"paymentConfirmed": "Paiement confirmé. Les crédits ont été ajoutés automatiquement.",
+    "inviteEarn": "Invitez un ami sur Fixam et gagnez 1 crédit.",
+    "paymentConfirmed": "Paiement confirmé. Les crédits ont été ajoutés automatiquement.",
     "paymentNotCompleted": "Votre paiement n'a pas été finalisé.",
     "fullNameRequired": "Veuillez saisir votre nom complet",
     "phoneRequiredShort": "Veuillez saisir votre numéro de téléphone",
@@ -43,7 +43,24 @@
     "bonusCoins": "Crédits bonus",
     "totalCoins": "Total des crédits",
     "freeBonus": "+{{count}} crédits bonus offerts !",
-    "payWith": "Payer {{price}} avec {{method}}"
+    "payWith": "Payer {{price}} avec {{method}}",
+    "waitingApproval": "En attente de votre approbation...",
+    "checkPhonePrompt": "Vérifiez votre téléphone pour la demande de paiement.",
+    "enterPinToComplete": "Entrez votre code PIN Mobile Money pour terminer.",
+    "paymentProcessing": "Traitement du paiement",
+    "paymentPending": "Paiement en attente",
+    "paymentTimedOut": "Délai de paiement dépassé. Si l'argent a été débité, veuillez contacter l'assistance.",
+    "paymentReferenceMissing": "La référence de paiement n'a pas été retournée. Veuillez réessayer.",
+    "networkDetected": "détecté",
+    "networkNotRecognized": "Réseau non reconnu",
+    "success": "Succès !",
+    "status": "Statut",
+    "completed": "Terminé",
+    "package": "Pack",
+    "coinsAdded": "Crédits ajoutés",
+    "goToWallet": "Aller au portefeuille",
+    "contactSupport": "Contacter l'assistance",
+    "tryAgain": "Réessayer"
   },
   "wallet": {
     "topUpCoins": "Recharger les crédits",
@@ -86,5 +103,15 @@
     "coinsCreditedDesc": "Les crédits seront ajoutés à votre portefeuille dès validation",
     "confirmationNotification": "Vous recevrez une notification lorsque le paiement sera confirmé",
     "backToWallet": "Retour au portefeuille"
+  },
+  "verification": {
+    "required": "Vérification Requise",
+    "requiredMessage": "Vous devez vérifier votre identité avant d'effectuer cette action. Cela ne prend que quelques minutes.",
+    "verifyNow": "Vérifier Mon Identité",
+    "bookingRequired": "Veuillez vérifier votre identité avant de réserver un prestataire.",
+    "jobRequired": "Veuillez vérifier votre identité avant de postuler à des emplois."
+  },
+  "splash": {
+    "subtitle": "Les services à votre porte"
   }
 }

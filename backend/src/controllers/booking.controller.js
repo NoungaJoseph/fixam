@@ -1,6 +1,6 @@
 const prisma = require('../config/prisma');
 const { getIO } = require('../services/socket.service');
-const { sendBookingNotification } = require('../services/notification.service');
+const { sendPushNotification } = require('../services/notification.service');
 
 const emitBooking = (booking) => {
   try {
@@ -23,7 +23,7 @@ const createBooking = async (req, res, next) => {
     console.log('[Booking] Request body:', JSON.stringify(req.body));
     console.log('[Booking] User:', req.user.id);
 
-    const { providerId, taskId, bookingDate, bookingTime, budget, location, notes } = req.body;
+    const { providerId, taskId, bookingDate, bookingTime, budget, location, notes, bookingDuration, urgencyLevel } = req.body;
     if (!providerId || !bookingDate || !bookingTime || budget === undefined || budget === null) {
       return res.status(400).json({ success: false, message: 'Provider, date, time and budget are required.' });
     }
@@ -39,6 +39,23 @@ const createBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Provider profile not found.' });
     }
 
+    // CHECK CLIENT VERIFICATION HERE
+    const clientUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { providerProfile: true }
+    });
+    
+    const isVerified = clientUser.fullName && !clientUser.isBlocked;
+    
+    if (!isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your identity before booking',
+        requiresVerification: true,
+        code: 'VERIFICATION_REQUIRED'
+      });
+    }
+
     if (taskId) {
       const task = await prisma.job.findUnique({ where: { id: taskId } });
       if (!task || task.clientId !== req.user.id) {
@@ -51,10 +68,18 @@ const createBooking = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Budget must be a valid number.' });
     }
 
+    const COIN_COSTS = {
+      NORMAL: 1,
+      URGENT: 2,
+      EMERGENCY: 3
+    };
+    const resolvedUrgency = urgencyLevel || 'NORMAL';
+    const coinCost = COIN_COSTS[resolvedUrgency] || 1;
+
     const booking = await prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({ where: { userId: req.user.id } });
-      if (!wallet || wallet.balance < 1) {
-        const error = new Error('Insufficient coins. You need 1 coin to book a provider.');
+      if (!wallet || wallet.balance < coinCost) {
+        const error = new Error(`Insufficient coins. You need ${coinCost} coins for this booking.`);
         error.statusCode = 400;
         throw error;
       }
@@ -66,6 +91,9 @@ const createBooking = async (req, res, next) => {
           taskId: taskId || null,
           bookingDate: new Date(bookingDate),
           bookingTime,
+          bookingDuration: bookingDuration || 'DAY',
+          urgencyLevel: resolvedUrgency,
+          coinCost: coinCost,
           budget: bookingBudget,
           location: location || '',
           notes: notes || '',
@@ -75,16 +103,17 @@ const createBooking = async (req, res, next) => {
 
       await tx.wallet.update({
         where: { userId: req.user.id },
-        data: { balance: { decrement: 1 } },
+        data: { balance: { decrement: coinCost } },
       });
 
       await tx.transaction.create({
         data: {
           walletId: wallet.id,
-          amount: 1,
+          amount: coinCost,
           type: 'DEDUCTION',
           status: 'SUCCESS',
-          description: `Booking: ${provider.fullName || provider.phone || 'Provider'}`,
+          description: `Booking: ${resolvedUrgency} - ${provider.fullName || provider.phone || 'Provider'}`,
+          isSystemTransaction: false
         },
       });
 
@@ -105,9 +134,17 @@ const createBooking = async (req, res, next) => {
 
     // Send FCM Push Notification
     try {
-      if (provider.fcmToken) {
-        await sendBookingNotification(provider.fcmToken, notification.title, notification.body, booking.id);
-      }
+      await sendPushNotification(
+        providerId,
+        'New Booking Request 📅',
+        `${req.user.fullName || 'A client'} wants to book your service`,
+        {
+          type: 'NEW_BOOKING',
+          bookingId: booking.id,
+          clientId: req.user.id,
+          screen: 'BookingDetails'
+        }
+      );
     } catch (notifError) {
       console.error('[Booking] Notification failed:', notifError.message);
     }
@@ -169,6 +206,24 @@ const updateBookingStatus = async (req, res, next) => {
       include: includeBooking,
     });
 
+    if (status === 'ACCEPTED') {
+      try {
+        await sendPushNotification(
+          booking.clientId,
+          'Booking Confirmed ✅',
+          `Your booking with ${booking.provider?.fullName || 'the provider'} is confirmed`,
+          {
+            type: 'BOOKING_CONFIRMED',
+            bookingId: booking.id,
+            providerId: booking.providerId,
+            screen: 'BookingDetails'
+          }
+        );
+      } catch (notifError) {
+        console.error('[Booking] Confirmed Notification failed:', notifError.message);
+      }
+    }
+
     emitBooking(booking);
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
@@ -189,7 +244,7 @@ const checkBooking = async (req, res, next) => {
         providerId,
         status: { in: ['PENDING', 'ACCEPTED'] },
       },
-      select: { id: true, status: true },
+      select: { id: true, status: true, bookingDuration: true, urgencyLevel: true, bookingDate: true },
     });
 
     res.status(200).json({
@@ -198,6 +253,7 @@ const checkBooking = async (req, res, next) => {
         hasBooking: !!booking,
         bookingId: booking?.id || null,
         status: booking?.status || null,
+        booking: booking || null,
       },
     });
   } catch (error) {
