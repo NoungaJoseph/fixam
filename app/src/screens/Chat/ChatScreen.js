@@ -136,8 +136,8 @@ const ChatScreen = ({ route, navigation }) => {
             console.log('[ChatScreen] Error fetching conv by participant:', err.message);
             if (err.response?.data?.message === 'requiresBooking') {
               Alert.alert(
-                t('messages.bookingRequiredTitle', 'Booking Required'),
-                t('messages.bookingRequiredBody', 'You need to book this provider to start messaging.'),
+                t('chat:messages.bookingRequiredTitle', 'Booking Required'),
+                t('chat:messages.bookingRequiredBody', 'You need to book this provider to start messaging.'),
                 [
                   { text: t('common.cancel', 'Cancel'), style: 'cancel' },
                   { text: t('messages.bookNow', 'Book Now'), onPress: openBookingForm }
@@ -365,8 +365,8 @@ const ChatScreen = ({ route, navigation }) => {
       setMessages(prev => prev.filter(m => m.clientMessageId !== clientMessageId));
       if (error.response?.data?.message === 'requiresBooking') {
         Alert.alert(
-          t('messages.bookingRequiredTitle', 'Booking Required'),
-          t('messages.bookingRequiredBody', 'You need to book this provider to start messaging.'),
+          t('chat:messages.bookingRequiredTitle', 'Booking Required'),
+          t('chat:messages.bookingRequiredBody', 'You need to book this provider to start messaging.'),
           [
             { text: t('common.cancel', 'Cancel'), style: 'cancel' },
             { text: t('messages.bookNow', 'Book Now'), onPress: openBookingForm }
