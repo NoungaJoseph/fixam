@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Animated, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Animated, SafeAreaView, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../../components/UserAvatar';
 import { getMediaUrl } from '../../services/api';
 import { WebView } from 'react-native-webview';
+import { Camera } from 'expo-camera';
+import { Audio } from 'expo-av';
 
 const CallScreen = ({ route, navigation }) => {
   const { callId: initialCallId, otherUser, isOutgoing, callType } = route.params || {};
@@ -17,8 +19,26 @@ const CallScreen = ({ route, navigation }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [hasPermissions, setHasPermissions] = useState(false);
   const timerRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const audioStatus = await Audio.requestPermissionsAsync();
+        // Only request camera if it's a video call, or just request both to be safe
+        let cameraStatus = { status: 'granted' };
+        if (callType === 'VIDEO' || true) {
+          // React Native WebView on Whereby often requests both
+          cameraStatus = await Camera.requestCameraPermissionsAsync();
+        }
+        setHasPermissions(audioStatus.status === 'granted');
+      } catch (e) {
+        console.warn('Failed to get permissions', e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     // Pulse animation

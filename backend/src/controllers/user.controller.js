@@ -8,20 +8,8 @@ const getMe = async (req, res, next) => {
     if (req.user.providerProfile?.id) {
       const providerId = req.user.providerProfile.id;
       
-      // Run heavy background recalculation asynchronously
+      // Run heavy background recalculation asynchronously - DO NOT await to keep /me instantly fast
       calculateProviderStats(providerId).catch(err => console.error('Stats calc error:', err));
-      
-      // Do a fast, parallel count for the UI requirements
-      const [accepted, completed] = await Promise.all([
-        prisma.jobAssignment.count({ where: { providerId, status: 'ACCEPTED' } }),
-        prisma.jobAssignment.count({ where: { providerId, job: { status: 'COMPLETED' } } })
-      ]);
-      
-      req.user.providerProfile = {
-        ...req.user.providerProfile,
-        jobsCompleted: completed,
-        completionRate: accepted > 0 ? completed / accepted : 0,
-      };
     }
     res.status(200).json({ success: true, data: req.user });
   } catch (error) {
@@ -32,11 +20,12 @@ const getMe = async (req, res, next) => {
 const updateProfile = async (req, res, next) => {
   try {
     const validatedData = updateProfileSchema.parse(req.body);
-    const { bio, skills, rate, serviceArea, experienceLevel, portfolio, certificates, employmentHistory, socialLinks, profileMode, fullName, password, currentPassword, dob, ...userData } = validatedData;
+    const { bio, skills, rate, serviceArea, experienceLevel, portfolio, certificates, employmentHistory, socialLinks, profileMode, fullName, password, currentPassword, dob, location, ...userData } = validatedData;
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const updateData = { ...userData };
+    if (location !== undefined) updateData.location = location;
 
     // Handle Full Name Change (once a month, goes to pending)
     if (fullName && fullName !== req.user.fullName) {

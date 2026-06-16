@@ -46,7 +46,7 @@ const generateToken = (id, role) => {
 const register = async (req, res, next) => {
   try {
     debugLog('Registering user:', { email: req.body.email, phone: req.body.phone, role: req.body.role });
-    let { fullName, email, phone, password, role, referralCode, referral, providerProfile, language } = req.body;
+    let { fullName, email, phone, password, role, referralCode, referral, providerProfile, language, location } = req.body;
     referralCode = referralCode || referral;
     
     if (email) email = email.trim().toLowerCase();
@@ -87,7 +87,7 @@ const register = async (req, res, next) => {
     
     // Cache the entire registration payload
     const payload = {
-      fullName, email, phone, password: hashedPassword, dob, role: role || 'CLIENT', 
+      fullName, email, phone, password: hashedPassword, dob, role: role || 'CLIENT', location: location || '',
       referralCode: generatedReferralCode, language: language || 'en', providerProfile,
       originalReferral: referralCode
     };
@@ -171,10 +171,26 @@ const login = async (req, res, next) => {
     // IP Tracking & Alert Logic
     const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     if (clientIp && user.lastIpAddress && user.lastIpAddress !== clientIp && user.email) {
-      sendSuspiciousLoginAlert(user.email, {
-        ip: clientIp,
-        time: new Date().toLocaleString()
-      }, user.preferredLanguage).catch(err => console.error('[LoginAlert] failed:', err.message));
+      (async () => {
+        try {
+          const axios = require('axios');
+          const ipToCheck = clientIp.split(',')[0].trim();
+          // We can fetch IP location if valid. Avoid local IPs or IPv6 if the free API doesn't support them well.
+          const geoRes = await axios.get(`http://ip-api.com/json/${ipToCheck}?fields=city,country,status`);
+          const location = geoRes.data.status === 'success' ? `${geoRes.data.city}, ${geoRes.data.country}` : clientIp;
+          
+          await sendSuspiciousLoginAlert(user.email, {
+            location,
+            time: new Date().toLocaleString()
+          }, user.preferredLanguage);
+        } catch (err) {
+          console.error('[LoginAlert] API/Geo failed:', err.message);
+          sendSuspiciousLoginAlert(user.email, {
+            location: clientIp,
+            time: new Date().toLocaleString()
+          }, user.preferredLanguage).catch(e => console.error('[LoginAlert] fallback failed:', e.message));
+        }
+      })();
     }
 
     if (clientIp && user.lastIpAddress !== clientIp) {
@@ -194,20 +210,31 @@ const login = async (req, res, next) => {
 const requestOTP = async (req, res, next) => {
   try {
     const { email, phone, language } = req.body;
-    const identifier = email || phone;
+    
+    let identifier;
+    let formattedEmail = email ? email.trim().toLowerCase() : null;
+    let formattedPhone = phone ? phone.replace(/\D/g, '') : null;
+    identifier = formattedEmail || formattedPhone;
     
     if (!identifier) {
       return res.status(400).json({ success: false, message: 'Email or phone is required' });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    otpCache.set(identifier, { otp, expires: Date.now() + 600000, language: language || 'en' });
+    const existingCache = otpCache.get(identifier);
+    
+    let cachePayload = { otp, expires: Date.now() + 600000, language: language || 'en' };
+    if (existingCache && existingCache.type === 'registration') {
+      cachePayload = { ...existingCache, otp, expires: Date.now() + 600000 };
+    }
 
-    if (email) {
-      await sendOTP(email, otp, language || 'en');
+    otpCache.set(identifier, cachePayload);
+
+    if (formattedEmail) {
+      await sendOTP(formattedEmail, otp, language || 'en');
       return res.status(200).json({ success: true, message: 'OTP sent to email' });
     } else {
-      await sendSMSOTP(phone, otp);
+      await sendSMSOTP(formattedPhone, otp);
       return res.status(200).json({ success: true, message: 'OTP sent via SMS' });
     }
   } catch (error) {
@@ -421,7 +448,7 @@ const forgotPassword = async (req, res, next) => {
     
     const user = await prisma.user.findFirst({ where: { email: email.trim().toLowerCase() } });
     if (!user) {
-      return res.status(200).json({ success: true, message: 'If an account exists, an OTP has been sent to that email' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     if (user.isBlocked) {
@@ -528,7 +555,7 @@ const verifyEmailOTP = async (req, res, next) => {
 
     if (cached.type === 'registration' && cached.payload) {
       // Execute the database creation since OTP is valid
-      const { fullName, email: plEmail, phone, password, dob, role, referralCode, language, providerProfile, originalReferral } = cached.payload;
+      const { fullName, email: plEmail, phone, password, dob, role, referralCode, language, providerProfile, originalReferral, location } = cached.payload;
 
       const newUser = await prisma.$transaction(async (tx) => {
         let referrerId = null;
@@ -541,7 +568,7 @@ const verifyEmailOTP = async (req, res, next) => {
 
         const user = await tx.user.create({
           data: {
-            fullName, email: plEmail, phone, password, dob, role, referralCode,
+            fullName, email: plEmail, phone, password, dob, role, referralCode, location,
             referredBy: referrerId,
             preferredLanguage: language, isEmailVerified: true, welcomeCoinsGiven: true,
             wallet: { create: { balance: 1 } },
