@@ -213,7 +213,7 @@ const ChatScreen = ({ route, navigation }) => {
       console.log('Error fetching messages:', error.message);
       if (error.code === 'ECONNABORTED') {
         console.log('[ChatScreen] Timeout, retrying...');
-        setTimeout(() => fetchMessages(), 1000);
+        setTimeout(() => fetchMessages(), 5000);
       }
     } finally {
       setLoading(false);
