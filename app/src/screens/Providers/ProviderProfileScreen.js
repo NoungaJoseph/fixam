@@ -21,6 +21,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   const providerUserId = provider?.user?.id || provider?.userId;
   const insets = useSafeAreaInsets();
   const [pastHeader, setPastHeader] = React.useState(false);
+  const { myReviews } = useAppContext();
   const [reviews, setReviews] = React.useState([]);
   const [hasBooking, setHasBooking] = React.useState(false);
   const [existingBooking, setExistingBooking] = React.useState(null);
@@ -31,10 +32,15 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   React.useEffect(() => {
     const userId = provider?.user?.id;
     if (!userId) return;
+
+    if (user?.id === userId && myReviews?.length > 0) {
+      setReviews(myReviews);
+    }
+
     api.get(`/reviews/users/${userId}`)
       .then((res) => setReviews(res.data.data || []))
       .catch(() => setReviews([]));
-  }, [provider?.user?.id]);
+  }, [provider?.user?.id, user?.id, myReviews]);
 
   React.useEffect(() => {
     const checkBookingStatus = async () => {
