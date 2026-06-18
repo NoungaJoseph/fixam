@@ -418,8 +418,6 @@ const RegisterScreen = ({ navigation, route }) => {
           </View>
         </TouchableOpacity>
       </Modal>
-
-      </SafeAreaView>
     </LinearGradient>
   );
 };
