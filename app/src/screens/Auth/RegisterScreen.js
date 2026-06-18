@@ -402,7 +402,7 @@ const RegisterScreen = ({ navigation, route }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{t('register.selectCity')}</Text>
             <ScrollView style={{ maxHeight: 300 }}>
-              {formData.region && cameroonRegions[formData.region].map(city => (
+              {!!formData.region && cameroonRegions[formData.region].map(city => (
                 <TouchableOpacity 
                   key={city} 
                   style={styles.modalOption}
