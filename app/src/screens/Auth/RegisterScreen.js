@@ -149,10 +149,10 @@ const RegisterScreen = ({ navigation, route }) => {
     >
       <SafeAreaView style={styles.flex} edges={['top']}>
         <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,

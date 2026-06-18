@@ -94,7 +94,7 @@ const LoginScreen = ({ navigation }) => {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <ScrollView
@@ -175,11 +175,6 @@ const LoginScreen = ({ navigation }) => {
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     selectionColor="#FFF"
-                    onFocus={() => {
-                      setTimeout(() => {
-                        scrollViewRef.current?.scrollToEnd({ animated: true });
-                      }, 300);
-                    }}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                     <MaterialIcons
