@@ -247,7 +247,7 @@ const RegisterScreen = ({ navigation, route }) => {
                   onPress={() => setShowRegionPicker(true)}
                 >
                   <Text style={{ color: formData.region ? '#FFF' : 'rgba(255,255,255,0.66)', fontSize: 15, fontWeight: '600' }}>
-                    {formData.region || "Select Region"}
+                    {formData.region || t('register.selectRegion')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -258,7 +258,7 @@ const RegisterScreen = ({ navigation, route }) => {
                   disabled={!formData.region}
                 >
                   <Text style={{ color: formData.city ? '#FFF' : 'rgba(255,255,255,0.66)', fontSize: 15, fontWeight: '600' }}>
-                    {formData.city || "Select City"}
+                    {formData.city || t('register.selectCity')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -268,7 +268,7 @@ const RegisterScreen = ({ navigation, route }) => {
             <View style={[styles.inputWrapper, inputStyle]}>
               <TextInput
                 style={styles.flexInput}
-                placeholder="Password"
+                placeholder={t('login.password')}
                 placeholderTextColor="rgba(255,255,255,0.66)"
                 secureTextEntry={!showPassword}
                 value={formData.password}
@@ -324,7 +324,7 @@ const RegisterScreen = ({ navigation, route }) => {
             <View style={[styles.inputWrapper, inputStyle]}>
               <TextInput
                 style={styles.flexInput}
-                placeholder="Repeat Password"
+                placeholder={t('login.repeatPassword')}
                 placeholderTextColor="rgba(255,255,255,0.66)"
                 secureTextEntry={!showPassword}
                 value={formData.repeatPassword}
@@ -377,7 +377,7 @@ const RegisterScreen = ({ navigation, route }) => {
       <Modal visible={showRegionPicker} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowRegionPicker(false)}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Region</Text>
+            <Text style={styles.modalTitle}>{t('register.selectRegion')}</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               {Object.keys(cameroonRegions).map(region => (
                 <TouchableOpacity 
@@ -400,7 +400,7 @@ const RegisterScreen = ({ navigation, route }) => {
       <Modal visible={showCityPicker} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCityPicker(false)}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select City</Text>
+            <Text style={styles.modalTitle}>{t('register.selectCity')}</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               {formData.region && cameroonRegions[formData.region].map(city => (
                 <TouchableOpacity 
