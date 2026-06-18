@@ -92,7 +92,7 @@ const LoginScreen = ({ navigation }) => {
       style={styles.mainContainer}
     >
       
-      <SafeAreaView style={styles.flex} edges={['top']}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <KeyboardAwareScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -102,7 +102,8 @@ const LoginScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           enableOnAndroid={true}
           extraScrollHeight={Platform.OS === 'ios' ? 20 : 60}
-        >    <View style={styles.brandHeader}>
+        >
+          <View style={styles.brandHeader}>
               <Image source={require('../../../assets/fixam-white-bg.png')} style={styles.logoImage} resizeMode="contain" />
               <Text style={styles.welcomeTo}>{t('login.welcome')}</Text>
               <Text style={styles.headerSub}>{t('login.subtitle')}</Text>
