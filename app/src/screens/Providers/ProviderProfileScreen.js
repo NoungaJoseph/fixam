@@ -81,6 +81,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
     ? Math.round((positiveReviewCount / reviewCountVal) * 100)
     : null;
   const experienceLevel = provider.experienceLevel || t('profile.standardLevel');
+  const skillRank = provider.skillRank || 'Newcomer';
   const bio = provider.bio || t('profile.noBiography');
   const serviceArea = provider.serviceArea || 'Douala, Cameroon';
   const isOnline = provider.user?.isOnline || false;
@@ -283,15 +284,15 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         <View style={styles.statsCardContainer}>
           <View style={styles.statsGrid}>
             <View style={styles.statRow}>
-              {/* Rating */}
+              {/* Trust Score */}
               <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
                 <View style={styles.statIconValRow}>
                   <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#78350F40' : '#FEF3C7' }]}>
-                    <MaterialCommunityIcons name="star" size={17} color="#F59E0B" />
+                    <MaterialCommunityIcons name="shield-star" size={17} color="#F59E0B" />
                   </View>
                   <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{ratingVal}</Text>
                 </View>
-                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('profile.rating')}</Text>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>Trust Score</Text>
                 <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{reviewCountVal} {t('profile.reviews')}</Text>
               </View>
 
@@ -321,16 +322,16 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                 <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{successRate !== null ? `${successRate}% success` : 'No completed jobs yet'}</Text>
               </View>
 
-              {/* Level */}
+              {/* Rank */}
               <View style={[styles.statItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
                 <View style={styles.statIconValRow}>
                   <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#4C1D9540' : '#EDE9FE' }]}>
-                    <MaterialCommunityIcons name="chart-bar" size={17} color="#8B5CF6" />
+                    <MaterialCommunityIcons name="crown-outline" size={17} color="#8B5CF6" />
                   </View>
-                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]} numberOfLines={1}>{experienceLevel}</Text>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]} numberOfLines={1}>{skillRank}</Text>
                 </View>
-                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('home.levelLabel')}</Text>
-                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{serviceArea}</Text>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>Rank</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{experienceLevel}</Text>
               </View>
             </View>
           </View>
