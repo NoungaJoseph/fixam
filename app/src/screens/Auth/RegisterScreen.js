@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Modal
+  StatusBar, Platform, ScrollView, Modal
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -148,18 +149,15 @@ const RegisterScreen = ({ navigation, route }) => {
       style={styles.background}
     >
       <SafeAreaView style={styles.flex} edges={['top']}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={[
             styles.scrollContent,
             { paddingBottom: insets.bottom + 40 }
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 20 : 60}
         >
           {/* Header */}
           <View style={styles.header}>
@@ -373,8 +371,8 @@ const RegisterScreen = ({ navigation, route }) => {
               </Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
 
       <Modal visible={showRegionPicker} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowRegionPicker(false)}>

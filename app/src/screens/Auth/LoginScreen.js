@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity,
   StatusBar, ActivityIndicator, Alert,
-  ScrollView, Image, KeyboardAvoidingView, Platform
+  Platform, Image
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -91,23 +92,17 @@ const LoginScreen = ({ navigation }) => {
       style={styles.mainContainer}
     >
       
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-          <ScrollView
-            ref={scrollViewRef}
-            bounces={false}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: insets.bottom + 24 }
-            ]}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.brandHeader}>
+      <SafeAreaView style={styles.flex} edges={['top']}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 24 }
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 20 : 60}
+        >    <View style={styles.brandHeader}>
               <Image source={require('../../../assets/fixam-white-bg.png')} style={styles.logoImage} resizeMode="contain" />
               <Text style={styles.welcomeTo}>{t('login.welcome')}</Text>
               <Text style={styles.headerSub}>{t('login.subtitle')}</Text>
@@ -209,8 +204,7 @@ const LoginScreen = ({ navigation }) => {
                 </View>
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardAwareScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
