@@ -34,7 +34,7 @@ const BookingsScreen = ({ navigation }) => {
   const [updatingId, setUpdatingId] = useState(null);
 
   const handleSafeGoBack = () => {
-    navigation.navigate('HomeMain');
+    navigation.goBack();
   };
 
   const fetchBookings = useCallback(async (silent = false) => {
@@ -56,14 +56,8 @@ const BookingsScreen = ({ navigation }) => {
   }, [myBookingsList]);
 
   useEffect(() => {
-    const unsub = navigation.addListener('focus', () => {
-      fetchBookings(true);
-    });
-    // fetchBookings() is not called here directly to prevent double-fetch on mount. 
-    // The focus listener will handle fetching when the screen is focused.
-    // If the app just loaded, myBookingsList will be populated via AppContext.
-    return unsub;
-  }, [fetchBookings, navigation]);
+    fetchBookings(true);
+  }, [fetchBookings]);
 
   useEffect(() => {
     const off = on('booking:update', () => fetchBookings(true));

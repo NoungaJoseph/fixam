@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

@@ -186,10 +186,12 @@ export const AppProvider = ({ children }) => {
 
       const offJobApproved = on('job:approved', () => {
         fetchAppData(true);
+        fetchNotifications();
       });
 
       const offJobUpdated = on('job:updated', () => {
         fetchAppData(true);
+        fetchNotifications();
       });
 
       const offApplicationCount = on('job:application-count', ({ jobId, applicationCount }) => {
@@ -201,6 +203,7 @@ export const AppProvider = ({ children }) => {
       });
       const offBookingUpdate = on('booking:update', () => {
         fetchAppData(true);
+        fetchNotifications();
       });
 
       return () => {
@@ -234,8 +237,8 @@ export const AppProvider = ({ children }) => {
 
     if (!hasLoadedData) {
       setIsInitialLoad(true);
+      setIsLoading(true);
     }
-    setIsLoading(true);
     
     try {
       const res = await api.get('/dashboard');

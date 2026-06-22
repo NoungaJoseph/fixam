@@ -108,6 +108,8 @@ const MyJobsScreen = ({ navigation }) => {
       description: job.description,
       category: job.category,
       image: job.photos?.[0] || job.image || null,
+      updatedAt: job.updatedAt ? new Date(job.updatedAt).getTime() : 0,
+      createdAt: job.createdAt ? new Date(job.createdAt).getTime() : 0,
       rawJob: job,
     };
   });
@@ -123,10 +125,12 @@ const MyJobsScreen = ({ navigation }) => {
     description: booking.notes,
     category: 'booking',
     image: booking.image || null,
+    updatedAt: booking.updatedAt ? new Date(booking.updatedAt).getTime() : 0,
+    createdAt: booking.createdAt ? new Date(booking.createdAt).getTime() : 0,
     rawJob: booking,
     isBooking: true,
   }));
-  const mapped = [...mappedBookings, ...mappedJobs];
+  const mapped = [...mappedBookings, ...mappedJobs].sort((a, b) => b.updatedAt - a.updatedAt);
 
   const totalJobs = mapped.length;
   const bookedCount = mapped.filter(j => j.status === 'Booked').length;

@@ -59,7 +59,6 @@ const Drawer = createDrawerNavigator();
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HomeMain" component={ProviderHomeScreen} />
-    <Stack.Screen name="BookingsList" component={BookingsScreen} />
   </Stack.Navigator>
 );
 
@@ -115,7 +114,6 @@ const HIDE_TAB_ROUTES = [
   'LiveTaskMap',
   'BookingForm',
   'FindJobs',
-  'BookingsList',
   'Notifications',
   'NotificationDetail',
   'NotificationSettings',
@@ -321,6 +319,7 @@ const ProviderTabNavigator = () => {
       <Drawer.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="LiveTaskMap" component={LiveTaskMapScreen} options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="BookingForm" component={BookingFormScreen} options={{ drawerItemStyle: { display: 'none' } }} />
+      <Drawer.Screen name="BookingsList" component={BookingsScreen} options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="Chat" component={ChatScreen} options={{ drawerItemStyle: { display: 'none' } }} />
       <Drawer.Screen name="ReviewTask" component={ReviewTaskScreen} options={{ drawerItemStyle: { display: 'none' } }} />
 
