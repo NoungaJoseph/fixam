@@ -17,6 +17,7 @@ import UserAvatar from '../../components/UserAvatar';
 import WelcomeModal from '../../components/Common/WelcomeModal';
 import ProviderTour from '../../components/Common/ProviderTour';
 import { POPULAR_SERVICE_CATALOG, POPULAR_SERVICE_IMAGES } from '../../data/popularServices';
+import NewsTicker from '../../components/NewsTicker';
 
 const { width } = Dimensions.get('window');
 
@@ -237,6 +238,8 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      <NewsTicker />
 
       <ScrollView
         ref={clientMainScrollRef}

@@ -99,6 +99,24 @@ const getClientJobs = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
+    // Fast ETag check
+    const [latestJob, total] = await Promise.all([
+      prisma.job.findFirst({
+        where: { clientId: req.user.id },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true }
+      }),
+      prisma.job.count({ where: { clientId: req.user.id } })
+    ]);
+
+    const lastUpdated = latestJob ? latestJob.updatedAt.getTime() : 0;
+    const etag = `W/"${lastUpdated}-${total}-${page}-${limit}"`;
+
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader('ETag', etag);
+
     const items = await prisma.job.findMany({
       where: { clientId: req.user.id },
       include: {
@@ -108,6 +126,10 @@ const getClientJobs = async (req, res, next) => {
             provider: { include: { user: true, documents: true } }
           },
           orderBy: { assignedAt: 'desc' }
+        },
+        reviews: {
+          where: { reviewerId: req.user.id },
+          select: { id: true, reviewerId: true, targetUserId: true, rating: true, createdAt: true }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -674,6 +696,10 @@ const getProviderJobs = async (req, res, next) => {
             assignments: { 
               where: { status: 'ACCEPTED' },
               select: { id: true, providerId: true, status: true, selectedAt: true }
+            },
+            reviews: {
+              where: { reviewerId: req.user.id },
+              select: { id: true, reviewerId: true, targetUserId: true, rating: true, createdAt: true }
             }
           } 
         } 

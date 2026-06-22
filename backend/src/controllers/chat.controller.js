@@ -65,27 +65,7 @@ const hasActiveWorkBetweenUsers = async (userId, participantId) => {
 };
 
 const assertCanMessageDirectUser = async (requester, participantId) => {
-  if (requester.role === 'ADMIN') return;
-
-  const target = await prisma.user.findUnique({
-    where: { id: participantId },
-    select: { id: true, role: true },
-  });
-
-  if (!target) {
-    const error = new Error('Participant not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  if (target.role === 'ADMIN') return;
-
-  const canMessage = await hasActiveWorkBetweenUsers(requester.id, participantId);
-  if (!canMessage) {
-    const error = new Error('requiresBooking');
-    error.statusCode = 403;
-    throw error;
-  }
+  // No restrictions anymore
 };
 
 const formatConversationForUser = async (conversationId, userId) => {
@@ -135,25 +115,7 @@ const formatConversationForUser = async (conversationId, userId) => {
 };
 
 const assertCanCreateDirectConversation = async (requester, target) => {
-  if (requester.role === 'ADMIN') return;
-
-  if (requester.role === 'PROVIDER' && target.role === 'CLIENT') {
-    const canMessage = await hasActiveWorkBetweenUsers(requester.id, target.id);
-    if (!canMessage) {
-      const error = new Error('requiresBooking');
-      error.statusCode = 403;
-      throw error;
-    }
-  }
-
-  if (requester.role === 'CLIENT' && target.role === 'PROVIDER') {
-    const canMessage = await hasActiveWorkBetweenUsers(requester.id, target.id);
-    if (!canMessage) {
-      const error = new Error('requiresBooking');
-      error.statusCode = 403;
-      throw error;
-    }
-  }
+  // No restrictions anymore
 };
 
 const createOrGetConversation = async (requester, participantId) => {
@@ -341,14 +303,17 @@ const openSupportConversation = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Support is not available yet.' });
     }
 
-    const existing = await prisma.$queryRaw`
-      SELECT c.id FROM "Conversation" c
-      INNER JOIN "ConversationParticipant" cp1 ON c.id = cp1."conversationId" AND cp1."userId" = ${req.user.id}
-      INNER JOIN "ConversationParticipant" cp2 ON c.id = cp2."conversationId" AND cp2."userId" = ${admin.id}
-      LIMIT 1
-    `;
+    const existing = await prisma.conversation.findFirst({
+      where: {
+        AND: [
+          { participants: { some: { userId: req.user.id } } },
+          { participants: { some: { userId: admin.id } } }
+        ]
+      },
+      select: { id: true }
+    });
 
-    const conversationId = existing?.[0]?.id || (await prisma.conversation.create({
+    const conversationId = existing?.id || (await prisma.conversation.create({
       data: {
         participants: {
           create: [
@@ -569,20 +534,17 @@ const sendMessage = async (req, res, next) => {
     try {
       const io = getIO();
       
-      // Emit to conversation room (for users already in the room)
-      io.to(actualConvId).emit('message:new', outgoingMessage);
-      
-      // Also emit directly to receiver by userId (in case they're not in room)
       if (receiverId) {
-        io.to(receiverId).emit('message:new', outgoingMessage);
+        io.to(actualConvId).to(receiverId).emit('message:new', outgoingMessage);
         io.to(receiverId).emit('notification:chat', { 
           title: 'New Message', 
           body: content, 
           conversationId: actualConvId,
           senderId: req.user.id
         });
+      } else {
+        io.to(actualConvId).emit('message:new', outgoingMessage);
       }
-      
       debugLog('[Chat] Socket events emitted - ConvId room:', actualConvId, '| Receiver:', receiverId);
     } catch (socketErr) {
       console.error('[Socket Error] Failed to emit message:', socketErr.message);

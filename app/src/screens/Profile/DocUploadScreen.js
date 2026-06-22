@@ -38,10 +38,14 @@ const DocUploadScreen = ({ navigation, route }) => {
         {
           text: t('verification.uploadDevice'),
           onPress: async () => {
-            const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-            if (!result.canceled) {
-              if (side === 'front') setFrontImage(result.assets[0].uri);
-              else setBackImage(result.assets[0].uri);
+            try {
+              const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false, mediaTypes: ['images'] });
+              if (!result.canceled && result.assets?.[0]?.uri) {
+                if (side === 'front') setFrontImage(result.assets[0].uri);
+                else setBackImage(result.assets[0].uri);
+              }
+            } catch (error) {
+              console.error(error);
             }
           },
         },
@@ -97,7 +101,7 @@ const DocUploadScreen = ({ navigation, route }) => {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
+          <TouchableOpacity onPress={() => navigation.navigate('Verification')} style={[styles.backBtn, { backgroundColor: colors.card }]}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{docType?.title || t('verification.document')}</Text>

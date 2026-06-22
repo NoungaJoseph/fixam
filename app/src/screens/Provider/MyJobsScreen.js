@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image, StatusBar, Platform, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image, StatusBar, Platform, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -8,6 +8,7 @@ import api from '../../services/api';
 import { useAppContext } from '../../context/AppContext';
 import { useSocket } from '../../context/SocketContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
 
 const TABS = [
   { key: 'All Jobs', label: 'All Jobs', icon: 'all-inclusive' },
@@ -39,25 +40,44 @@ const CATEGORY_ICONS = {
   BOOKING: 'calendar-check-outline',
 };
 
+const hasUserReviewed = (item, userId) => {
+  if (!userId) return false;
+  return (item.rawJob?.reviews || []).some((review) => review.reviewerId === userId);
+};
+
 const MyJobsScreen = ({ navigation }) => {
   const { isDarkMode, colors } = useTheme();
-  const { transactions, notificationCount } = useAppContext();
+  const { transactions, notificationCount, myTasksList, myBookingsList } = useAppContext();
   const { on } = useSocket();
   const { t, locale } = useLanguage();
-  const [jobs, setJobs] = useState([]);
-  const [bookings, setBookings] = useState([]);
+  const { user } = useAuth();
+  const [jobs, setJobs] = useState(myTasksList || []);
+  const [bookings, setBookings] = useState(myBookingsList || []);
   const [activeTab, setActiveTab] = useState('All Jobs');
+  const [loadingJobId, setLoadingJobId] = useState(null);
 
   const fetchMyJobs = useCallback(async () => {
     try {
-      const res = await api.get('/jobs/my-jobs');
-      const bookingRes = await api.get('/bookings/mine?role=PROVIDER').catch(() => ({ data: { data: [] } }));
-      setJobs(res.data.data || []);
-      setBookings(bookingRes.data.data || []);
+      const [jobsRes, bookingsRes] = await Promise.allSettled([
+        api.get('/jobs/my-jobs'),
+        api.get('/bookings/mine?role=PROVIDER')
+      ]);
+      
+      if (jobsRes.status === 'fulfilled') {
+        setJobs(jobsRes.value.data?.data || []);
+      }
+      if (bookingsRes.status === 'fulfilled') {
+        setBookings(bookingsRes.value.data?.data || []);
+      }
     } catch (e) {
-      setJobs([]);
+      console.error(e);
     }
   }, []);
+
+  useEffect(() => {
+    if (myTasksList?.length) setJobs(myTasksList);
+    if (myBookingsList?.length) setBookings(myBookingsList);
+  }, [myTasksList, myBookingsList]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', fetchMyJobs);
@@ -94,7 +114,7 @@ const MyJobsScreen = ({ navigation }) => {
   const mappedBookings = bookings.map(booking => ({
     id: booking.id,
     title: booking.notes || t('jobs.scheduledServiceBooking'),
-    status: booking.status === 'ACCEPTED' ? 'Booked' : booking.status === 'COMPLETED' ? 'Completed' : booking.status === 'REJECTED' || booking.status === 'CANCELLED' ? 'Cancelled' : 'Requests',
+    status: booking.status === 'ACCEPTED' ? 'Booked' : booking.status === 'COMPLETED' ? 'Completed' : booking.status === 'REJECTED' || booking.status === 'CANCELLED' ? 'Cancelled' : booking.status === 'IN_PROGRESS' ? 'Active' : 'Requests',
     client: booking.client?.fullName || t('common.client'),
     avatar: booking.client?.avatar,
     time: `${new Date(booking.bookingDate).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')} ${booking.bookingTime}`,
@@ -120,16 +140,19 @@ const MyJobsScreen = ({ navigation }) => {
   const filtered = activeTab === 'All Jobs' ? mapped : mapped.filter(j => j.status === activeTab);
 
   const handleUpdateStatus = async (jobId, status) => {
+    setLoadingJobId(jobId);
     try {
       const target = mapped.find((item) => item.id === jobId);
       if (target?.isBooking) {
-        await api.patch(`/bookings/${jobId}/status`, { status: status === 'IN_PROGRESS' ? 'ACCEPTED' : status });
+        await api.patch(`/bookings/${jobId}/status`, { status });
       } else {
         await api.put(`/jobs/${jobId}/status`, { status });
       }
-      fetchMyJobs();
+      await fetchMyJobs();
     } catch {
       alert(t('jobs.updateFailed'));
+    } finally {
+      setLoadingJobId(null);
     }
   };
 
@@ -152,13 +175,12 @@ const MyJobsScreen = ({ navigation }) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Requests;
     const statusLabel = t(`jobs.statusLabels.${item.status}`);
     const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
-    const canChat = item.isBooking
-      ? ['Requests', 'Booked'].includes(item.status)
-      : ['Booked', 'Active'].includes(item.status);
+    const canChat = ['Booked', 'Active'].includes(item.status);
+    const reviewed = hasUserReviewed(item, user?.id);
     return (
       <TouchableOpacity
         style={[styles.jobCard, { backgroundColor: colors.card, borderBottomColor: colors.border, shadowColor: isDarkMode ? 'transparent' : '#000' }]}
-        onPress={() => item.isBooking ? null : navigation.navigate('TaskDetails', { task: item.rawJob })}
+        onPress={() => navigation.navigate('TaskDetails', { task: item.rawJob })}
         activeOpacity={0.85}
       >
         <View style={styles.jobRow}>
@@ -221,8 +243,9 @@ const MyJobsScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
               onPress={() => item.isBooking ? handleUpdateStatus(item.id, 'ACCEPTED') : navigation.navigate('TaskDetails', { task: item.rawJob })}
+              disabled={loadingJobId === item.id}
             >
-              <Text style={styles.primaryBtnText}>{item.isBooking ? t('jobs.accept') : t('jobs.review')}</Text>
+              {loadingJobId === item.id ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.primaryBtnText}>{item.isBooking ? t('jobs.accept') : t('jobs.review')}</Text>}
             </TouchableOpacity>
           )}
           {item.status === 'Booked' && (
@@ -232,8 +255,9 @@ const MyJobsScreen = ({ navigation }) => {
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('jobs.start'), onPress: () => handleUpdateStatus(item.rawJob.id, 'IN_PROGRESS') },
               ])}
+              disabled={loadingJobId === item.rawJob.id}
             >
-              <Text style={styles.primaryBtnText}>{t('jobs.startJob')}</Text>
+              {loadingJobId === item.rawJob.id ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.primaryBtnText}>{t('jobs.startJob')}</Text>}
             </TouchableOpacity>
           )}
           {item.status === 'Active' && (
@@ -243,11 +267,12 @@ const MyJobsScreen = ({ navigation }) => {
                 { text: t('common.cancel'), style: 'cancel' },
                 { text: t('jobs.complete'), onPress: () => handleUpdateStatus(item.rawJob.id, 'COMPLETED') },
               ])}
+              disabled={loadingJobId === item.rawJob.id}
             >
-              <Text style={styles.primaryBtnText}>{t('jobs.markCompleted')}</Text>
+              {loadingJobId === item.rawJob.id ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.primaryBtnText}>{t('jobs.markCompleted')}</Text>}
             </TouchableOpacity>
           )}
-          {item.status === 'Completed' && (
+          {item.status === 'Completed' && !reviewed && (
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
               onPress={() => navigation.navigate('ReviewTask', { task: item.rawJob, provider: { id: item.rawJob.clientId, fullName: item.client } })}
@@ -255,6 +280,12 @@ const MyJobsScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="star-outline" size={13} color="#FFF" />
               <Text style={styles.primaryBtnText}>{t('jobs.rateClient')}</Text>
             </TouchableOpacity>
+          )}
+          {item.status === 'Completed' && reviewed && (
+            <View style={[styles.reviewedPill, { backgroundColor: isDarkMode ? 'rgba(34,197,94,0.14)' : '#F0FDF4' }]}>
+              <MaterialCommunityIcons name="star-check" size={14} color="#16A34A" />
+              <Text style={styles.reviewedText}>{t('jobs.reviewSubmitted', 'Review submitted')}</Text>
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -460,6 +491,8 @@ const styles = StyleSheet.create({
   chatBtnText: { fontSize: 13, fontWeight: '700' },
   primaryBtn: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 38, borderRadius: 0 },
   primaryBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  reviewedPill: { flex: 1.5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, height: 38, borderRadius: 0 },
+  reviewedText: { color: '#16A34A', fontSize: 13, fontWeight: '800' },
 
   // Empty
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },

@@ -1,7 +1,7 @@
 "use client"
 
 import { Sidebar } from "@/components/layout/Sidebar"
-import { Bell, Search, User, Globe, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Bell, Search, User, Globe, LogOut, PanelLeftClose, PanelLeftOpen, MessagesSquare, AlertCircle, Settings } from "lucide-react"
 import { useSocket } from "@/hooks/useSocket"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"

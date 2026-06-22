@@ -16,6 +16,7 @@ import FindJobsScreen from '../screens/Provider/FindJobsScreen';
 import TaskDetailsScreen from '../screens/Provider/TaskDetailsScreen';
 import TaskDiscoveryScreen from '../screens/Provider/TaskDiscoveryScreen';
 import MyJobsScreen from '../screens/Provider/MyJobsScreen';
+import BookingsScreen from '../screens/Provider/BookingsScreen';
 import CoinSystemScreen from '../screens/Provider/CoinSystemScreen';
 import ChatScreen from '../screens/Chat/ChatScreen';
 import ChatListScreen from '../screens/Chat/ChatListScreen';
@@ -58,6 +59,7 @@ const Drawer = createDrawerNavigator();
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HomeMain" component={ProviderHomeScreen} />
+    <Stack.Screen name="BookingsList" component={BookingsScreen} />
   </Stack.Navigator>
 );
 
@@ -113,6 +115,7 @@ const HIDE_TAB_ROUTES = [
   'LiveTaskMap',
   'BookingForm',
   'FindJobs',
+  'BookingsList',
   'Notifications',
   'NotificationDetail',
   'NotificationSettings',
@@ -264,6 +267,7 @@ const ProviderTabNavigator = () => {
   const { t } = useLanguage();
   return (
     <Drawer.Navigator
+      backBehavior="history"
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,

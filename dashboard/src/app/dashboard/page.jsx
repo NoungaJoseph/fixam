@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Activity, Download, CreditCard, Users, Wallet, RefreshCw, ChevronRight } from "lucide-react"
+import { Activity, Download, CreditCard, Users, Wallet, RefreshCw, ChevronRight, TrendingUp } from "lucide-react"
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { dashboardService } from "@/services/api"
 
@@ -60,7 +60,7 @@ export default function OverviewPage() {
     },
     { 
       title: "ACTIVE EMPLOYEES", 
-      value: stats?.totalProviders || 0, 
+      value: String(stats?.totalProviders || 0), 
       sub: "0 suspended", 
       icon: Users,
       color: "text-blue-500",
@@ -184,8 +184,8 @@ export default function OverviewPage() {
             </div>
           </div>
           
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 11 }} />
