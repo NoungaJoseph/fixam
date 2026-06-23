@@ -81,6 +81,7 @@ export const dashboardService = {
   sendBroadcastEmail: (data) => api.post('/admin/broadcast-email', data),
   sendSecurityAlert: (data) => api.post('/admin/security-alert', data),
   getJobs: () => api.get('/jobs/all'),
+  getBookings: () => api.get('/admin/bookings'),
   getSupportConversations: () => api.get('/admin/support-conversations', { params: { _t: Date.now() } }),
   getConversations: () => api.get('/chat/conversations', { params: { _t: Date.now() } }),
   getConversationById: (id) => api.get(`/chat/conversations/${id}`),

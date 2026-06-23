@@ -46,15 +46,32 @@ export default function JobsPage() {
   };
 
   useEffect(() => {
-    dashboardService.getJobs()
-      .then(res => {
-        setJobs(res.data.data || [])
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error(err)
-        setLoading(false)
-      })
+    Promise.allSettled([
+      dashboardService.getJobs(),
+      dashboardService.getBookings()
+    ]).then(([jobsRes, bookingsRes]) => {
+      let combined = [];
+      if (jobsRes.status === 'fulfilled') {
+        const jobsData = jobsRes.value.data?.data;
+        combined = [...combined, ...(jobsData?.items || jobsData || [])];
+      }
+      if (bookingsRes.status === 'fulfilled') {
+        const bookings = bookingsRes.value.data?.data || [];
+        const mappedBookings = bookings.map(b => ({
+          ...b,
+          isBooking: true,
+          category: 'Service Booking',
+          title: b.notes || 'Service Booking',
+          budget: b.totalAmount,
+          description: b.notes,
+          assignments: b.provider ? [{ provider: { user: b.provider } }] : []
+        }));
+        combined = [...combined, ...mappedBookings];
+      }
+      combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setJobs(combined);
+      setLoading(false);
+    });
   }, [])
 
   // Calculate Stats

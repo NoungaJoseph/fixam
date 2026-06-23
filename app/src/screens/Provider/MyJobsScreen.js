@@ -130,7 +130,19 @@ const MyJobsScreen = ({ navigation }) => {
     rawJob: booking,
     isBooking: true,
   }));
-  const mapped = [...mappedBookings, ...mappedJobs].sort((a, b) => b.updatedAt - a.updatedAt);
+  const statusWeight = {
+    'Requests': 1,
+    'Booked': 2,
+    'Active': 3,
+    'Completed': 4,
+    'Cancelled': 5
+  };
+  const mapped = [...mappedBookings, ...mappedJobs].sort((a, b) => {
+    const weightA = statusWeight[a.status] || 99;
+    const weightB = statusWeight[b.status] || 99;
+    if (weightA !== weightB) return weightA - weightB;
+    return b.createdAt - a.createdAt;
+  });
 
   const totalJobs = mapped.length;
   const bookedCount = mapped.filter(j => j.status === 'Booked').length;
