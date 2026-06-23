@@ -87,8 +87,8 @@ export const dashboardService = {
   createConversation: (data) => api.post('/chat/conversations', data),
   getChatMessages: (conversationId) => api.get(`/chat/${conversationId}/messages`),
   markConversationRead: (conversationId) => api.put(`/chat/${conversationId}/read`),
-  getUnreadMessageCount: () => api.get('/chat/unread-count'),
   sendChatMessage: (data) => api.post('/chat/send', data),
+  getConversationBetweenUsers: (user1Id, user2Id) => api.get(`/admin/conversations/between/${user1Id}/${user2Id}`),
 };
 
 export default api;

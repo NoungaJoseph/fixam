@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { Briefcase, MapPin, Calendar, User, CheckCircle, Clock, Search, Filter, Hammer, X, TrendingUp } from "lucide-react"
+import { Briefcase, MapPin, Calendar, User, CheckCircle, Clock, Search, Filter, Hammer, X, TrendingUp, MessageSquare } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { formatCurrency } from "@/lib/utils"
 import { dashboardService } from "@/services/api"
@@ -12,6 +12,38 @@ export default function JobsPage() {
   const [selectedJob, setSelectedJob] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [activeTab, setActiveTab] = useState("All")
+  
+  const [viewingConversation, setViewingConversation] = useState(false)
+  const [conversation, setConversation] = useState(null)
+  const [loadingConversation, setLoadingConversation] = useState(false)
+
+  const handleReadConversation = async () => {
+    if (!selectedJob) return;
+    const client = selectedJob.client;
+    const providerAssignment = selectedJob.assignments?.[0];
+    if (!client || !providerAssignment) {
+      alert("Missing client or provider information for this job.");
+      return;
+    }
+    const clientId = client.id;
+    const providerId = providerAssignment.provider?.user?.id;
+    if (!providerId) {
+      alert("Provider not assigned to this job yet.");
+      return;
+    }
+
+    setLoadingConversation(true);
+    setViewingConversation(true);
+    try {
+      const res = await dashboardService.getConversationBetweenUsers(clientId, providerId);
+      setConversation(res.data.data);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load conversation.");
+    } finally {
+      setLoadingConversation(false);
+    }
+  };
 
   useEffect(() => {
     dashboardService.getJobs()
@@ -251,7 +283,60 @@ export default function JobsPage() {
             </div>
             <div className="p-6 bg-slate-50 border-t flex justify-end gap-3">
               <button onClick={() => setSelectedJob(null)} className="px-6 py-2.5 font-bold text-slate-600 hover:text-slate-900">Close</button>
+              <button onClick={handleReadConversation} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">
+                <MessageSquare size={18} />
+                Read Conversation
+              </button>
               <button className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">Support Dispute</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conversation Modal */}
+      {viewingConversation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b flex items-center justify-between bg-slate-50">
+              <h3 className="text-xl font-bold text-slate-900">Conversation Logs</h3>
+              <button onClick={() => { setViewingConversation(false); setConversation(null); }} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
+                <X size={24}/>
+              </button>
+            </div>
+            <div className="p-6 bg-slate-100 h-[60vh] overflow-y-auto space-y-4">
+              {loadingConversation ? (
+                <div className="text-center py-10 text-slate-500 font-medium animate-pulse">Loading messages...</div>
+              ) : conversation && conversation.messages && conversation.messages.length > 0 ? (
+                conversation.messages.map((msg, i) => {
+                  const client = selectedJob?.client;
+                  const isClient = msg.senderId === client?.id;
+                  
+                  return (
+                    <div key={msg.id || i} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[70%] rounded-2xl p-4 ${isClient ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white text-slate-800 rounded-tl-sm shadow-sm'}`}>
+                        <div className="text-xs font-bold mb-1 opacity-70">
+                          {isClient ? 'Client' : 'Provider'}
+                        </div>
+                        {msg.type === 'IMAGE' ? (
+                          <div className="text-sm italic opacity-80">[Image Attachment]</div>
+                        ) : msg.type === 'AUDIO' ? (
+                          <div className="text-sm italic opacity-80">[Voice Message]</div>
+                        ) : (
+                          <p className="text-sm">{msg.content}</p>
+                        )}
+                        <div className="text-[10px] mt-2 opacity-60 text-right">
+                          {new Date(msg.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-20 text-slate-500 font-medium">No conversation found between the client and the assigned provider.</div>
+              )}
+            </div>
+            <div className="p-6 bg-slate-50 border-t flex justify-end gap-3">
+              <button onClick={() => { setViewingConversation(false); setConversation(null); }} className="px-6 py-2.5 font-bold text-slate-600 hover:text-slate-900">Close</button>
             </div>
           </div>
         </div>
