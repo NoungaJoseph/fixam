@@ -4,10 +4,12 @@ import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import ForgotPassword from './pages/Auth/ForgotPassword'
 import OTPVerification from './pages/Auth/OTPVerification'
+import TermsOfService from './pages/TermsOfService'
+import PrivacyPolicy from './pages/PrivacyPolicy'
 import './App.css'
 import './marketplace.css'
 
-export type Page = 'home' | 'services' | 'about' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide'
+export type Page = 'home' | 'services' | 'about' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide' | 'terms' | 'privacy'
 
 export type IconName =
   | 'appliance' | 'bell' | 'briefcase' | 'calendar' | 'chat' | 'check' | 'cleaning'
@@ -70,8 +72,60 @@ const tasks = [
   { title: 'House deep cleaning', tag: 'Cleaning', price: '20,000 XAF', status: 'Completed', image: images.taskCleaning },
 ]
 
+const useMaintenanceCheck = () => {
+  const [appReady, setAppReady] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceMsg, setMaintenanceMsg] = useState('');
+
+  const checkStatus = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      const response = await fetch(`${API_URL}/system/status`);
+      const data = await response.json();
+
+      if (data.webMaintenanceEnabled) {
+        setMaintenance(true);
+        setMaintenanceMsg(data.message || 'We are currently undergoing maintenance. Please check back later.');
+      } else {
+        setMaintenance(false);
+      }
+    } catch (error) {
+      setMaintenance(false);
+    } finally {
+      setAppReady(true);
+    }
+  };
+
+  useEffect(() => {
+    checkStatus();
+    const interval = setInterval(checkStatus, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { appReady, maintenance, maintenanceMsg };
+};
+
+function MaintenanceScreen({ message }: { message: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: '#F8FAFC', padding: '2rem', textAlign: 'center' }}>
+      <img src={asset('fixam-white-bg.png')} alt="Fixam Logo" style={{ height: '60px', transform: 'scale(1.5)', transformOrigin: 'center', filter: 'invert(1)' }} />
+      <h1 style={{ marginTop: '3rem', fontSize: '2rem', color: '#0F172A' }}>Under Maintenance</h1>
+      <p style={{ marginTop: '1rem', fontSize: '1.2rem', color: '#64748B', maxWidth: '500px' }}>{message}</p>
+    </div>
+  );
+}
+
 function App() {
   const [page, setPage] = useState<Page>('home')
+  const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
+
+  if (!appReady) {
+    return <div style={{ height: '100vh', backgroundColor: '#F8FAFC' }} />;
+  }
+
+  if (maintenance) {
+    return <MaintenanceScreen message={maintenanceMsg} />;
+  }
 
   return (
     <div className={page === 'dashboard' ? 'app dashboard-shell' : 'app'}>
@@ -92,6 +146,8 @@ function App() {
             {page === 'services' && <Services onNavigate={setPage} />}
             {page === 'guide' && <Guide onNavigate={setPage} />}
             {page === 'about' && <About onNavigate={setPage} />}
+            {page === 'terms' && <TermsOfService onNavigate={setPage} />}
+            {page === 'privacy' && <PrivacyPolicy onNavigate={setPage} />}
             {page === 'home' && <Home onNavigate={setPage} />}
           </main>
         </>
@@ -545,8 +601,8 @@ function Footer({ onNavigate }: { onNavigate?: (page: Page) => void }) {
           <h3>{t('footer.support')}</h3>
           <a href="#" onClick={(e) => e.preventDefault()}>{t('footer.help')}</a>
           <a href="#" onClick={(e) => e.preventDefault()}>{t('footer.safety')}</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>{t('footer.terms')}</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>{t('footer.privacy')}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate?.('terms') }}>{t('footer.terms')}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate?.('privacy') }}>{t('footer.privacy')}</a>
           <a href="#" onClick={(e) => e.preventDefault()}>{t('footer.refund')}</a>
         </div>
         <div>
