@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DrawerActions } from '@react-navigation/native';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Image, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,10 +25,18 @@ const TopUpScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [selectedPkg, setSelectedPkg] = useState('p2');
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const handleContinue = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
     const pkg = PACKAGES.find(p => p.id === selectedPkg);
     navigation.navigate('CoinPaymentForm', { package: pkg });
+    setTimeout(() => setIsNavigating(false), 1000);
+  };
+
+  const openWalletMenu = () => {
+    navigation.dispatch(DrawerActions.openDrawer());
   };
 
   // Branded Payment Provider Logos
@@ -57,10 +66,10 @@ const TopUpScreen = ({ navigation }) => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
+            onPress={openWalletMenu} 
             style={[styles.headerBtn, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#334155' : '#F1F5F9' }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={22} color={isDarkMode ? '#FFF' : '#0F172A'} />
+            <MaterialCommunityIcons name="menu" size={22} color={isDarkMode ? '#FFF' : '#0F172A'} />
           </TouchableOpacity>
           
           <Text style={[styles.headerTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{t('wallet.topUpCoins')}</Text>
@@ -219,6 +228,7 @@ const TopUpScreen = ({ navigation }) => {
             style={styles.continueBtn}
             onPress={handleContinue}
             activeOpacity={0.9}
+            disabled={isNavigating}
           >
             <MaterialCommunityIcons name="lock" size={18} color="#FFF" style={{ marginRight: 6 }} />
             <Text style={styles.continueBtnText}>{t('wallet.continueToPayment')}</Text>

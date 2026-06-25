@@ -62,7 +62,7 @@ export default function JobsPage() {
           isBooking: true,
           category: 'Service Booking',
           title: b.notes || 'Service Booking',
-          budget: b.totalAmount,
+          budget: b.budget || b.totalAmount || 0,
           description: b.notes,
           assignments: b.provider ? [{ provider: { user: b.provider } }] : []
         }));
@@ -286,7 +286,7 @@ export default function JobsPage() {
               <div className="grid grid-cols-3 gap-6 pt-4 border-t">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                  <span className="text-sm font-bold text-blue-600">{selectedJob.status}</span>
+                  <span className="text-sm font-bold text-blue-600">{selectedJob.status?.replace('_', ' ') || 'PENDING'}</span>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Category</p>
@@ -304,7 +304,7 @@ export default function JobsPage() {
                 <MessageSquare size={18} />
                 Read Conversation
               </button>
-              <button className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">Support Dispute</button>
+              <button onClick={() => window.location.href = '/dashboard/reports'} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">Support Dispute</button>
             </div>
           </div>
         </div>

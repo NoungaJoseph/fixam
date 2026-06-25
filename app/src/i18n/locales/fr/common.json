@@ -33,7 +33,10 @@
     "recent": "Récent",
     "notAvailable": "N/D",
     "contactSupport": "Contacter le support",
-    "close": "Fermer"
+    "close": "Fermer",
+    "maintenanceTitle": "Nous serons bientôt de retour",
+    "maintenanceStatus": "Vérification du statut…",
+    "maintenanceDefaultMessage": "Nous améliorons Fixam pour vous. De retour bientôt !"
   },
   "tabs": {
     "home": "Accueil",
@@ -196,6 +199,16 @@
     "secureDesc": "Vos documents sont cryptés et stockés en toute sécurité.",
     "goToSettings": "Retour aux paramètres",
     "viewSubmission": "Voir les détails de la soumission"
+  },
+  "eligibility": {
+    "verificationRequiredAction": "Veuillez vérifier votre identité avant d'utiliser cette fonctionnalité.",
+    "verificationPending": "Votre vérification d'identité est encore en cours d'examen. Vous pourrez utiliser cette fonctionnalité après validation.",
+    "verificationRejected": "Votre dernière vérification n'a pas été approuvée. Veuillez envoyer des documents plus clairs avant d'utiliser cette fonctionnalité.",
+    "providerOfflineTitle": "Passez d'abord en ligne",
+    "providerOffline": "Activez le mode En ligne avant de postuler aux missions ou d'accepter des réservations.",
+    "insufficientCredits": "Vous n'avez pas assez de crédits pour cette action. Rechargez votre portefeuille puis réessayez.",
+    "accountBlocked": "Votre compte est actuellement restreint. Veuillez contacter le support.",
+    "notAvailable": "Cet élément n'est plus disponible. Actualisez puis choisissez une autre option."
   },
   "errors": {
     "registrationFailed": "Impossible de finaliser l'inscription. Veuillez réessayer.",

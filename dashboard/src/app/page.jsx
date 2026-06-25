@@ -23,10 +23,7 @@ export default function LoginPage() {
     
     try {
       const getApiUrl = () => {
-        if (typeof window !== 'undefined') {
-          return `http://${window.location.hostname}:5000/api`;
-        }
-        return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        return process.env.NEXT_PUBLIC_API_URL || 'https://fixam-backend-production.up.railway.app/api';
       };
       const apiUrl = getApiUrl();
       console.log('Attempting login to:', apiUrl);
@@ -58,8 +55,7 @@ export default function LoginPage() {
         throw new Error('Access denied. You do not have administrator privileges.');
       }
 
-      // Store token for subsequent requests
-      localStorage.setItem('admin_token', data.token);
+      // Store user info for UI (token is handled automatically via HttpOnly cookie)
       localStorage.setItem('admin_user', JSON.stringify(data.user));
       
       console.log('Login successful, redirecting...');

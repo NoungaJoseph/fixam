@@ -44,34 +44,22 @@ const useMaintenanceCheck = () => {
   const [appReady, setAppReady] = React.useState(false);
   const [maintenance, setMaintenance] = React.useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = React.useState('');
-  const intervalRef = React.useRef(null);
 
   const checkStatus = React.useCallback(async () => {
     try {
       const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
       const response = await Promise.race([
-        axios.get(`${API_URL}/api/system/status`),
+        axios.get(`${API_URL}/system/status`),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 3000)
+          setTimeout(() => reject(new Error('timeout')), 10000)
         ),
       ]);
 
       const inMaintenance = response?.data?.appMaintenanceEnabled === true;
       setMaintenance(inMaintenance);
       setMaintenanceMsg(response?.data?.message || '');
-
-      if (inMaintenance) {
-        // Poll every 5 minutes while in maintenance
-        if (!intervalRef.current) {
-          intervalRef.current = setInterval(checkStatus, 5 * 60 * 1000);
-        }
-      } else {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-    } catch (_) {
+    } catch (err) {
+      console.log('[System Status Error]', err?.message || err);
       // Timeout or network error — fail open, proceed normally
       setMaintenance(false);
     } finally {
@@ -81,10 +69,20 @@ const useMaintenanceCheck = () => {
 
   React.useEffect(() => {
     checkStatus();
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+
+    // Check every 30 seconds for immediate updates (100% realtime feel)
+    const interval = setInterval(checkStatus, 30 * 1000);
+
+    // Also check immediately when the app is brought to the foreground
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkStatus();
       }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
     };
   }, [checkStatus]);
 

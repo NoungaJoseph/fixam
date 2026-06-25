@@ -21,6 +21,7 @@ const hpp = require('hpp');
 const compression = require('compression');
 const { apiLimiter } = require('./middlewares/rateLimit.middleware');
 const sanitizeMiddleware = require('./middlewares/sanitize.middleware');
+const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
@@ -55,17 +56,17 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.DASHBOARD_URL,
   process.env.WEBSITE_URL,
-  ...(process.env.NODE_ENV === 'production' ? [] : [
-    'http://localhost:3000',
-    'http://localhost:4000',
-    'http://localhost:5173'
-  ])
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:4000',
+  'http://localhost:5173'
 ].filter(Boolean);
 
 app.use(cors({
+  credentials: true,
   origin: function (origin, callback) {
     const isLocalDev = process.env.NODE_ENV !== 'production'
-      && (origin?.startsWith('http://192.168.') || origin?.startsWith('http://localhost') || origin?.startsWith('http://10.'));
+      && (origin?.startsWith('http://192.168.') || origin?.startsWith('http://localhost') || origin?.startsWith('http://10.') || origin?.startsWith('http://127.0.0.1'));
 
     if (!origin || allowedOrigins.includes(origin) || isLocalDev) {
       callback(null, true);
@@ -79,6 +80,7 @@ app.use(cors({
 app.use('/api/payments/webhook/kora', express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '1mb' }));
+app.use(cookieParser());
 app.use('/uploads', express.static('uploads', {
   maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
   fallthrough: false
