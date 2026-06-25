@@ -55,6 +55,7 @@ const MyTasksListScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('All Jobs');
   const [loadingJobId, setLoadingJobId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewedJobIds, setReviewedJobIds] = useState([]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -175,7 +176,7 @@ const MyTasksListScreen = ({ navigation }) => {
     const statusLabel = t(`jobs.statusLabels.${item.status}`);
     const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
     const canChat = ['Booked', 'Active'].includes(item.status);
-    const reviewed = hasUserReviewed(item, user?.id);
+    const reviewed = hasUserReviewed(item, user?.id) || reviewedJobIds.includes(item.id);
     return (
       <View style={[styles.jobCard, { backgroundColor: colors.card, borderBottomColor: colors.border, shadowColor: isDarkMode ? 'transparent' : '#000' }]}>
         <TouchableOpacity
@@ -278,7 +279,7 @@ const MyTasksListScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('ReviewTask', { 
                 task: item.rawJob, 
                 provider: { id: item.isBooking ? item.rawJob.providerId : item.rawJob.assignments?.[0]?.provider?.userId, fullName: item.client },
-                onOptimisticSubmit: (jobId, targetUserId, rating, comment) => handleOptimisticReview(jobId, targetUserId, rating, comment, item.isBooking)
+                onReviewSubmitted: (jobId) => setReviewedJobIds(prev => [...prev, jobId])
               })}
             >
               <MaterialCommunityIcons name="star-outline" size={13} color="#FFF" />

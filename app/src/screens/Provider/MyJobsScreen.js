@@ -55,6 +55,7 @@ const MyJobsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('All Jobs');
   const [loadingJobId, setLoadingJobId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewedJobIds, setReviewedJobIds] = useState([]);
 
   const { fetchAppData } = useAppContext();
 
@@ -168,7 +169,7 @@ const MyJobsScreen = ({ navigation }) => {
     const statusLabel = t(`jobs.statusLabels.${item.status}`);
     const darkBg = isDarkMode ? 'rgba(255,255,255,0.06)' : cfg.bg;
     const canChat = ['Booked', 'Active'].includes(item.status);
-    const reviewed = hasUserReviewed(item, user?.id);
+    const reviewed = hasUserReviewed(item, user?.id) || reviewedJobIds.includes(item.id);
     return (
       <View style={[styles.jobCard, { backgroundColor: colors.card, borderBottomColor: colors.border, shadowColor: isDarkMode ? 'transparent' : '#000' }]}>
         <TouchableOpacity
@@ -268,7 +269,11 @@ const MyJobsScreen = ({ navigation }) => {
           {item.status === 'Completed' && !reviewed && (
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-              onPress={() => navigation.navigate('ReviewTask', { task: item.rawJob, provider: { id: item.rawJob.clientId, fullName: item.client } })}
+              onPress={() => navigation.navigate('ReviewTask', { 
+                task: item.rawJob, 
+                provider: { id: item.rawJob.clientId, fullName: item.client },
+                onReviewSubmitted: (jobId) => setReviewedJobIds(prev => [...prev, jobId])
+              })}
             >
               <MaterialCommunityIcons name="star-outline" size={13} color="#FFF" />
               <Text style={styles.primaryBtnText}>{t('jobs.rateClient')}</Text>

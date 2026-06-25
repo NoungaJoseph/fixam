@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet, View, Text, TouchableOpacity,
-  ScrollView, StatusBar, TextInput, Modal, Alert
+  ScrollView, StatusBar, TextInput, Modal, Alert, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
@@ -27,13 +27,6 @@ const ReviewTaskScreen = ({ route, navigation }) => {
       return;
     }
 
-    if (route.params?.onOptimisticSubmit) {
-      route.params.onOptimisticSubmit(task.id, provider.id, rating, comment);
-      navigation.goBack();
-      return;
-    }
-
-    // Fallback for non-optimistic usage
     setLoading(true);
     try {
       await api.post(`/reviews`, {
@@ -42,6 +35,12 @@ const ReviewTaskScreen = ({ route, navigation }) => {
         rating,
         comment
       });
+
+      if (route.params?.onReviewSubmitted) {
+        route.params.onReviewSubmitted(task.id);
+      } else if (route.params?.onOptimisticSubmit) {
+        route.params.onOptimisticSubmit(task.id, provider.id, rating, comment);
+      }
 
       Alert.alert(t('common.success'), t('jobs.reviewThanks', 'Thank you for your review!'), [
         { text: t('common.close'), onPress: () => navigation.goBack() }
@@ -188,13 +187,17 @@ const ReviewTaskScreen = ({ route, navigation }) => {
             <Text style={[styles.cancelBtnText, { color: colors.text }]}>{t('common.cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: colors.accent }]}
+            style={[styles.submitBtn, { backgroundColor: colors.accent, flexDirection: 'row', gap: 8 }]}
             onPress={handleSubmitReview}
             disabled={loading || rating === 0}
           >
-            <Text style={styles.submitBtnText}>
-              {loading ? t('jobs.submittingReview', 'Submitting...') : t('jobs.submitReview', 'Submit Review')}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={styles.submitBtnText}>
+                {t('jobs.submitReview', 'Submit Review')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
