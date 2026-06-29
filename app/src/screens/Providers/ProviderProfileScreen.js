@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Image, Linking, Share, Platform, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
@@ -38,6 +38,8 @@ const ProviderProfileScreen = ({ route, navigation }) => {
   const [verificationMessage, setVerificationMessage] = React.useState('');
   const [profileData, setProfileData] = React.useState(provider);
   const [loadingProfile, setLoadingProfile] = React.useState(true);
+  const [unlocking, setUnlocking] = React.useState(false);
+  const [callingAction, setCallingAction] = React.useState(null); // 'call' | 'whatsapp' | null
   const { refreshUser } = useAuth();
 
   const fetchLatestProfile = async () => {
@@ -66,15 +68,12 @@ const ProviderProfileScreen = ({ route, navigation }) => {
         {
           text: t('common.done'),
           onPress: async () => {
-            setLoadingProfile(true);
+            setUnlocking(true);
             try {
               const res = await api.post(`/providers/${provider.id}/unlock`);
               if (res.data?.success) {
-                Alert.alert(t('profile.success'), t('profile.unlockSuccess'));
                 await fetchLatestProfile();
-                if (refreshUser) {
-                  await refreshUser();
-                }
+                if (refreshUser) await refreshUser();
               }
             } catch (err) {
               const errMsg = err.response?.data?.message || err.message;
@@ -84,7 +83,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                 Alert.alert(t('common.error'), errMsg);
               }
             } finally {
-              setLoadingProfile(false);
+              setUnlocking(false);
             }
           }
         }
@@ -92,18 +91,44 @@ const ProviderProfileScreen = ({ route, navigation }) => {
     );
   };
 
-  const handleCall = () => {
+  const formatPhone = (phone) => {
+    if (!phone) return null;
+    const stripped = phone.replace(/\s/g, '').replace(/^0+/, '');
+    // Already has country code (starts with +)
+    if (phone.startsWith('+')) return phone.replace(/\D/g, '');
+    // Cameroon default country code +237
+    return `237${stripped}`;
+  };
+
+  const handleCall = async () => {
     const phone = profileData?.user?.phone;
-    if (phone) {
-      Linking.openURL(`tel:${phone}`);
+    if (!phone) return;
+    setCallingAction('call');
+    try {
+      await Linking.openURL(`tel:${phone}`);
+    } finally {
+      setCallingAction(null);
     }
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     const phone = profileData?.user?.phone;
-    if (phone) {
-      const cleanPhone = phone.replace('+', '');
-      Linking.openURL(`whatsapp://send?phone=${cleanPhone}`);
+    if (!phone) return;
+    setCallingAction('whatsapp');
+    try {
+      const intlPhone = formatPhone(phone);
+      const waUrl = `whatsapp://send?phone=${intlPhone}`;
+      const canOpen = await Linking.canOpenURL(waUrl);
+      if (canOpen) {
+        await Linking.openURL(waUrl);
+      } else {
+        // Fallback to web WhatsApp
+        await Linking.openURL(`https://wa.me/${intlPhone}`);
+      }
+    } catch {
+      Alert.alert('WhatsApp', 'Could not open WhatsApp. Please make sure it is installed.');
+    } finally {
+      setCallingAction(null);
     }
   };
 
@@ -420,6 +445,20 @@ const ProviderProfileScreen = ({ route, navigation }) => {
                 <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{experienceLevel}</Text>
               </View>
             </View>
+
+            <View style={styles.statRow}>
+              {/* Hourly Rate */}
+              <View style={[styles.statItem, { flex: 1, backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
+                <View style={styles.statIconValRow}>
+                  <View style={[styles.statIconWrap, { backgroundColor: isDarkMode ? '#9F123940' : '#FFE4E6' }]}>
+                    <MaterialCommunityIcons name="currency-usd" size={17} color="#E11D48" />
+                  </View>
+                  <Text style={[styles.statVal, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>{ratePrice}</Text>
+                </View>
+                <Text style={[styles.statLabel, { color: isDarkMode ? '#CBD5E1' : '#475569' }]} numberOfLines={1}>{t('profileDetail.hourlyRate', 'Hourly Rate')}</Text>
+                <Text style={[styles.statSubLabel, { color: isDarkMode ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>{t('profileDetail.estimated', 'Estimated rate')}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -438,50 +477,7 @@ const ProviderProfileScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Contact Details Section */}
-        {user?.role === 'CLIENT' && (
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-              {t('profileDetail.phone')}
-            </Text>
-            
-            <View style={[styles.contactCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderColor: isDarkMode ? '#1F2937' : '#F1F5F9' }]}>
-              {profileData?.phoneUnlocked ? (
-                <View>
-                  <View style={styles.unlockedPhoneRow}>
-                    <MaterialCommunityIcons name="phone-check" size={22} color="#0D9488" style={{ marginRight: 8 }} />
-                    <Text style={[styles.unlockedPhoneText, { color: isDarkMode ? '#FFF' : '#0F172A' }]}>
-                      {profileData?.user?.phone}
-                    </Text>
-                  </View>
-                  <View style={styles.contactButtonsRow}>
-                    <TouchableOpacity style={[styles.contactBtn, { backgroundColor: colors.accent }]} onPress={handleCall}>
-                      <MaterialCommunityIcons name="phone" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.contactBtnText}>{t('profile.makeCall')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.contactBtn, { backgroundColor: '#25D366' }]} onPress={handleWhatsApp}>
-                      <MaterialCommunityIcons name="whatsapp" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                      <Text style={styles.contactBtnText}>{t('profile.openWhatsApp')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.lockedContactContainer}>
-                  <View style={styles.maskedPhoneRow}>
-                    <MaterialCommunityIcons name="phone-lock" size={22} color={isDarkMode ? '#64748B' : '#94A3B8'} style={{ marginRight: 8 }} />
-                    <Text style={[styles.maskedPhoneText, { color: isDarkMode ? '#64748B' : '#94A3B8' }]}>
-                      {profileData?.user?.phone || 'Contact Locked'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity style={[styles.unlockBtn, { backgroundColor: colors.accent }]} onPress={handleUnlockContact}>
-                    <MaterialCommunityIcons name="lock-open-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.unlockBtnText}>{t('profile.unlockContact')}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+
 
         {/* Expertise Section */}
         {skills.length > 0 && (
@@ -1452,11 +1448,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
   },
   contactBtnText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
+    flexShrink: 1,
+    textAlign: 'center',
+  },
+  unlockExpiryHint: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 12,
+    marginTop: -6,
   },
   lockedContactContainer: {
     alignItems: 'center',

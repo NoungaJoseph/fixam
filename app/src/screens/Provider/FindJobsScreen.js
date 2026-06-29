@@ -86,6 +86,32 @@ const FindJobsScreen = ({ navigation }) => {
     return tags.slice(0, 3);
   };
 
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return '';
+    const normalized = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+    const then = new Date(normalized);
+    if (Number.isNaN(then.getTime())) return '';
+    const diffSec = Math.max(0, Math.floor((Date.now() - then.getTime()) / 1000));
+    if (diffSec < 60) return t('home.justNow', 'Just now');
+    if (diffSec < 3600) {
+      const m = Math.floor(diffSec / 60);
+      return t('home.minutesAgo', { count: m, defaultValue: `${m} min ago` });
+    }
+    if (diffSec < 86400) {
+      const h = Math.floor(diffSec / 3600);
+      return t('home.hoursAgo', { count: h, defaultValue: `${h} hr${h > 1 ? 's' : ''} ago` });
+    }
+    const d = Math.floor(diffSec / 86400);
+    if (d === 1) return t('home.yesterday', 'Yesterday');
+    if (d < 7) return t('home.daysAgo', { count: d, defaultValue: `${d} days ago` });
+    if (d < 30) {
+      const w = Math.floor(d / 7);
+      return t('home.weeksAgo', { count: w, defaultValue: `${w} week${w > 1 ? 's' : ''} ago` });
+    }
+    const mo = Math.floor(d / 30);
+    return t('home.monthsAgo', { count: mo, defaultValue: `${mo} month${mo > 1 ? 's' : ''} ago` });
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       
@@ -188,10 +214,18 @@ const FindJobsScreen = ({ navigation }) => {
                   ))}
                 </View>
 
-                {/* Stats Row */}
-                <Text style={[styles.statsText, { color: colors.textSecondary }]}>
-                  {t('home.reviewsSpent', { reviews: 0, spent: 0 })}
-                </Text>
+                {/* Stats / Time Row */}
+                <View style={styles.statsRow}>
+                  <Text style={[styles.statsText, { color: colors.textSecondary }]}>
+                    {t('home.reviewsSpent', { reviews: job.clientReviewCount ?? 0, spent: job.clientSpendingTier || 'New client' })}
+                  </Text>
+                  {job.createdAt ? (
+                    <View style={styles.timeInline}>
+                      <MaterialCommunityIcons name="clock-outline" size={13} color={colors.textSecondary} />
+                      <Text style={[styles.timeInlineText, { color: colors.textSecondary }]}>{timeAgo(job.createdAt)}</Text>
+                    </View>
+                  ) : null}
+                </View>
 
                 {/* Bottom Row */}
                 <View style={styles.jobBottomRow}>
@@ -341,10 +375,41 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 20,
   },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  timeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timeInlineText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   jobBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  jobBottomRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  timeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  timeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   locationRow: {
     flexDirection: 'row',

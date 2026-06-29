@@ -16,12 +16,11 @@ import { translateService } from '../../i18n/translate';
 import UserAvatar from '../../components/UserAvatar';
 import WelcomeModal from '../../components/Common/WelcomeModal';
 import ProviderTour from '../../components/Common/ProviderTour';
+import api from '../../services/api';
 import { POPULAR_SERVICE_CATALOG, POPULAR_SERVICE_IMAGES } from '../../data/popularServices';
 import NewsTicker from '../../components/NewsTicker';
 
 const { width } = Dimensions.get('window');
-
-const POPULAR_SERVICES = POPULAR_SERVICE_CATALOG.slice(0, 15);
 
 const LEARN_CARDS = [
   {
@@ -59,7 +58,7 @@ const LEARN_CARDS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
-  const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds, isInitialLoad, hasLoadedData } = useAppContext();
+  const { providers, walletBalance, walletDetails, transactions, unreadCount, jobs, fetchAppData, notificationCount, favoriteProviderIds, isInitialLoad, hasLoadedData, popularCategories } = useAppContext();
   const { user, isNewUser, clearNewUser } = useAuth();
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
@@ -68,6 +67,7 @@ const HomeScreen = ({ navigation }) => {
   const [slideIndex, setSlideIndex] = useState(0);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const popularServices = popularCategories.slice(0, 15);
   const learnScrollRef = useRef(null);
 
   const topUpRef = useRef(null);
@@ -142,6 +142,8 @@ const HomeScreen = ({ navigation }) => {
       setSlideIndex(slide);
     }
   };
+
+
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -313,7 +315,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularScroll}>
-            {POPULAR_SERVICES.map(service => (
+            {popularServices.map(service => (
               <TouchableOpacity
                 key={service.name}
                 style={[styles.popularCard, { backgroundColor: isDarkMode ? '#111827' : '#FFF' }]}

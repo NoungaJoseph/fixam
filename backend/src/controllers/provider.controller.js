@@ -3,6 +3,13 @@ const { setupProviderSchema } = require('../validators/provider.validator');
 const { calculateProviderStats, enrichProvidersWithStats } = require('../utils/providerStats');
 const { isRemoteSkill } = require('../utils/skillClassifier');
 
+const maskProvidersPhone = (providers) => providers.map(p => {
+  if (!p.user || !p.user.phone) return p;
+  const rawPhone = p.user.phone;
+  const maskedPhone = rawPhone.length > 4 ? rawPhone.substring(0, rawPhone.length - 4) + 'XXXX' : 'XXXX';
+  return { ...p, phoneUnlocked: false, user: { ...p.user, phone: maskedPhone } };
+});
+
 const updateProviderProfile = async (req, res, next) => {
   try {
     const validatedData = setupProviderSchema.parse(req.body);
@@ -59,7 +66,18 @@ const getProviders = async (req, res, next) => {
       return scoreB - scoreA;
     });
 
-    res.status(200).json({ success: true, data: sorted });
+    const maskedProviders = maskProvidersPhone(sorted);
+
+    // Track search appearances
+    const providerIds = sorted.map(p => p.id);
+    if (providerIds.length > 0) {
+      prisma.providerProfile.updateMany({
+        where: { id: { in: providerIds } },
+        data: { searchAppearances: { increment: 1 } }
+      }).catch(err => console.error('[Stats Error]', err));
+    }
+
+    res.status(200).json({ success: true, data: maskedProviders });
   } catch (error) {
     next(error);
   }
@@ -94,7 +112,8 @@ const getProvidersOfTheMonth = async (req, res, next) => {
       return scoreB - scoreA;
     }).slice(0, 3).map(p => ({ ...p, isProviderOfMonth: true }));
 
-    res.status(200).json({ success: true, data: sorted });
+    const maskedProviders = maskProvidersPhone(sorted);
+    res.status(200).json({ success: true, data: maskedProviders });
   } catch (error) {
     next(error);
   }
@@ -123,7 +142,18 @@ const getNearbyProviders = async (req, res, next) => {
     });
 
     const enriched = await enrichProvidersWithStats(providers);
-    res.status(200).json({ success: true, data: enriched });
+    const maskedProviders = maskProvidersPhone(enriched);
+
+    // Track search appearances
+    const providerIds = enriched.map(p => p.id);
+    if (providerIds.length > 0) {
+      prisma.providerProfile.updateMany({
+        where: { id: { in: providerIds } },
+        data: { searchAppearances: { increment: 1 } }
+      }).catch(err => console.error('[Stats Error]', err));
+    }
+
+    res.status(200).json({ success: true, data: maskedProviders });
   } catch (error) {
     next(error);
   }
@@ -151,7 +181,7 @@ const getProviderById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Provider not found' });
     }
 
-    // Check if client has unlocked this provider
+    // Check if client has unlocked this provider (within 24h window)
     let phoneUnlocked = false;
     if (req.user) {
       if (req.user.role === 'ADMIN' || req.user.id === provider.userId) {
@@ -163,7 +193,17 @@ const getProviderById = async (req, res, next) => {
             providerId: provider.id
           }
         });
-        if (unlock) phoneUnlocked = true;
+        if (unlock) {
+          // null expiresAt = old record (treat as expired), must re-unlock
+          if (unlock.expiresAt && new Date(unlock.expiresAt) > new Date()) {
+            phoneUnlocked = true;
+          } else {
+            // Expired or old record — delete so they can unlock again
+            await prisma.unlockedProvider.deleteMany({
+              where: { clientId: req.user.id, providerId: provider.id }
+            });
+          }
+        }
       }
     }
 
@@ -186,6 +226,13 @@ const getProviderById = async (req, res, next) => {
       completionRate: stats ? stats.completionRate : 0,
       profileCompleteness: stats ? stats.profileCompleteness : 0
     };
+
+    if (req.user && req.user.role === 'CLIENT' && req.user.id !== provider.userId) {
+      prisma.providerProfile.update({
+        where: { id: provider.id },
+        data: { profileViews: { increment: 1 } }
+      }).catch(err => console.error('[Stats Error]', err));
+    }
 
     res.status(200).json({
       success: true,
@@ -236,7 +283,31 @@ const getFavoriteProviders = async (req, res, next) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.status(200).json({ success: true, data: favorites.map((favorite) => favorite.provider) });
+    let providers = favorites.map((favorite) => favorite.provider);
+    providers = maskProvidersPhone(providers);
+
+    const activeUnlocks = await prisma.unlockedProvider.findMany({
+      where: { clientId: req.user.id, expiresAt: { gt: new Date() } },
+      include: { provider: { select: { id: true, user: { select: { phone: true } } } } }
+    });
+    
+    const unlockMap = {};
+    activeUnlocks.forEach(u => {
+      if (u.provider?.user?.phone) unlockMap[u.providerId] = u.provider.user.phone;
+    });
+
+    providers = providers.map(p => {
+      if (unlockMap[p.id]) {
+        return {
+          ...p,
+          phoneUnlocked: true,
+          user: { ...p.user, phone: unlockMap[p.id] }
+        };
+      }
+      return p;
+    });
+
+    res.status(200).json({ success: true, data: providers });
   } catch (error) {
     next(error);
   }
@@ -416,7 +487,14 @@ const unlockProviderProfile = async (req, res, next) => {
     });
 
     if (existingUnlock) {
-      return res.status(200).json({ success: true, message: 'Profile already unlocked', data: existingUnlock });
+      // Check if still valid
+      if (new Date(existingUnlock.expiresAt) > new Date()) {
+        return res.status(200).json({ success: true, message: 'Profile already unlocked', data: existingUnlock });
+      }
+      // Expired — delete so we can re-unlock below
+      await prisma.unlockedProvider.deleteMany({
+        where: { clientId: req.user.id, providerId: providerId }
+      });
     }
 
     const wallet = await prisma.wallet.findUnique({
@@ -426,6 +504,8 @@ const unlockProviderProfile = async (req, res, next) => {
     if (!wallet || wallet.balance < cost) {
       return res.status(400).json({ success: false, message: 'Insufficient coins in wallet' });
     }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
     const [_, __, unlockRecord] = await prisma.$transaction([
       prisma.wallet.update({
@@ -445,7 +525,8 @@ const unlockProviderProfile = async (req, res, next) => {
       prisma.unlockedProvider.create({
         data: {
           clientId: req.user.id,
-          providerId: providerId
+          providerId: providerId,
+          expiresAt
         }
       })
     ]);
@@ -457,6 +538,67 @@ const unlockProviderProfile = async (req, res, next) => {
         ...unlockRecord,
         phone: provider.user?.phone
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const claimSetupBonus = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    // Check if provider profile exists and hasn't claimed bonus
+    const profile = await prisma.providerProfile.findUnique({
+      where: { userId }
+    });
+    
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+    
+    if (profile.setupBonusClaimed) {
+      return res.status(400).json({ success: false, message: 'Setup bonus already claimed' });
+    }
+    
+    // Check if profile is complete (e.g., bio, rate, etc. are set)
+    // The requirement says "upon completion of the setup". Let's assume frontend controls the button state,
+    // but we should verify that basic fields exist
+    if (!profile.bio || !profile.skills || profile.skills.length === 0 || profile.verification !== 'VERIFIED') {
+      return res.status(400).json({ success: false, message: 'Profile is not fully complete or verified yet' });
+    }
+    
+    const wallet = await prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+    
+    const BONUS_AMOUNT = 1;
+    
+    await prisma.$transaction([
+      prisma.providerProfile.update({
+        where: { id: profile.id },
+        data: { setupBonusClaimed: true }
+      }),
+      prisma.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: BONUS_AMOUNT } }
+      }),
+      prisma.transaction.create({
+        data: {
+          walletId: wallet.id,
+          amount: BONUS_AMOUNT,
+          type: 'TOPUP',
+          status: 'SUCCESS',
+          reference: `SETUP-BONUS-${Date.now()}`,
+          description: 'Profile Setup Bonus'
+        }
+      })
+    ]);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Bonus claimed successfully! 1 coin added to your wallet.'
     });
   } catch (error) {
     next(error);
@@ -476,4 +618,6 @@ module.exports = {
   uploadVerificationDocs,
   boostProviderProfile,
   unlockProviderProfile,
+  maskProvidersPhone,
+  claimSetupBonus,
 };

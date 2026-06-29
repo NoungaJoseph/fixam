@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { enrichProvidersWithStats } = require('../utils/providerStats');
+const { maskProvidersPhone } = require('./provider.controller');
 
 const getDashboardData = async (req, res, next) => {
   try {
@@ -130,22 +131,59 @@ const getDashboardData = async (req, res, next) => {
       });
     }
 
+    const popularCategoriesQuery = prisma.job.groupBy({
+      by: ['category'],
+      _count: { category: true },
+      orderBy: { _count: { category: 'desc' } },
+    });
+
+    const myProviderProfileQuery = role === 'PROVIDER' 
+      ? prisma.providerProfile.findUnique({ where: { userId } }) 
+      : Promise.resolve(null);
+
     // Run all database queries in parallel
-    const [providersRaw, jobsRaw, wallet, conversationsRaw, bookings] = await Promise.all([
+    const [providersRaw, jobsRaw, wallet, conversationsRaw, bookings, popularCategories, myProviderProfile] = await Promise.all([
       providersQuery,
       jobsQuery,
       walletQuery,
       conversationsQuery,
-      bookingsQuery
+      bookingsQuery,
+      popularCategoriesQuery,
+      myProviderProfileQuery
     ]);
 
     // Process Providers
     const enrichedProvidersRaw = await enrichProvidersWithStats(providersRaw);
-    const providers = enrichedProvidersRaw.sort((a, b) => {
+    let providers = enrichedProvidersRaw.sort((a, b) => {
       const scoreA = (a.profileScore || 0) + (a.verification === 'VERIFIED' ? 5 : 0) + (a.user?.isOnline ? 2 : 0) + Number(a.rating || 0);
       const scoreB = (b.profileScore || 0) + (b.verification === 'VERIFIED' ? 5 : 0) + (b.user?.isOnline ? 2 : 0) + Number(b.rating || 0);
       return scoreB - scoreA;
     });
+
+    providers = maskProvidersPhone(providers);
+
+    if (role === 'CLIENT') {
+      const activeUnlocks = await prisma.unlockedProvider.findMany({
+        where: { clientId: userId, expiresAt: { gt: new Date() } },
+        include: { provider: { select: { id: true, user: { select: { phone: true } } } } }
+      });
+      
+      const unlockMap = {};
+      activeUnlocks.forEach(u => {
+        if (u.provider?.user?.phone) unlockMap[u.providerId] = u.provider.user.phone;
+      });
+
+      providers = providers.map(p => {
+        if (unlockMap[p.id]) {
+          return {
+            ...p,
+            phoneUnlocked: true,
+            user: { ...p.user, phone: unlockMap[p.id] }
+          };
+        }
+        return p;
+      });
+    }
 
     // Process Wallet stats (mimicking wallet.controller.js)
     let thisMonthTxStats = { _sum: { amount: 0 } };
@@ -236,15 +274,61 @@ const getDashboardData = async (req, res, next) => {
     // Transactions extracted from wallet (take 10 is enough for dashboard)
     const transactions = wallet?.transactions || [];
 
+    // Enrich provider jobs with client spending tier + review count
+    let finalJobs = jobsRaw;
+    if (role === 'PROVIDER' && jobsRaw.length > 0) {
+      const clientIds = [...new Set(jobsRaw.map(j => j.clientId))];
+
+      const [wallets, spendingData, reviewCounts] = await Promise.all([
+        prisma.wallet.findMany({ where: { userId: { in: clientIds } }, select: { id: true, userId: true } }),
+        prisma.transaction.groupBy({
+          by: ['walletId'],
+          where: { type: 'DEDUCTION', status: 'SUCCESS', wallet: { userId: { in: clientIds } } },
+          _sum: { amount: true }
+        }),
+        prisma.review.groupBy({
+          by: ['targetUserId'],
+          where: { targetUserId: { in: clientIds } },
+          _count: { id: true }
+        })
+      ]);
+
+      const walletToUser = new Map(wallets.map(w => [w.id, w.userId]));
+      const userSpending = new Map();
+      spendingData.forEach(s => {
+        const uid = walletToUser.get(s.walletId);
+        if (uid) userSpending.set(uid, Math.abs(s._sum.amount || 0));
+      });
+      const userReviews = new Map(reviewCounts.map(r => [r.targetUserId, r._count.id]));
+
+      const getSpendingTier = (amount) => {
+        if (amount >= 100000) return '100k+ spent';
+        if (amount >= 50000) return '50k+ spent';
+        if (amount >= 10000) return '10k+ spent';
+        if (amount >= 2000) return '2k+ spent';
+        return 'New client';
+      };
+
+      finalJobs = jobsRaw.map(job => ({
+        ...job,
+        clientVerified: job.client?.providerProfile?.verification === 'VERIFIED',
+        clientSpending: userSpending.get(job.clientId) || 0,
+        clientSpendingTier: getSpendingTier(userSpending.get(job.clientId) || 0),
+        clientReviewCount: userReviews.get(job.clientId) || 0,
+      }));
+    }
+
     res.status(200).json({
       success: true,
       data: {
         providers,
-        jobs: jobsRaw,
+        jobs: finalJobs,
         wallet: enrichedWallet,
         conversations,
         transactions,
-        bookings
+        bookings,
+        popularCategories,
+        ...(role === 'PROVIDER' && myProviderProfile ? { myProviderProfile } : {})
       }
     });
 

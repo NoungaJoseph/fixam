@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateService } from '../../i18n/translate';
 import { POPULAR_SERVICE_CATALOG, POPULAR_SERVICE_IMAGES } from '../../data/popularServices';
+import { useAppContext } from '../../context/AppContext';
 
 const GROUPS = ['All', 'Home', 'Repair', 'Lifestyle', 'Logistics', 'Care', 'Events', 'Professional', 'Outdoor', 'Auto'];
 
@@ -13,10 +14,12 @@ const PopularServicesScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
   const [group, setGroup] = useState('All');
-  const topServices = POPULAR_SERVICE_CATALOG.slice(0, 15);
+  const { popularCategories } = useAppContext();
+  const topServices = popularCategories.slice(0, 15);
+  
   const visibleServices = useMemo(
-    () => POPULAR_SERVICE_CATALOG.filter(service => group === 'All' || service.group === group),
-    [group]
+    () => popularCategories.filter(service => group === 'All' || service.group === group),
+    [group, popularCategories]
   );
 
   const openService = (service) => {
