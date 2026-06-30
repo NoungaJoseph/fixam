@@ -103,6 +103,11 @@ const BoostProfileScreen = ({ navigation }) => {
 
   const isBoostActive = user?.providerProfile?.boostExpiresAt && new Date(user.providerProfile.boostExpiresAt) > new Date();
 
+  // Check if stat record exists for selected month
+  const hasStatRecord = monthlyStatsHistory.some(
+    s => s.year === selectedMonth.year && s.month === selectedMonth.month
+  );
+
   // Find stat for selected month
   const activeStat = monthlyStatsHistory.find(
     s => s.year === selectedMonth.year && s.month === selectedMonth.month
@@ -196,15 +201,28 @@ const BoostProfileScreen = ({ navigation }) => {
           <View style={styles.statsRow}>
             <View style={[styles.statCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
               <MaterialCommunityIcons name="eye-outline" size={32} color={colors.accent} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{activeStat.profileViews}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                {hasStatRecord ? activeStat.profileViews : '-'}
+              </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('profile.profileViews', 'Profile Views')}</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
               <MaterialCommunityIcons name="magnify" size={32} color={colors.accent} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{activeStat.searchAppearances}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>
+                {hasStatRecord ? activeStat.searchAppearances : '-'}
+              </Text>
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('profile.searchAppearances', 'Search Appearances')}</Text>
             </View>
           </View>
+          
+          {!hasStatRecord && (
+            <View style={[styles.noDataBanner, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFBEB', borderColor: isDarkMode ? '#475569' : '#F59E0B' }]}>
+              <MaterialCommunityIcons name="information-outline" size={18} color={isDarkMode ? '#FBBF24' : '#B45309'} style={{ marginRight: 8 }} />
+              <Text style={[styles.noDataBannerText, { color: isDarkMode ? '#FBBF24' : '#B45309' }]}>
+                {t('profile.noDataForMonth', 'No data available for this month')}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* History Table */}
@@ -535,6 +553,20 @@ const styles = StyleSheet.create({
   boostActionColumn: { marginTop: 10 },
   boostBtn: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   boostBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  noDataBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  noDataBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
+  },
 });
 
 export default BoostProfileScreen;
