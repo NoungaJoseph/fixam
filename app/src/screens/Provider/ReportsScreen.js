@@ -258,54 +258,68 @@ const ReportsScreen = ({ navigation }) => {
                   </Text>
                 </View>
 
-                {/* Earnings card */}
-                <View style={[styles.modalEarningsCard, { backgroundColor: isDarkMode ? '#0F172A' : '#F0FDFA', borderColor: isDarkMode ? '#1E293B' : '#CCFBF1' }]}>
-                  <Text style={[styles.modalEarningsLabel, { color: colors.accent }]}>{t('profile.earnings', 'Total Earnings')}</Text>
-                  <Text style={[styles.modalEarningsValue, { color: isDarkMode ? '#FFF' : '#0F766E' }]}>
-                    {selectedReportForModal.earnings.toLocaleString()} FCFA
-                  </Text>
-                </View>
-
-                {/* Stats grid */}
-                <Text style={[styles.sectionHeading, { color: colors.text }]}>{t('home.performanceStats', 'Performance Stats')}</Text>
-                
-                <View style={styles.modalStatsGrid}>
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="eye-outline" size={24} color="#3B82F6" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.views}</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.profileViews', 'Profile Views')}</Text>
+                {selectedReportForModal.views === 0 && 
+                 selectedReportForModal.searches === 0 && 
+                 selectedReportForModal.jobsCompleted === 0 && 
+                 selectedReportForModal.earnings === 0 ? (
+                  <View style={[styles.noDataBox, { borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#D97706" style={{ marginBottom: 12 }} />
+                    <Text style={[styles.noDataText, { color: colors.text }]}>
+                      {t('home.noDataAvailable', 'No data available for this month')}
+                    </Text>
                   </View>
+                ) : (
+                  <>
+                    {/* Earnings card */}
+                    <View style={[styles.modalEarningsCard, { backgroundColor: isDarkMode ? '#0F172A' : '#F0FDFA', borderColor: isDarkMode ? '#1E293B' : '#CCFBF1' }]}>
+                      <Text style={[styles.modalEarningsLabel, { color: colors.accent }]}>{t('profile.earnings', 'Total Earnings')}</Text>
+                      <Text style={[styles.modalEarningsValue, { color: isDarkMode ? '#FFF' : '#0F766E' }]}>
+                        {selectedReportForModal.earnings.toLocaleString()} FCFA
+                      </Text>
+                    </View>
 
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="magnify" size={24} color="#8B5CF6" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.searches}</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.searchAppearances', 'Searches')}</Text>
-                  </View>
+                    {/* Stats grid */}
+                    <Text style={[styles.sectionHeading, { color: colors.text }]}>{t('home.performanceStats', 'Performance Stats')}</Text>
+                    
+                    <View style={styles.modalStatsGrid}>
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="eye-outline" size={24} color="#3B82F6" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.views}</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.profileViews', 'Profile Views')}</Text>
+                      </View>
 
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="briefcase-outline" size={24} color="#F59E0B" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.jobsCompleted}</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.completedJobs', 'Completed Jobs')}</Text>
-                  </View>
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="magnify" size={24} color="#8B5CF6" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.searches}</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.searchAppearances', 'Searches')}</Text>
+                      </View>
 
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="star-outline" size={24} color="#10B981" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.rating).toFixed(1)} / 5</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.rating', 'Avg Rating')}</Text>
-                  </View>
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="briefcase-outline" size={24} color="#F59E0B" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.jobsCompleted}</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.completedJobs', 'Completed Jobs')}</Text>
+                      </View>
 
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="check-circle-outline" size={24} color="#EF4444" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.successRate).toFixed(0)}%</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.successRate', 'Success Rate')}</Text>
-                  </View>
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="star-outline" size={24} color="#10B981" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.rating).toFixed(1)} / 5</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.rating', 'Avg Rating')}</Text>
+                      </View>
 
-                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
-                    <MaterialCommunityIcons name="database-outline" size={24} color="#EC4899" style={{ marginBottom: 6 }} />
-                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.coinsPurchased}</Text>
-                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.coinsPurchased', 'Coins Purchased')}</Text>
-                  </View>
-                </View>
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="check-circle-outline" size={24} color="#EF4444" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.successRate).toFixed(0)}%</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.successRate', 'Success Rate')}</Text>
+                      </View>
+
+                      <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                        <MaterialCommunityIcons name="database-outline" size={24} color="#EC4899" style={{ marginBottom: 6 }} />
+                        <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.coinsPurchased}</Text>
+                        <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.coinsPurchased', 'Coins Purchased')}</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
 
                 {/* Close Button */}
                 <TouchableOpacity 
@@ -539,6 +553,20 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  noDataBox: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginVertical: 20,
+  },
+  noDataText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 
