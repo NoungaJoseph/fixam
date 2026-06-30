@@ -10,6 +10,15 @@ import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
 
+const monthNamesEn = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const monthNamesFr = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
+
 const ReportsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t, language } = useLanguage();
@@ -19,15 +28,6 @@ const ReportsScreen = ({ navigation }) => {
   const [generating, setGenerating] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  const monthNamesEn = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  const monthNamesFr = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-  ];
 
   const isFr = language?.startsWith('fr');
   const monthNames = isFr ? monthNamesFr : monthNamesEn;
@@ -56,12 +56,13 @@ const ReportsScreen = ({ navigation }) => {
   useEffect(() => {
     const now = new Date();
     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const names = language?.startsWith('fr') ? monthNamesFr : monthNamesEn;
     setSelectedMonth({
       year: prev.getFullYear(),
       month: prev.getMonth() + 1,
-      label: `${monthNames[prev.getMonth()]} ${prev.getFullYear()}`
+      label: `${names[prev.getMonth()]} ${prev.getFullYear()}`
     });
-  }, [language, monthNames]);
+  }, [language]);
 
   // Generate last 12 months for dropdown selection
   const availableMonths = useMemo(() => {
