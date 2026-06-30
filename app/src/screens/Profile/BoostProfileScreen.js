@@ -108,12 +108,16 @@ const BoostProfileScreen = ({ navigation }) => {
     s => s.year === selectedMonth.year && s.month === selectedMonth.month
   ) || { profileViews: 0, searchAppearances: 0 };
 
-  // Generate last 6 months in chronological order for the history table and charts
+  // Generate last 6 months in chronological order for the history table and charts based on selectedMonth
   const getHistoricalStats = () => {
     const list = [];
     const names = isFr ? monthNamesFr : monthNamesEn;
+    
+    // Create target Date relative to selected month
+    const targetDate = new Date(selectedMonth.year, selectedMonth.month - 1, 1);
+    
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const d = new Date(targetDate.getFullYear(), targetDate.getMonth() - i, 1);
       const mYear = d.getFullYear();
       const mMonth = d.getMonth() + 1;
       

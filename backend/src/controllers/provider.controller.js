@@ -790,6 +790,16 @@ const generateProviderReport = async (req, res, next) => {
     });
     const coinsPurchased = coinPurchases._sum.coins || 0;
 
+    if (
+      monthlyStats.profileViews === 0 &&
+      monthlyStats.searchAppearances === 0 &&
+      totalJobsCount === 0 &&
+      totalEarnings === 0 &&
+      coinsPurchased === 0
+    ) {
+      return res.status(400).json({ success: false, message: 'No data available for this month' });
+    }
+
     const report = await prisma.providerReport.create({
       data: {
         providerId: profile.id,
