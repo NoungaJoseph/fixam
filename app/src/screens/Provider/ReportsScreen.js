@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Platform
+  ActivityIndicator, Alert, Modal, Platform
 } from 'react-native';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,16 +9,6 @@ import { useTheme } from '../../context/ThemeContext';
 import { CustomHeader } from '../../navigation/NavigationComponents';
 import { useLanguage } from '../../context/LanguageContext';
 import api from '../../services/api';
-
-// Safe imports with fallback in case native modules are not linked/found in the dev client
-let Print;
-let Sharing;
-try {
-  Print = require('expo-print');
-  Sharing = require('expo-sharing');
-} catch (error) {
-  console.log('ExpoPrint/Sharing modules are not available natively', error.message);
-}
 
 const ReportsScreen = ({ navigation }) => {
   const { colors, isDarkMode } = useTheme();
@@ -29,7 +19,7 @@ const ReportsScreen = ({ navigation }) => {
   const [generating, setGenerating] = useState(false);
   const [selectedMonthToGenerate, setSelectedMonthToGenerate] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [expandedReportId, setExpandedReportId] = useState(null);
+  const [selectedReportForModal, setSelectedReportForModal] = useState(null);
 
   const monthNamesEn = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -123,177 +113,6 @@ const ReportsScreen = ({ navigation }) => {
     }
   };
 
-  const handleDownload = async (report) => {
-    const monthName = monthNames[report.month - 1];
-    const reportLabel = `${monthName} ${report.year}`;
-
-    try {
-      if (!Print || !Print.printToFileAsync) {
-        throw new Error('ExpoPrint native module is not available');
-      }
-
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Fixam Provider Performance Report</title>
-          <style>
-            body {
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-              color: #333;
-              padding: 40px;
-              line-height: 1.6;
-            }
-            .header {
-              text-align: center;
-              border-bottom: 3px solid #0D9488;
-              padding-bottom: 20px;
-              margin-bottom: 30px;
-            }
-            .logo {
-              font-size: 32px;
-              font-weight: 800;
-              color: #0D9488;
-            }
-            .subtitle {
-              font-size: 16px;
-              color: #666;
-              margin-top: 5px;
-            }
-            .title {
-              font-size: 24px;
-              font-weight: 700;
-              margin-top: 20px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            }
-            .section-title {
-              font-size: 18px;
-              font-weight: 700;
-              color: #0D9488;
-              border-bottom: 1px solid #ddd;
-              padding-bottom: 8px;
-              margin-top: 30px;
-              margin-bottom: 15px;
-            }
-            .stats-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 15px;
-              margin-bottom: 30px;
-            }
-            .stat-card {
-              background-color: #f9f9f9;
-              border: 1px solid #eaeaea;
-              border-radius: 8px;
-              padding: 15px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            }
-            .stat-label {
-              font-size: 12px;
-              text-transform: uppercase;
-              color: #888;
-              font-weight: 700;
-              margin-bottom: 5px;
-            }
-            .stat-value {
-              font-size: 20px;
-              font-weight: 800;
-              color: #222;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 60px;
-              font-size: 12px;
-              color: #999;
-              border-top: 1px solid #eee;
-              padding-top: 20px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo">FIXAM</div>
-            <div class="subtitle">Official Service Provider Statement</div>
-            <div class="title">Performance & Earnings Report</div>
-            <div style="font-size: 14px; color: #444; margin-top: 8px; font-weight: 700;">Period: ${reportLabel}</div>
-          </div>
-
-          <div class="section-title">Performance Summary</div>
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Profile Views</div>
-              <div class="stat-value">${report.views}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Search Appearances</div>
-              <div class="stat-value">${report.searches}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Completed Jobs</div>
-              <div class="stat-value">${report.jobsCompleted}</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Rating</div>
-              <div class="stat-value">${Number(report.rating).toFixed(1)} / 5.0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Success Rate</div>
-              <div class="stat-value">${Number(report.successRate).toFixed(0)}%</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Coins Purchased</div>
-              <div class="stat-value">${report.coinsPurchased} Coins</div>
-            </div>
-          </div>
-
-          <div class="section-title">Financial Summary</div>
-          <div class="stats-grid" style="grid-template-columns: 1fr;">
-            <div class="stat-card" style="background-color: #f0fdfa; border-color: #99f6e4;">
-              <div class="stat-label" style="color: #0d9488;">Total Earnings</div>
-              <div class="stat-value" style="color: #0f766e; font-size: 26px;">${report.earnings.toLocaleString()} FCFA</div>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>Generated on ${new Date().toLocaleDateString()} via the Fixam App.</p>
-            <p>&copy; ${new Date().getFullYear()} Fixam. All rights reserved.</p>
-          </div>
-        </body>
-        </html>
-      `;
-
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      
-      if (Sharing && Sharing.shareAsync) {
-        await Sharing.shareAsync(uri);
-      } else {
-        Alert.alert(
-          t('home.reportDownloaded', 'Report Exported'),
-          t('home.reportSavedLocal', `The report PDF has been saved at: ${uri}`)
-        );
-      }
-    } catch (e) {
-      console.log('PDF Generation failed or native module unavailable, showing fallback alert', e.message);
-      
-      const summaryText = `
-Profile Views: ${report.views}
-Search Appearances: ${report.searches}
-Completed Jobs: ${report.jobsCompleted}
-Total Earnings: ${report.earnings.toLocaleString()} FCFA
-Rating: ${Number(report.rating).toFixed(1)} / 5.0
-Success Rate: ${Number(report.successRate).toFixed(0)}%
-Coins Purchased: ${report.coinsPurchased} Coins
-      `.trim();
-
-      Alert.alert(
-        `${t('home.reports', 'Report')} - ${reportLabel}`,
-        `${t('home.reportSaved', 'Your report has been successfully compiled:')}\n\n${summaryText}`
-      );
-    }
-  };
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <CustomHeader navigation={navigation} title={t('home.reports')} colors={colors} />
@@ -301,7 +120,7 @@ Coins Purchased: ${report.coinsPurchased} Coins
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
         <Text style={[styles.title, { color: colors.text }]}>{t('home.earningsReports', 'Earnings & Stats Reports')}</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {t('home.reportsSubtitle', 'Generate and export your monthly financial statements & performance stats.')}
+          {t('home.reportsSubtitle', 'Generate and view your monthly performance statements.')}
         </Text>
 
         {/* Generate Reports Section */}
@@ -382,18 +201,14 @@ Coins Purchased: ${report.coinsPurchased} Coins
             </View>
           ) : (
             reports.map((report) => {
-              const isExpanded = expandedReportId === report.id;
               const monthName = monthNames[report.month - 1];
               const reportLabel = `${monthName} ${report.year}`;
 
               return (
                 <View key={report.id} style={[styles.reportCard, { backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC', borderColor: colors.border }]}>
-                  <TouchableOpacity 
-                    style={styles.reportCardHeader} 
-                    onPress={() => setExpandedReportId(isExpanded ? null : report.id)}
-                  >
+                  <View style={styles.reportCardHeader}>
                     <View style={styles.iconWrap}>
-                      <MaterialCommunityIcons name="file-pdf-box" size={28} color="#EF4444" />
+                      <MaterialCommunityIcons name="file-document-edit-outline" size={26} color={colors.accent} />
                     </View>
                     <View style={styles.reportInfo}>
                       <Text style={[styles.monthText, { color: colors.text }]}>{reportLabel}</Text>
@@ -401,63 +216,109 @@ Coins Purchased: ${report.coinsPurchased} Coins
                         {report.jobsCompleted} Jobs • {report.earnings.toLocaleString()} FCFA
                       </Text>
                     </View>
-                    <MaterialCommunityIcons 
-                      name={isExpanded ? "chevron-up" : "chevron-down"} 
-                      size={24} 
-                      color={colors.textSecondary} 
-                    />
-                  </TouchableOpacity>
-
-                  {isExpanded && (
-                    <View style={[styles.reportDetails, { borderTopColor: colors.border }]}>
-                      {/* Grid of stats */}
-                      <View style={styles.statsGrid}>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.profileViews', 'Views')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{report.views}</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.searchAppearances', 'Searches')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{report.searches}</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.completedJobs', 'Completed Jobs')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{report.jobsCompleted}</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.earnings', 'Earnings')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text, fontSize: 13 }]}>{report.earnings.toLocaleString()} FCFA</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.rating', 'Rating')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{Number(report.rating).toFixed(1)} / 5</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.successRate', 'Success Rate')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{Number(report.successRate).toFixed(0)}%</Text>
-                        </View>
-                        <View style={styles.gridItem}>
-                          <Text style={[styles.gridLabel, { color: colors.textSecondary }]}>{t('profile.coinsPurchased', 'Coins Bought')}</Text>
-                          <Text style={[styles.gridValue, { color: colors.text }]}>{report.coinsPurchased}</Text>
-                        </View>
-                      </View>
-
-                      {/* Export/Download Button */}
-                      <TouchableOpacity 
-                        style={[styles.exportBtn, { backgroundColor: colors.accent }]}
-                        onPress={() => handleDownload(report)}
-                      >
-                        <Text style={styles.exportBtnText}>{t('home.exportReport', 'Export Report')}</Text>
-                        <MaterialCommunityIcons name="export" size={18} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                    <TouchableOpacity 
+                      style={[styles.viewReportBtn, { backgroundColor: colors.accent }]}
+                      onPress={() => setSelectedReportForModal(report)}
+                    >
+                      <Text style={styles.viewReportBtnText}>{t('home.viewReport', 'View')}</Text>
+                      <MaterialCommunityIcons name="eye" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               );
             })
           )}
         </View>
       </ScrollView>
+
+      {/* View Report Detail Modal */}
+      <Modal visible={!!selectedReportForModal} transparent animationType="slide" onRequestClose={() => setSelectedReportForModal(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}>
+            {/* Header */}
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <View style={styles.modalHeaderTitleBox}>
+                <MaterialCommunityIcons name="file-document-outline" size={24} color={colors.accent} />
+                <Text style={[styles.modalHeaderTitle, { color: colors.text }]}>
+                  {selectedReportForModal ? `${monthNames[selectedReportForModal.month - 1]} ${selectedReportForModal.year}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedReportForModal(null)} style={styles.closeHeaderBtn}>
+                <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedReportForModal && (
+              <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+                {/* Logo & Subtitle statement */}
+                <View style={styles.statementMeta}>
+                  <Text style={[styles.statementMetaLogo, { color: colors.accent }]}>FIXAM STATEMENT</Text>
+                  <Text style={[styles.statementMetaDesc, { color: colors.textSecondary }]}>
+                    Official performance breakdown for the month of {monthNames[selectedReportForModal.month - 1]} {selectedReportForModal.year}.
+                  </Text>
+                </View>
+
+                {/* Earnings card */}
+                <View style={[styles.modalEarningsCard, { backgroundColor: isDarkMode ? '#0F172A' : '#F0FDFA', borderColor: isDarkMode ? '#1E293B' : '#CCFBF1' }]}>
+                  <Text style={[styles.modalEarningsLabel, { color: colors.accent }]}>{t('profile.earnings', 'Total Earnings')}</Text>
+                  <Text style={[styles.modalEarningsValue, { color: isDarkMode ? '#FFF' : '#0F766E' }]}>
+                    {selectedReportForModal.earnings.toLocaleString()} FCFA
+                  </Text>
+                </View>
+
+                {/* Stats grid */}
+                <Text style={[styles.sectionHeading, { color: colors.text }]}>{t('home.performanceStats', 'Performance Stats')}</Text>
+                
+                <View style={styles.modalStatsGrid}>
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="eye-outline" size={24} color="#3B82F6" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.views}</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.profileViews', 'Profile Views')}</Text>
+                  </View>
+
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="magnify" size={24} color="#8B5CF6" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.searches}</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.searchAppearances', 'Searches')}</Text>
+                  </View>
+
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="briefcase-outline" size={24} color="#F59E0B" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.jobsCompleted}</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.completedJobs', 'Completed Jobs')}</Text>
+                  </View>
+
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="star-outline" size={24} color="#10B981" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.rating).toFixed(1)} / 5</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.rating', 'Avg Rating')}</Text>
+                  </View>
+
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="check-circle-outline" size={24} color="#EF4444" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{Number(selectedReportForModal.successRate).toFixed(0)}%</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.successRate', 'Success Rate')}</Text>
+                  </View>
+
+                  <View style={[styles.modalStatCell, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC', borderColor: colors.border }]}>
+                    <MaterialCommunityIcons name="database-outline" size={24} color="#EC4899" style={{ marginBottom: 6 }} />
+                    <Text style={[styles.modalStatValue, { color: colors.text }]}>{selectedReportForModal.coinsPurchased}</Text>
+                    <Text style={[styles.modalStatLabel, { color: colors.textSecondary }]}>{t('profile.coinsPurchased', 'Coins Purchased')}</Text>
+                  </View>
+                </View>
+
+                {/* Close Button */}
+                <TouchableOpacity 
+                  style={[styles.closeModalBtn, { backgroundColor: colors.accent }]}
+                  onPress={() => setSelectedReportForModal(null)}
+                >
+                  <Text style={styles.closeModalBtnText}>{t('common.close', 'Close')}</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -548,7 +409,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(20, 184, 166, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -556,44 +417,128 @@ const styles = StyleSheet.create({
   reportInfo: { flex: 1 },
   monthText: { fontSize: 15, fontWeight: '800', marginBottom: 2 },
   statsSummaryText: { fontSize: 12, fontWeight: '600' },
-  reportDetails: {
-    padding: 16,
-    borderTopWidth: 1,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
-  gridItem: {
-    width: '48%',
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-  },
-  gridLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  gridValue: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  exportBtn: {
-    height: 44,
+  viewReportBtn: {
+    height: 36,
+    paddingHorizontal: 14,
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+  },
+  viewReportBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  
+  // Modal layout
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '85%',
+    borderTopWidth: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    marginBottom: 15,
+  },
+  modalHeaderTitleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  exportBtnText: {
-    color: '#FFF',
+  modalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  closeHeaderBtn: {
+    padding: 4,
+  },
+  modalScrollContent: {
+    paddingBottom: 20,
+  },
+  statementMeta: {
+    marginBottom: 16,
+  },
+  statementMetaLogo: {
+    fontSize: 12,
     fontWeight: '800',
-    fontSize: 14,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  statementMetaDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalEarningsCard: {
+    padding: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalEarningsLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  modalEarningsValue: {
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  sectionHeading: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  modalStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 28,
+  },
+  modalStatCell: {
+    width: '48%',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    alignItems: 'center',
+  },
+  modalStatValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  modalStatLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  closeModalBtn: {
+    height: 50,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  closeModalBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
 
