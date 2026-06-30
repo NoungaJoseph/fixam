@@ -22,4 +22,8 @@ router.post('/status', protect, authorize('PROVIDER'), providerController.update
 router.put('/profile', protect, authorize('PROVIDER'), validate(updateProviderProfileSchema), providerController.updateProviderProfile);
 router.post('/verify', protect, authorize('PROVIDER', 'CLIENT'), providerController.uploadVerificationDocs);
 
+// Report routes
+router.get('/reports/all', protect, authorize('PROVIDER'), providerController.getProviderReports);
+router.post('/reports/generate', protect, authorize('PROVIDER'), providerController.generateProviderReport);
+
 module.exports = router;
