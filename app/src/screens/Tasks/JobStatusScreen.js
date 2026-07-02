@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator, TextInput, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +33,7 @@ const JobStatusScreen = ({ route, navigation }) => {
   const { t, locale } = useLanguage();
   const { fetchAppData } = useAppContext();
   const [job, setJob] = useState(route.params?.job || {});
+  const [selectingAssignmentId, setSelectingAssignmentId] = useState(null);
 
   const normalizedStatus = String(job.status || 'PENDING').toUpperCase();
   const displayStatus = translateStatus(normalizedStatus);
@@ -48,6 +49,69 @@ const JobStatusScreen = ({ route, navigation }) => {
   const currentStep = Math.max(0, steps.indexOf(normalizedStatus));
   const hasLocationCoords = job.latitude != null && job.longitude != null;
   const canViewLocation = Boolean(job.selectedAssignmentId && hasLocationCoords);
+
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  const updateStatus = async (nextStatus) => {
+    try {
+      setUpdatingStatus(true);
+      const endpoint = isBooking ? `/bookings/${job.id}/status` : `/jobs/${job.id}/status`;
+      const res = isBooking
+        ? await api.patch(endpoint, { status: nextStatus })
+        : await api.put(endpoint, { status: nextStatus });
+        
+      if (res.data?.data) {
+        setJob(res.data.data);
+      } else {
+        setJob(prev => ({ ...prev, status: nextStatus }));
+      }
+      await fetchAppData?.(true);
+      
+      if (nextStatus === 'ACCEPTED') {
+        Alert.alert(t('common.success'), t('booking.bookings.counterAcceptedSuccess', 'Counter offer accepted successfully.'));
+      } else if (nextStatus === 'REJECTED' || nextStatus === 'CANCELLED') {
+        Alert.alert(t('common.success'), t('booking.bookings.bookingCancelledSuccess', 'Booking request cancelled.'));
+      }
+    } catch (err) {
+      Alert.alert(t('common.error'), translateApiError(err, t, 'jobs.updateFailedClient'));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const [counterModalVisible, setCounterModalVisible] = useState(false);
+  const [counterBudget, setCounterBudget] = useState('');
+  const [counterNotes, setCounterNotes] = useState('');
+
+  const handleOpenProviderCounterModal = () => {
+    setCounterBudget(String(job.budget || ''));
+    setCounterNotes('');
+    setCounterModalVisible(true);
+  };
+
+  const submitCounterOffer = async () => {
+    if (!counterBudget || isNaN(Number(counterBudget)) || Number(counterBudget) <= 0) {
+      Alert.alert(t('common.error'), t('jobs.invalidBudget', 'Please enter a valid budget greater than 0'));
+      return;
+    }
+    try {
+      setUpdatingStatus(true);
+      const res = await api.post(`/bookings/${job.id}/counter`, {
+        counterBudget: Number(counterBudget),
+        counterNotes: counterNotes
+      });
+      setCounterModalVisible(false);
+      if (res.data?.data) {
+        setJob(res.data.data);
+      }
+      Alert.alert(t('common.success'), t('booking.bookings.counterOfferSent', 'Counter-offer sent successfully.'));
+      await fetchAppData?.(true);
+    } catch (error) {
+      Alert.alert(t('common.error'), translateApiError(error, t, 'jobs.updateFailedClient'));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   React.useEffect(() => {
     if (!route.params?.job?.id) return;
@@ -89,15 +153,19 @@ const JobStatusScreen = ({ route, navigation }) => {
         {
           text: t('common.confirm'),
           onPress: async () => {
+            setSelectingAssignmentId(assignment.id);
             try {
               const res = await api.post(`/jobs/${job.id}/applications/${assignment.id}/select`);
               setJob(res.data.data);
+              await fetchAppData?.(true);
               Alert.alert(t('jobs.providerSelected'), t('jobs.providerSelectedBody', { name: providerName }), [
                 { text: t('common.close') },
                 { text: t('jobs.trackProvider'), onPress: () => navigation.navigate('LiveTaskMap', { task: res.data.data }) }
               ]);
             } catch (error) {
               Alert.alert(t('jobs.couldNotChooseProvider'), translateApiError(error, t));
+            } finally {
+              setSelectingAssignmentId(null);
             }
           }
         }
@@ -199,8 +267,16 @@ const JobStatusScreen = ({ route, navigation }) => {
                       <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.border, flex: 1 }]} onPress={() => navigation.navigate('ProviderProfile', { provider })}>
                         <Text style={[styles.outlineBtnText, { color: colors.text }]}>{t('profile.viewProfile')}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.solidBtn, { backgroundColor: colors.accent, flex: 1.5 }]} onPress={() => chooseProvider(assignment)}>
-                        <Text style={styles.solidBtnText}>{t('jobs.hireNow')}</Text>
+                      <TouchableOpacity 
+                        style={[styles.solidBtn, { backgroundColor: colors.accent, flex: 1.5 }]} 
+                        onPress={() => chooseProvider(assignment)}
+                        disabled={selectingAssignmentId !== null}
+                      >
+                        {selectingAssignmentId === assignment.id ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <Text style={styles.solidBtnText}>{t('jobs.hireNow')}</Text>
+                        )}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -236,6 +312,78 @@ const JobStatusScreen = ({ route, navigation }) => {
             <Detail icon="text-box-outline" label={t('jobs.description')} value={(isBooking ? job.notes : job.description) || t('jobs.noAdditionalDetails')} colors={colors} isDarkMode={isDarkMode} />
           </View>
 
+          {user?.role === 'CLIENT' && isBooking && normalizedStatus === 'COUNTER_PROPOSED' && (
+            <View style={[styles.counterCard, { backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : '#F5F3FF', borderColor: '#8B5CF6' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <MaterialCommunityIcons name="cash-multiple" size={24} color="#8B5CF6" />
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#8B5CF6' }}>
+                  {t('booking.bookings.counterOfferReceived', 'Counter-Offer Received!')}
+                </Text>
+              </View>
+              
+              <Text style={[styles.counterValue, { color: colors.text }]}>
+                {Number(job.counterBudget || 0).toLocaleString()} {getCurrencyForUser(job.country || user?.country || 'Cameroon')}
+              </Text>
+
+              {job.counterNotes ? (
+                <Text style={[styles.counterNotes, { color: colors.textSecondary }]}>
+                  "{job.counterNotes}"
+                </Text>
+              ) : null}
+
+              <View style={styles.counterActionRow}>
+                <TouchableOpacity
+                  style={[styles.counterDeclineBtn, { borderColor: '#EF4444' }]}
+                  onPress={() => updateStatus('REJECTED')}
+                  disabled={updatingStatus}
+                >
+                  <Text style={{ color: '#EF4444', fontWeight: '800', fontSize: 13 }}>
+                    {t('common.decline', 'Decline')}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.counterAcceptBtn, { backgroundColor: '#8B5CF6' }]}
+                  onPress={() => updateStatus('ACCEPTED')}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 13 }}>
+                      {t('common.accept', 'Accept')}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {user?.role === 'PROVIDER' && isBooking && normalizedStatus === 'COUNTER_PROPOSED' && (
+            <View style={[styles.counterCard, { backgroundColor: isDarkMode ? 'rgba(139, 92, 246, 0.08)' : '#F5F3FF', borderColor: '#8B5CF6' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <MaterialCommunityIcons name="cash-multiple" size={24} color="#8B5CF6" />
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#8B5CF6' }}>
+                  {t('booking.bookings.yourProposedCounter', 'Your Proposed Counter:')}
+                </Text>
+              </View>
+              
+              <Text style={[styles.counterValue, { color: colors.text }]}>
+                {Number(job.counterBudget || 0).toLocaleString()} {getCurrencyForUser(job.country || user?.country || 'Cameroon')}
+              </Text>
+
+              {job.counterNotes ? (
+                <Text style={[styles.counterNotes, { color: colors.textSecondary }]}>
+                  "{job.counterNotes}"
+                </Text>
+              ) : null}
+              
+              <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '700', marginTop: 10 }}>
+                {t('booking.bookings.waitingForClient', 'Waiting for client to accept or decline...')}
+              </Text>
+            </View>
+          )}
+
           <View style={[styles.costCard, { backgroundColor: colors.accent }]}>
             <Text style={styles.costLabel}>{t('jobs.totalEstimatedBudget')}</Text>
             <Text style={styles.costValue}>{Number(job.budget || 0).toLocaleString()} {getCurrencyForUser(job.country || user?.country || 'Cameroon')}</Text>
@@ -249,7 +397,7 @@ const JobStatusScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
 
-            {user?.role === 'CLIENT' && assignedProvider && normalizedStatus !== 'COMPLETED' && (
+            {user?.role === 'CLIENT' && assignedProvider && ['ACCEPTED', 'IN_PROGRESS'].includes(normalizedStatus) && (
               <TouchableOpacity
                 style={[styles.mainActionBtn, { backgroundColor: colors.success }]}
                 onPress={() => Alert.alert(
@@ -261,16 +409,14 @@ const JobStatusScreen = ({ route, navigation }) => {
                       text: t('jobs.completeAndRate'),
                       onPress: async () => {
                         try {
-                          const endpoint = isBooking ? `/bookings/${job.id}/status` : `/jobs/${job.id}/status`;
-                          await api.put(endpoint, { status: 'COMPLETED' });
-                          await fetchAppData?.(true);
+                          await updateStatus('COMPLETED');
                           navigation.navigate('Rating', {
                             jobId: job.id,
                             targetUser: assignedProviderUser,
                             mode: 'rate_provider',
                           });
                         } catch (err) {
-                          Alert.alert(t('common.error'), translateApiError(err, t, 'jobs.updateFailedClient'));
+                          // Handled by helper
                         }
                       }
                     }
@@ -282,7 +428,7 @@ const JobStatusScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
 
-            {job.status === 'PENDING' && (
+            {user?.role === 'CLIENT' && job.status === 'PENDING' && (
               <TouchableOpacity 
                 style={[styles.cancelBtn, { borderColor: colors.error }]}
                 onPress={() => {
@@ -296,12 +442,9 @@ const JobStatusScreen = ({ route, navigation }) => {
                         style: 'destructive',
                         onPress: async () => {
                           try {
-                            const endpoint = isBooking ? `/bookings/${job.id}/status` : `/jobs/${job.id}/status`;
-                            await api.patch(endpoint, { status: 'CANCELLED' });
-                            setJob({ ...job, status: 'CANCELLED' });
-                            Alert.alert(t('common.success'), t('jobs.cancelledSuccess', 'Task cancelled successfully.'));
+                            await updateStatus('CANCELLED');
                           } catch (err) {
-                            Alert.alert(t('common.error'), translateApiError(err, t, 'jobs.updateFailedClient'));
+                            // Handled by helper
                           }
                         }
                       }
@@ -312,9 +455,111 @@ const JobStatusScreen = ({ route, navigation }) => {
                 <Text style={[styles.cancelBtnText, { color: colors.error }]}>{t('jobs.cancelTaskRequest')}</Text>
               </TouchableOpacity>
             )}
+
+            {user?.role === 'PROVIDER' && isBooking && normalizedStatus === 'PENDING' && (
+              <View style={{ flexDirection: 'row', width: '100%', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { borderColor: '#EF4444', flex: 1 }]}
+                  disabled={updatingStatus}
+                  onPress={() => Alert.alert(
+                    t('jobs.reject'),
+                    t('jobs.rejectConfirm', 'Are you sure you want to decline this booking request?'),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('jobs.reject'), onPress: () => updateStatus('REJECTED'), style: 'destructive' }
+                    ]
+                  )}
+                >
+                  <Text style={[styles.cancelBtnText, { color: '#EF4444' }]}>{t('jobs.reject')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { borderColor: '#8B5CF6', flex: 1 }]}
+                  disabled={updatingStatus}
+                  onPress={handleOpenProviderCounterModal}
+                >
+                  <Text style={[styles.cancelBtnText, { color: '#8B5CF6' }]}>{t('booking.bookings.counter', 'Counter')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.mainActionBtn, { backgroundColor: colors.accent, flex: 1.5 }]}
+                  disabled={updatingStatus}
+                  onPress={() => updateStatus('ACCEPTED')}
+                >
+                  {updatingStatus ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.mainActionText}>{t('jobs.accept')}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={counterModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setCounterModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('booking.bookings.proposeCounter', 'Propose Counter-Offer')}</Text>
+              <TouchableOpacity onPress={() => setCounterModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>{t('booking.bookings.proposedBudget', 'Proposed Budget')}</Text>
+              <View style={[styles.modalInputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <MaterialCommunityIcons name="cash" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.modalTextInput, { color: colors.text }]}
+                  keyboardType="numeric"
+                  value={counterBudget}
+                  onChangeText={setCounterBudget}
+                  placeholder="e.g. 15000"
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 16 }]}>{t('booking.bookings.explanation', 'Message / Explanation')}</Text>
+              <View style={[styles.modalInputContainer, { borderColor: colors.border, backgroundColor: colors.background, height: 'auto', minHeight: 90, alignItems: 'flex-start', paddingTop: 8, marginBottom: 24 }]}>
+                <TextInput
+                  style={[styles.modalTextInput, { color: colors.text, height: '100%', textAlignVertical: 'top' }]}
+                  multiline
+                  numberOfLines={3}
+                  value={counterNotes}
+                  onChangeText={setCounterNotes}
+                  placeholder={t('booking.bookings.counterNotesPlaceholder', 'Why are you countering? (e.g. materials needed)')}
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={[styles.modalCancelBtn, { borderColor: colors.border }]} onPress={() => setCounterModalVisible(false)}>
+                <Text style={[styles.modalCancelBtnText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitBtn, { backgroundColor: colors.accent }]}
+                onPress={submitCounterOffer}
+                disabled={updatingStatus}
+              >
+                {updatingStatus ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.modalSubmitBtnText}>{t('common.submit', 'Submit')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -395,6 +640,24 @@ const styles = StyleSheet.create({
   secondaryActionText: { fontSize: 16, fontWeight: '800' },
   cancelBtn: { height: 60, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 2 },
   cancelBtnText: { fontSize: 16, fontWeight: '800' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { width: '90%', maxWidth: 400, borderRadius: 12, borderWidth: 1, padding: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  modalTitle: { fontSize: 18, fontWeight: '900' },
+  modalBody: { marginBottom: 20 },
+  modalInputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, height: 46 },
+  modalTextInput: { flex: 1, fontSize: 14, fontWeight: '600', padding: 0 },
+  modalFooter: { flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  modalSubmitBtn: { minWidth: 100, height: 42, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  modalSubmitBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  modalCancelBtn: { minWidth: 100, height: 42, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  modalCancelBtnText: { fontSize: 13, fontWeight: '900' },
+  counterCard: { marginHorizontal: 25, padding: 20, borderRadius: 8, borderWidth: 1.5, marginBottom: 20 },
+  counterValue: { fontSize: 24, fontWeight: '950', marginBottom: 4 },
+  counterNotes: { fontSize: 13, fontWeight: '600', fontStyle: 'italic', marginBottom: 16 },
+  counterActionRow: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 12, alignItems: 'center' },
+  counterDeclineBtn: { flex: 1, height: 44, borderRadius: 8, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  counterAcceptBtn: { flex: 1.5, height: 44, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 });
 
 export default JobStatusScreen;
