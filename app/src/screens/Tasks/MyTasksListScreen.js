@@ -141,7 +141,7 @@ const MyTasksListScreen = ({ navigation }) => {
       } else {
         await api.put(`/jobs/${jobId}/status`, { status });
       }
-      // AppContext will automatically catch the socket event and refresh the data
+      await fetchAppData(true);
     } catch (error) {
       Alert.alert(t('common.error'), translateApiError(error, t, 'jobs.updateFailed'));
     } finally {

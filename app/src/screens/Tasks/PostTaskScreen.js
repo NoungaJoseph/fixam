@@ -431,7 +431,7 @@ const PostTaskScreen = ({ route, navigation }) => {
       } else {
         await api.post('/jobs', payload);
       }
-      await fetchAppData?.();
+      await fetchAppData?.(true);
       setStep('success');
     } catch (error) {
       Alert.alert(t('common.error'), error.response?.data?.message || t('jobs.publishFailed'));
@@ -443,7 +443,7 @@ const PostTaskScreen = ({ route, navigation }) => {
   const updateTaskStatus = async (job, status) => {
     try {
       await api.put(`/jobs/${job.id}/status`, { status });
-      await fetchAppData?.();
+      await fetchAppData?.(true);
       Alert.alert(t('jobs.updated'), status === 'COMPLETED' ? t('jobs.completedBody') : t('jobs.updatedBody'));
     } catch (error) {
       Alert.alert(t('common.error'), error.response?.data?.message || t('jobs.updateFailedClient'));

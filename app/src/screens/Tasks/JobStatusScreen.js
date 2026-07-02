@@ -9,6 +9,7 @@ import api, { getMediaUrl } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateStatus } from '../../i18n/translate';
 import UserAvatar from '../../components/UserAvatar';
+import { useAppContext } from '../../context/AppContext';
 import { translateApiError } from '../../utils/eligibilityMessages';
 
 const getProviderFromAssignment = (assignment) => {
@@ -30,6 +31,7 @@ const JobStatusScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const { user } = useAuth();
   const { t, locale } = useLanguage();
+  const { fetchAppData } = useAppContext();
   const [job, setJob] = useState(route.params?.job || {});
 
   const normalizedStatus = String(job.status || 'PENDING').toUpperCase();
@@ -261,6 +263,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                         try {
                           const endpoint = isBooking ? `/bookings/${job.id}/status` : `/jobs/${job.id}/status`;
                           await api.put(endpoint, { status: 'COMPLETED' });
+                          await fetchAppData?.(true);
                           navigation.navigate('Rating', {
                             jobId: job.id,
                             targetUser: assignedProviderUser,
