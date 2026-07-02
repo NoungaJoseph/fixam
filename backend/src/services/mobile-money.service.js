@@ -8,14 +8,15 @@ async function requestToPayWithKora({
   redirectUrl,
   notificationUrl,
   name = 'Fixam User',
-  email = 'user@fixam.com',
+  email = 'user@fixam.net',
   phone
 }) {
   const formattedPhone = String(phone || '').replace(/\s+/g, '')
     .replace(/-/g, '').replace('+', '')
-  const phoneNumber = formattedPhone.startsWith('237')
-    ? formattedPhone
-    : '237' + formattedPhone
+  
+  const prefixes = ['237', '254', '233', '225', '255', '20', '234']
+  const hasPrefix = prefixes.some(p => formattedPhone.startsWith(p))
+  const phoneNumber = hasPrefix ? formattedPhone : '237' + formattedPhone
 
   // Validate required fields
   if (!amount || amount <= 0) {
@@ -39,7 +40,7 @@ async function requestToPayWithKora({
     redirect_url: redirectUrl,
     customer: {
       name: 'Fixam - ' + (name || 'User'),
-      email: email || 'payments@fixam.com'
+      email: email || 'payments@fixam.net'
     },
     merchant_bears_cost: false,
     mobile_money: {

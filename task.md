@@ -1,0 +1,25 @@
+# Tasks - Multi-Country Implementation
+
+- [x] Database Schema updates
+  - [x] Modify `schema.prisma`
+  - [x] Propose and run Prisma migration (Local Prisma Client generated successfully; remote migration requires user's direct DB connection access)
+- [x] Backend API changes
+  - [x] Modify `src/validators/auth.validator.js`
+  - [x] Modify `src/controllers/auth.controller.js`
+  - [x] Modify `src/controllers/job.controller.js`
+  - [x] Modify `src/controllers/provider.controller.js`
+  - [x] Modify `src/controllers/sports.controller.js`
+  - [x] Modify `src/controllers/payment.controller.js`
+- [x] Mobile App updates
+  - [x] Create `app/src/constants/countries.js`
+  - [x] Modify `app/src/screens/Auth/LoginScreen.js`
+  - [x] Modify `app/src/screens/Auth/RegisterScreen.js`
+  - [x] Modify `app/src/screens/Wallet/TopUpPaymentScreen.js`
+  - [x] Modify `app/src/screens/Home/HomeScreen.js` (Provider filtering is handled dynamically on backend, no frontend changes needed)
+  - [x] Modify `app/src/components/NewsTicker.js`
+- [x] Website changes
+  - [x] Modify `website/src/pages/Auth/Login.tsx`
+  - [x] Modify `website/src/pages/Auth/Register.tsx`
+- [x] Verification
+  - [x] Verify database schema and migration success
+  - [x] Run test queries or check API server status
