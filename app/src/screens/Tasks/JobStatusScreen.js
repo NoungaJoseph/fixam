@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { getCurrencyForUser } from '../../constants/countries';
 import api, { getMediaUrl } from '../../services/api';
 import { useLanguage } from '../../context/LanguageContext';
 import { translateStatus } from '../../i18n/translate';
@@ -186,7 +187,7 @@ const JobStatusScreen = ({ route, navigation }) => {
                         </View>
                         {provider?.rate ? (
                           <Text style={[styles.applicationMeta, { color: colors.accent, marginTop: 4, fontWeight: '800' }]}>
-                            {Number(provider.rate).toLocaleString()} FCFA
+                            {Number(provider.rate).toLocaleString()} {getCurrencyForUser(provider.user?.country || user?.country || 'Cameroon')}
                           </Text>
                         ) : null}
                       </View>
@@ -235,7 +236,7 @@ const JobStatusScreen = ({ route, navigation }) => {
 
           <View style={[styles.costCard, { backgroundColor: colors.accent }]}>
             <Text style={styles.costLabel}>{t('jobs.totalEstimatedBudget')}</Text>
-            <Text style={styles.costValue}>{Number(job.budget || 0).toLocaleString()} XAF</Text>
+            <Text style={styles.costValue}>{Number(job.budget || 0).toLocaleString()} {getCurrencyForUser(job.country || user?.country || 'Cameroon')}</Text>
           </View>
 
           <View style={styles.actions}>
