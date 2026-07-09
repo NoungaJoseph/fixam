@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:1022842332839:android:58389d903e718508c61d82",
         "android_client_info": {
-          "package_name": "com.fixam.app"
+          "package_name": "com.fixam.app.android"
         }
       },
       "oauth_client": [],
