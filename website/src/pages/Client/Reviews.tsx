@@ -1,48 +1,64 @@
 import './Reviews.css';
 import { Icon } from '../../App';
+import { useTranslation } from 'react-i18next';
 
 export default function Reviews() {
-  return (
-    <div className="dash-panel-premium reviews-panel-premium animate-fade-in">
-      <h2>My Service Reviews</h2>
-      <div className="reviews-list-premium">
-        <div className="review-item-premium">
-          <div className="review-header">
-            <div>
-              <h4>Jeff Thomson</h4>
-              <span>Plumbing Service</span>
-            </div>
-            <div className="review-stars-premium">
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <strong>5.0</strong>
-            </div>
-          </div>
-          <p className="review-comment">"Excellent work! Jeff was very professional and fixed the leak in my kitchen pipe quickly. Highly recommended!"</p>
-          <span className="review-date">May 10, 2026</span>
-        </div>
+  const { i18n } = useTranslation();
+  const isFr = i18n.language === 'fr';
 
-        <div className="review-item-premium">
-          <div className="review-header">
-            <div>
-              <h4>Mary Clean</h4>
-              <span>Cleaning Expert</span>
+  const reviewsList = [
+    {
+      reviewer: 'Jeff Thomson',
+      specialty: isFr ? 'Service de Plomberie' : 'Plumbing Service',
+      rating: '5.0',
+      stars: 5,
+      comment: isFr 
+        ? '"Excellent travail! Jeff était très professionnel et a réparé la fuite de ma cuisine rapidement. Hautement recommandé!"' 
+        : '"Excellent work! Jeff was very professional and fixed the leak in my kitchen pipe quickly. Highly recommended!"',
+      date: isFr ? '10 Mai 2026' : 'May 10, 2026'
+    },
+    {
+      reviewer: 'Mary Clean',
+      specialty: isFr ? 'Expert en Nettoyage' : 'Cleaning Expert',
+      rating: '4.8',
+      stars: 5,
+      comment: isFr 
+        ? '"Mary et son équipe ont fait un travail fantastique de nettoyage en profondeur. C\'était impeccable. Seul petit bémol, ils sont arrivés 10 minutes en retard, mais dans l\'ensemble super."' 
+        : '"Mary and her team did a fantastic job deep cleaning my house. It was spotless. Only small issue was they arrived 10 mins late, but overall great."',
+      date: isFr ? '28 Avril 2026' : 'April 28, 2026'
+    }
+  ];
+
+  return (
+    <div className="reviews-page-flat animate-fade-in">
+      <h1 className="reviews-flat-title">
+        {isFr ? 'Mes Avis de Service' : 'My Service Reviews'}
+      </h1>
+      
+      <div className="reviews-flat-list">
+        {reviewsList.map((rev, index) => (
+          <div className="review-flat-item" key={index}>
+            <div className="review-flat-row-1">
+              <h4 className="reviewer-name">{rev.reviewer}</h4>
+              <div className="reviewer-rating">
+                <span className="star-icon">★</span>
+                <strong className="rating-number">{rev.rating}</strong>
+              </div>
             </div>
-            <div className="review-stars-premium">
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <Icon name="star" />
-              <strong>4.8</strong>
+            
+            <div className="review-flat-row-2">
+              {rev.specialty}
+            </div>
+            
+            <p className="review-flat-comment">
+              {rev.comment}
+            </p>
+            
+            <div className="review-flat-row-4">
+              {rev.date}
             </div>
           </div>
-          <p className="review-comment">"Mary and her team did a fantastic job deep cleaning my house. It was spotless. Only small issue was they arrived 10 mins late, but overall great."</p>
-          <span className="review-date">April 28, 2026</span>
-        </div>
+        ))}
       </div>
     </div>
   );

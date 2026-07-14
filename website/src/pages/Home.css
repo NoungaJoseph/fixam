@@ -834,7 +834,7 @@
 
 .trust-card-visual {
   height: 160px;
-  background: #E6FAFA;
+  background: var(--card-bg-1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -883,24 +883,116 @@
   margin: 0;
 }
 
-.testimonials-grid {
+/* Desktop: 3-column testimonials grid */
+.testimonials-grid-desktop {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
 }
 
+/* Mobile carousel wrapper - hidden on desktop */
+.testimonial-carousel-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .testimonials-grid-desktop {
+    display: none !important;
+  }
+  .testimonial-carousel-mobile {
+    display: block !important;
+  }
+}
+
+/* Testimonial Carousel styles */
+.testimonial-carousel-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.testimonial-carousel-track {
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-nav-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.carousel-nav-btn:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15);
+}
+
+.carousel-indicator-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--line);
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.indicator-dot.active {
+  background-color: var(--teal);
+  width: 18px;
+  border-radius: 4px;
+}
+
+@media (max-width: 576px) {
+  .testimonial-carousel-container {
+    gap: 12px;
+  }
+  .carousel-nav-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
+
 .testimonial-card {
   background: var(--surface);
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 2.5rem;
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .testimonial-card:hover {
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   border-left: 4px solid var(--teal);
 }
 
@@ -915,8 +1007,8 @@
 
 .testimonial-card .quote-text {
   font-style: italic;
-  font-size: 0.95rem;
-  color: #374151;
+  font-size: 0.98rem;
+  color: var(--ink);
   line-height: 1.7;
   flex: 1;
   margin-bottom: 1.5rem;
@@ -924,7 +1016,7 @@
 
 .testimonial-divider {
   height: 1px;
-  background: #E5E7EB;
+  background: var(--line);
   margin-bottom: 1.5rem;
 }
 
@@ -933,6 +1025,7 @@
   align-items: center;
   gap: 1rem;
 }
+
 
 .author-avatar {
   width: 44px;
@@ -1128,7 +1221,7 @@
 }
 
 .cta-pill-btn.client:hover {
-  background: #f8fafc;
+  background: var(--soft);
 }
 
 .cta-pill-btn.pro {
@@ -1188,17 +1281,17 @@
  * Top Rated Professionals Premium Cards (App.tsx & Home.tsx)
  * ---------------------------------------------------- */
 .pro-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 1.5rem;
-  justify-content: center;
   max-width: 1200px;
   margin: 0 auto 3rem;
-  padding: 0 1rem;
+  padding: 0 1.5rem;
 }
 
 @media (max-width: 768px) {
   .pro-grid {
+    display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
     overflow-x: auto;
@@ -1213,11 +1306,10 @@
 }
 
 .top-rated-card {
-  width: 260px;
-  background: white;
+  background: var(--surface);
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow);
   border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -1229,14 +1321,16 @@
 }
 
 .top-rated-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.1);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+  border-color: var(--teal);
 }
 
 .top-rated-cover {
   position: relative;
-  height: 140px;
+  height: 150px;
   width: 100%;
+  background: linear-gradient(135deg, var(--card-bg-1) 0%, var(--card-bg-4) 100%);
 }
 
 .top-rated-img {
@@ -1249,7 +1343,7 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface);
   color: var(--teal);
   padding: 4px 10px;
   border-radius: 20px;
@@ -1258,7 +1352,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow);
 }
 
 .top-rated-verified svg {
@@ -1281,15 +1375,15 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--ink);
-  color: white;
+  background: var(--teal);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 1.1rem;
-  border: 3px solid white;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  border: 3px solid var(--surface);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
   z-index: 2;
 }
 
@@ -1299,7 +1393,7 @@
 }
 
 .top-rated-header h3 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--ink);
   margin: 0 0 4px 0;
@@ -1328,24 +1422,25 @@
 
 .top-rated-role {
   font-size: 0.85rem;
-  color: var(--text-dark);
+  color: var(--muted);
   margin: 0 0 12px 0;
 }
 
 .top-rated-tags {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .tag-pill {
   background: var(--soft);
-  color: var(--text-dark);
+  color: var(--ink);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
+  border: 1px solid var(--line);
 }
 
 .top-rated-stats {
@@ -1360,7 +1455,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
-  color: var(--text-dark);
+  color: var(--muted);
 }
 
 .top-rated-stats .stat-pill svg {
@@ -1373,3 +1468,55 @@
   width: 100%;
   margin-top: auto;
 }
+
+/* Flex shrinking fix for search button */
+.hero-search-btn {
+  flex-shrink: 0 !important;
+}
+
+/* Mobile responsive styles below 480px */
+@media (max-width: 480px) {
+  .hero-video-section-premium .hero-title {
+    font-size: 1.8rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 1.2rem !important;
+    padding: 0 0.5rem;
+  }
+  .hero-search-wrapper {
+    flex-direction: row;
+    border-radius: 28px !important;
+    padding: 0.15rem !important;
+    max-width: 100% !important;
+    margin-bottom: 1rem !important;
+  }
+  .hero-search-input {
+    padding: 0.5rem 0.8rem !important;
+    font-size: 0.85rem !important;
+    width: 60%;
+  }
+  .hero-search-btn {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.85rem !important;
+  }
+  .hero-pills-row {
+    display: none !important;
+  }
+  .social-proof-bar {
+    padding: 1rem !important;
+  }
+  .social-proof-content {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+  .social-proof-divider {
+    display: none !important;
+  }
+  .social-proof-item h3 {
+    font-size: 1.2rem !important;
+  }
+  .social-proof-item span {
+    font-size: 0.75rem !important;
+  }
+}
+

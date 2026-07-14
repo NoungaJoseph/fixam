@@ -1,173 +1,220 @@
 import './MyProfile.css';
 import { useState } from 'react';
 import { Icon, images } from '../../App';
+import { useTranslation } from 'react-i18next';
 
 interface MyProfileProps {
   setActiveTab: (tab: string) => void;
 }
 
 export default function MyProfile({ setActiveTab }: MyProfileProps) {
+  const { i18n } = useTranslation();
+  const isFr = i18n.language === 'fr';
   const [profileActiveSubTab, setProfileActiveSubTab] = useState('Overview');
 
   return (
     <div className="profile-tab-container animate-fade-in">
-      <div className="profile-header-card">
-        <div className="profile-avatar-section">
-          <div className="profile-avatar-big">
+      
+      {/* PROFILE HEADER (no card, sits on page) */}
+      <div className="profile-flat-header">
+        <button className="btn-edit-profile-flat-link" onClick={() => alert(isFr ? 'Modification du profil à venir !' : 'Edit Profile modal coming soon!')}>
+          ✏️ {isFr ? 'Modifier le Profil' : 'Edit Profile'}
+        </button>
+
+        <div className="profile-flat-avatar-section">
+          <div className="profile-flat-avatar-big">
             <img src={images.proJeff} alt="Nounga" />
-            <button className="btn-change-avatar" aria-label="Change Avatar" onClick={() => alert('Change avatar flow coming soon!')}>
-              <Icon name="user" />
-            </button>
           </div>
-          <div className="profile-user-headline">
-            <div className="profile-name-row">
-              <h2>Nounga</h2>
-              <span className="badge-verified"><Icon name="shield" /> Verified</span>
+          <h2 className="profile-flat-username">Nounga</h2>
+          
+          <div className="profile-flat-verified-badge">
+            ✓ {isFr ? 'Vérifié' : 'Verified'}
+          </div>
+
+          <div className="profile-flat-contact-info">
+            <div className="contact-info-row">
+              <span className="contact-icon">📧</span> nounga@gmail.com
             </div>
-            <p className="profile-email-lbl"><Icon name="message" /> nounga@gmail.com</p>
-            <p className="profile-phone-lbl"><Icon name="bell" /> +237 6 98 76 54 32</p>
-            <p className="profile-loc-lbl"><Icon name="location" /> Douala, Cameroon</p>
-            <span className="profile-role-tag">Client Account</span>
+            <div className="contact-info-row">
+              <span className="contact-icon">📞</span> +237 6 98 76 54 32
+            </div>
+            <div className="contact-info-row">
+              <span className="contact-icon">📍</span> Douala, Cameroon
+            </div>
           </div>
-        </div>
-        
-        <div className="profile-header-stats-row">
-          <div className="profile-header-stat-box">
-            <span className="stat-lbl">Member Since</span>
-            <strong className="stat-val"><Icon name="calendar" /> May 15, 2024</strong>
-          </div>
-          <div className="profile-header-stat-box">
-            <span className="stat-lbl">Account Status</span>
-            <strong className="stat-val status-active"><span className="dot-indicator"></span> Active</strong>
-          </div>
-          <div className="profile-header-stat-box">
-            <span className="stat-lbl">Account Security</span>
-            <strong className="stat-val security-strong"><Icon name="shield" /> Strong</strong>
+
+          <div className="profile-flat-role-badge">
+            {isFr ? 'Compte Client' : 'Client Account'}
           </div>
         </div>
 
-        <button className="btn-edit-profile-header" onClick={() => alert('Edit Profile modal coming soon!')}>
-          <Icon name="wrench" /> Edit Profile
-        </button>
+        <div className="profile-flat-meta-columns">
+          <div className="meta-col">
+            <span className="meta-lbl">{isFr ? 'MEMBRE DEPUIS' : 'MEMBER SINCE'}</span>
+            <strong className="meta-val">May 15, 2024</strong>
+          </div>
+          <div className="meta-col">
+            <span className="meta-lbl">{isFr ? 'STATUT DU COMPTE' : 'ACCOUNT STATUS'}</span>
+            <strong className="meta-val status-green">{isFr ? 'Actif' : 'Active'}</strong>
+          </div>
+        </div>
       </div>
 
-      <div className="profile-sub-tabs">
-        {['Overview', 'Bookings', 'Reviews', 'Payments', 'Saved Providers', 'Preferences', 'Settings'].map((subTab) => (
-          <button 
-            key={subTab} 
-            className={`profile-sub-tab-btn ${profileActiveSubTab === subTab ? 'active' : ''}`}
-            onClick={() => setProfileActiveSubTab(subTab)}
-          >
-            {subTab}
-          </button>
-        ))}
+      {/* TABS (Overview / Bookings / Reviews) */}
+      <div className="profile-flat-tabs">
+        {['Overview', 'Bookings', 'Reviews', 'Payments', 'Saved Providers', 'Preferences', 'Settings'].map((subTab) => {
+          let label = subTab;
+          if (isFr) {
+            if (subTab === 'Overview') label = 'Aperçu';
+            else if (subTab === 'Bookings') label = 'Réservations';
+            else if (subTab === 'Reviews') label = 'Avis';
+            else if (subTab === 'Payments') label = 'Paiements';
+            else if (subTab === 'Saved Providers') label = 'Favoris';
+            else if (subTab === 'Preferences') label = 'Préférences';
+            else if (subTab === 'Settings') label = 'Paramètres';
+          }
+          return (
+            <button 
+              key={subTab} 
+              className={`profile-flat-tab-btn ${profileActiveSubTab === subTab ? 'active' : ''}`}
+              onClick={() => setProfileActiveSubTab(subTab)}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {profileActiveSubTab === 'Overview' && (
         <div className="profile-overview-layout">
           <div className="profile-overview-left">
-            <div className="dash-panel-premium p-about-panel">
-              <h3>About Me</h3>
-              <p>I'm a business owner based in Douala. I use Fixam to find reliable and verified professionals for all my home and office needs. Quality service and trust are my top priorities.</p>
+            <div className="profile-flat-about-section">
+              <h3 className="section-flat-heading">{isFr ? 'À Propos de Moi' : 'About Me'}</h3>
+              <p className="about-text">
+                {isFr 
+                  ? "Je suis un propriétaire d'entreprise basé à Douala. J'utilise Fixam pour trouver des professionnels fiables et vérifiés pour tous mes besoins à domicile et au bureau. Le service de qualité et la confiance sont mes priorités absolues."
+                  : "I'm a business owner based in Douala. I use Fixam to find reliable and verified professionals for all my home and office needs. Quality service and trust are my top priorities."}
+              </p>
             </div>
 
-            <div className="dash-panel-premium p-info-panel">
-              <h3>Personal Information</h3>
-              <div className="info-list-grid">
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="user" /> Full Name</span>
-                  <strong className="info-val">Nounga</strong>
+            <div className="profile-flat-info-section">
+              <h3 className="section-flat-heading">{isFr ? 'Informations Personnelles' : 'Personal Information'}</h3>
+              <div className="flat-info-list">
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">👤</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">{isFr ? 'Nom Complet' : 'Full Name'}</span>
+                    <strong className="flat-info-val">Nounga</strong>
+                  </div>
                 </div>
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="message" /> Email Address</span>
-                  <strong className="info-val">nounga@gmail.com <span className="verified-text"><Icon name="check" /> Verified</span></strong>
+
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">📧</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">{isFr ? 'Adresse E-mail' : 'Email Address'}</span>
+                    <strong className="flat-info-val">
+                      nounga@gmail.com 
+                      <span className="verified-badge-small">✓ {isFr ? 'Vérifié' : 'Verified'}</span>
+                    </strong>
+                  </div>
                 </div>
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="bell" /> Phone Number</span>
-                  <strong className="info-val">+237 6 98 76 54 32 <span className="verified-text"><Icon name="check" /> Verified</span></strong>
+
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">📞</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">{isFr ? 'Numéro de Téléphone' : 'Phone Number'}</span>
+                    <strong className="flat-info-val">
+                      +237 6 98 76 54 32 
+                      <span className="verified-badge-small">✓ {isFr ? 'Vérifié' : 'Verified'}</span>
+                    </strong>
+                  </div>
                 </div>
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="location" /> Location</span>
-                  <strong className="info-val">Douala, Littoral, Cameroon</strong>
+
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">📍</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">Location</span>
+                    <strong className="flat-info-val">Douala, Littoral, Cameroon</strong>
+                  </div>
                 </div>
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="wrench" /> Language</span>
-                  <strong className="info-val">English, Français</strong>
+
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">🌐</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">{isFr ? 'Langue' : 'Language'}</span>
+                    <strong className="flat-info-val">English, Français</strong>
+                  </div>
                 </div>
-                <div className="info-list-row">
-                  <span className="info-lbl"><Icon name="calendar" /> Timezone</span>
-                  <strong className="info-val">GMT+1 (West Africa Time)</strong>
+
+                <div className="flat-info-row">
+                  <span className="flat-info-icon">⏰</span>
+                  <div className="flat-info-content">
+                    <span className="flat-info-lbl">{isFr ? 'Fuseau Horaire' : 'Timezone'}</span>
+                    <strong className="flat-info-val">GMT+1 (West Africa Time)</strong>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="dash-panel-premium p-activity-panel">
-              <div className="panel-title-row">
-                <h3>Recent Activity</h3>
-                <button className="link-view-all" onClick={() => setActiveTab('Notifications')}>View All</button>
+            <div className="activity-flat-section">
+              <div className="panel-title-row-flat">
+                <h3>{isFr ? 'Activité Récente' : 'Recent Activity'}</h3>
+                <button className="link-view-all-flat" onClick={() => setActiveTab('Notifications')}>{isFr ? 'Voir Tout' : 'View All'}</button>
               </div>
-              <div className="activity-items-list-p">
-                <div className="activity-item-row-p">
-                  <div className="activity-icon-p a-confirmed"><Icon name="calendar" /></div>
-                  <div className="activity-details-p">
-                    <h4>You booked Plumber Pro</h4>
-                    <span>Booking confirmed</span>
+              <div className="activity-items-flat">
+                <div className="activity-item-flat">
+                  <div className="activity-icon-flat a-confirmed"><Icon name="calendar" /></div>
+                  <div className="activity-details-flat">
+                    <h4>{isFr ? 'Vous avez réservé Plumber Pro' : 'You booked Plumber Pro'}</h4>
+                    <p>{isFr ? 'Réservation confirmée' : 'Booking confirmed'}</p>
                   </div>
-                  <span className="activity-time-p">2 min ago</span>
+                  <span className="activity-time-flat">{isFr ? 'Il y a 2 min' : '2 min ago'}</span>
                 </div>
 
-                <div className="activity-item-row-p">
-                  <div className="activity-icon-p a-accepted"><Icon name="check" /></div>
-                  <div className="activity-details-p">
-                    <h4>John Doe accepted your request</h4>
-                    <span>Electrical Installation</span>
+                <div className="activity-item-flat">
+                  <div className="activity-icon-flat a-accepted"><Icon name="check" /></div>
+                  <div className="activity-details-flat">
+                    <h4>{isFr ? 'John Doe a accepté votre demande' : 'John Doe accepted your request'}</h4>
+                    <p>{isFr ? 'Installation Électrique' : 'Electrical Installation'}</p>
                   </div>
-                  <span className="activity-time-p">15 min ago</span>
+                  <span className="activity-time-flat">{isFr ? 'Il y a 15 min' : '15 min ago'}</span>
                 </div>
 
-                <div className="activity-item-row-p">
-                  <div className="activity-icon-p a-payment"><Icon name="wallet" /></div>
-                  <div className="activity-details-p">
-                    <h4>Payment with coins completed</h4>
-                    <span>3 coins used</span>
+                <div className="activity-item-flat">
+                  <div className="activity-icon-flat a-payment"><Icon name="wallet" /></div>
+                  <div className="activity-details-flat">
+                    <h4>{isFr ? 'Paiement en pièces complété' : 'Payment with coins completed'}</h4>
+                    <p>{isFr ? '3 pièces utilisées' : '3 coins used'}</p>
                   </div>
-                  <span className="activity-time-p">1 hour ago</span>
+                  <span className="activity-time-flat">{isFr ? 'Il y a 1 h' : '1 hour ago'}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="profile-overview-right">
-            <div className="dash-panel-premium p-summary-panel">
-              <h3>Account Summary</h3>
-              <div className="summary-widgets-grid">
-                <div className="summary-widget-box s-bookings">
-                  <div className="widget-icon"><Icon name="calendar" /></div>
-                  <div className="widget-content">
-                    <strong>12</strong>
-                    <span>Total Bookings</span>
-                  </div>
+            <div className="summary-flat-section">
+              <h3>{isFr ? 'Aperçu du Compte' : 'Account Summary'}</h3>
+              <div className="stats-grid">
+                <div className="stat-cell">
+                  <div className="stat-cell-icon" style={{ color: '#14B8A6' }}><Icon name="calendar" /></div>
+                  <strong className="stat-cell-val">12</strong>
+                  <span className="stat-cell-label">{isFr ? 'Réservations' : 'Total Bookings'}</span>
                 </div>
-                <div className="summary-widget-box s-active">
-                  <div className="widget-icon"><Icon name="briefcase" /></div>
-                  <div className="widget-content">
-                    <strong>4</strong>
-                    <span>Active Bookings</span>
-                  </div>
+                <div className="stat-cell">
+                  <div className="stat-cell-icon" style={{ color: '#3B82F6' }}><Icon name="briefcase" /></div>
+                  <strong className="stat-cell-val">4</strong>
+                  <span className="stat-cell-label">{isFr ? 'Actives' : 'Active Bookings'}</span>
                 </div>
-                <div className="summary-widget-box s-completed">
-                  <div className="widget-icon"><Icon name="check" /></div>
-                  <div className="widget-content">
-                    <strong>8</strong>
-                    <span>Completed Jobs</span>
-                  </div>
+                <div className="stat-cell">
+                  <div className="stat-cell-icon" style={{ color: '#22C55E' }}><Icon name="check" /></div>
+                  <strong className="stat-cell-val">8</strong>
+                  <span className="stat-cell-label">{isFr ? 'Terminées' : 'Completed Jobs'}</span>
                 </div>
-                <div className="summary-widget-box s-rating">
-                  <div className="widget-icon"><Icon name="star" /></div>
-                  <div className="widget-content">
-                    <strong>4.8</strong>
-                    <span>Average Rating</span>
-                  </div>
+                <div className="stat-cell">
+                  <div className="stat-cell-icon" style={{ color: '#F59E0B' }}><Icon name="star" /></div>
+                  <strong className="stat-cell-val">4.8</strong>
+                  <span className="stat-cell-label">{isFr ? 'Note Moyenne' : 'Average Rating'}</span>
                 </div>
               </div>
             </div>
