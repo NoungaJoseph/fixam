@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Page, Icon, IconName, Footer } from '../App';
+import { Page, Icon, IconName, Footer, asset } from '../App';
 import './Services.css';
 
 const servicesContent = {
@@ -309,7 +309,7 @@ export default function Services({ onNavigate }: { onNavigate: (page: Page) => v
           <div className="split-right">
             <div className="split-img-box mobile-app-mockup">
               <img 
-                src="https://images.unsplash.com/photo-1616077168079-7e09a6a71142?w=800&auto=format&fit=crop&q=80" 
+                src={asset('booking-payment-screenshot.png')} 
                 alt="Mobile app wallet" 
               />
             </div>
