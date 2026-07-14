@@ -25,27 +25,29 @@
 
 /* HERO SECTION */
 .skill-hero {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background-size: cover;
+  background-position: center;
   color: white;
   padding: 60px 0 80px 0;
   position: relative;
 }
 
 .skill-back-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.95);
   padding: 8px 18px;
   border-radius: 50px;
   font-size: 14px;
   cursor: pointer;
   margin-bottom: 40px;
   transition: all 0.2s ease;
-  font-weight: 500;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
 }
 
 .skill-back-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   border-color: white;
 }
@@ -56,14 +58,68 @@
   margin-bottom: 16px;
   letter-spacing: -0.02em;
   color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .skill-hero-subtext {
   font-size: 18px;
-  color: #94a3b8;
+  color: #E2E8F0;
   max-width: 600px;
   line-height: 1.6;
   margin-bottom: 32px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* STORY SECTION (THE CHALLENGE & SOLUTION) */
+.story-section {
+  background-color: #FFFFFF;
+}
+
+.story-box {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 20px;
+  padding: 48px;
+}
+
+.story-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1F2937;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.story-grid-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.story-challenge-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #EF4444; /* soft warning red */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.story-solution-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #14B8A6; /* teal */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.story-challenge-card p,
+.story-solution-card p {
+  font-size: 15px;
+  color: #4B5563;
+  line-height: 1.7;
+  margin: 0;
 }
 
 /* SECTION SUBTITLE */
@@ -83,14 +139,14 @@
 /* TOP PROVIDERS GRID */
 .skill-providers-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 28px;
 }
 
 .skill-pro-card {
   border: 1px solid #E5E7EB;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   background-color: white;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -100,7 +156,7 @@
 
 .skill-pro-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
   border-color: #14B8A6;
 }
 
@@ -108,7 +164,7 @@
   display: flex;
   gap: 16px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .pro-card-avatar {
@@ -135,7 +191,7 @@
 }
 
 .pro-card-body {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .pro-rating {
@@ -158,6 +214,48 @@
 
 .pro-distance {
   color: #6B7280;
+}
+
+/* PROVIDER FEATURED REVIEW */
+.pro-featured-review {
+  background-color: #F8FAFC;
+  border-left: 3px solid #14B8A6;
+  padding: 16px;
+  border-radius: 0 8px 8px 0;
+  margin-top: 16px;
+  position: relative;
+}
+
+.review-quote-mark {
+  font-size: 32px;
+  color: rgba(20, 184, 166, 0.2);
+  line-height: 1;
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-family: Georgia, serif;
+}
+
+.review-quote-text {
+  font-size: 13.5px;
+  color: #4B5563;
+  line-height: 1.6;
+  font-style: italic;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  padding-left: 8px;
+}
+
+.review-quote-author {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 600;
+}
+
+.review-quote-stars {
+  color: #F59E0B;
+  font-size: 11px;
 }
 
 .pro-book-btn {
@@ -225,14 +323,15 @@
 }
 
 .guide-card {
-  background-color: #F9FAFB;
+  background-color: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 16px;
   padding: 32px;
+  transition: border-color 0.2s;
 }
 
 .guide-card h3 {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: #1F2937;
   margin-bottom: 12px;
@@ -241,8 +340,23 @@
 .guide-card p {
   font-size: 14px;
   color: #4B5563;
-  line-height: 1.6;
+  line-height: 1.65;
   margin: 0;
+}
+
+/* WARNING/CASH HIGHLIGHT CARD */
+.guide-card.cash-highlight {
+  border-color: #F59E0B; /* warm warning yellow */
+  background-color: #FFFBEB;
+}
+
+.guide-card.cash-highlight h3 {
+  color: #B45309;
+}
+
+.guide-card.cash-highlight p {
+  color: #78350F;
+  font-weight: 500;
 }
 
 /* RESPONSIVE STYLES */
@@ -255,6 +369,13 @@
 @media (max-width: 768px) {
   .skill-hero {
     padding: 40px 0 60px 0;
+  }
+  .story-box {
+    padding: 24px;
+  }
+  .story-grid-two {
+    grid-template-columns: 1fr;
+    gap: 28px;
   }
   .skill-section {
     padding: 56px 0;
