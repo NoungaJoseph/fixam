@@ -55,6 +55,29 @@ class NotificationService {
         }
         break;
 
+      case 'COUNTER_PROPOSED':
+        if (data.bookingId || data.jobId) {
+          nav.navigate('JobStatus', { 
+            job: { 
+              id: data.bookingId || data.jobId,
+              status: 'COUNTER_PROPOSED',
+              counterBudget: Number(data.counterBudget || 0),
+              counterNotes: data.counterNotes || '',
+              urgencyLevel: data.urgencyLevel || 'EMERGENCY',
+              budget: 0,
+              provider: {
+                fullName: data.providerName || 'Provider',
+                avatar: data.providerAvatar || ''
+              }
+            }, 
+            jobId: data.bookingId || data.jobId,
+            isBooking: true 
+          });
+        } else {
+          nav.navigate('HomeMain');
+        }
+        break;
+
       case 'NEW_APPLICATION':
       case 'APPLICATION_ACCEPTED':
       case 'JOB_COMPLETED':
