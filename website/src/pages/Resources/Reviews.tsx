@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Page, Footer } from '../../App';
+import { Page, Footer, getApiUrl } from '../../App';
 import './Reviews.css';
 
 // Data structures for multi-language content
@@ -604,7 +604,7 @@ const getCategoryDisplayName = (category: string, isFr: boolean) => {
   return mapping[category] ? (isFr ? mapping[category].fr : mapping[category].en) : category;
 };
 
-export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) => void }) {
+export default function ReviewsPage({ onNavigate, onSelectSkill }: { onNavigate: (page: Page) => void; onSelectSkill: (skill: string) => void }) {
   const { i18n } = useTranslation();
   const isFr = i18n.language === 'fr';
   const content = isFr ? reviewsContent.fr : reviewsContent.en;
@@ -621,6 +621,7 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [isCategoryFilterExpanded, setIsCategoryFilterExpanded] = useState(true);
   const [isUserTypeFilterExpanded, setIsUserTypeFilterExpanded] = useState(true);
+  const [backendReviews, setBackendReviews] = useState<any[]>([]);
 
   const skillTabLabels: Record<string, { en: string; fr: string }> = {
     "Top Services": { en: "Top Services", fr: "Services Principaux" },
@@ -628,6 +629,35 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
     "Best Rated": { en: "Best Rated", fr: "Mieux Notés" },
     "New on Fixam": { en: "New on Fixam", fr: "Nouveautés" }
   };
+
+  useEffect(() => {
+    const fetchBackendReviews = async () => {
+      try {
+        const res = await fetch(`${getApiUrl()}/reviews`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          const mapped = data.data.map((r: any) => {
+            const category = r.job?.category || r.booking?.task?.category || 'Home Services';
+            const reviewerName = r.reviewer?.fullName || 'Verified User';
+            const isPro = !!r.reviewer?.providerProfile;
+            return {
+              title: r.comment ? (r.comment.length > 30 ? `${r.comment.slice(0, 30)}...` : r.comment) : 'Service Review',
+              rating: r.rating,
+              date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'May 2026',
+              category: category,
+              isPro: isPro,
+              text: r.comment || 'Excellent service provider! Highly recommended.',
+              reviewer: reviewerName
+            };
+          });
+          setBackendReviews(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch reviews:', err);
+      }
+    };
+    fetchBackendReviews();
+  }, []);
 
   // Slide carousel controls
   const handlePrevSlide = () => {
@@ -640,19 +670,23 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
   };
 
   // Filter functionality
-  const rawReviews = isFr ? reviewsContent.fr.userReviews.reviews : reviewsContent.en.userReviews.reviews;
+  const rawReviews = [...backendReviews, ...(isFr ? reviewsContent.fr.userReviews.reviews : reviewsContent.en.userReviews.reviews)];
+
+  const getCategoryCount = (catName: string) => {
+    return rawReviews.filter(r => r.category === catName).length;
+  };
   
-  // Categorized counts (hardcoded mock matching the design specs)
+  // Categorized counts (dynamically computed from rawReviews)
   const categoryCounts = [
     { key: "All", label: content.userReviews.categories.all },
-    { key: "Home Services", label: content.userReviews.categories.home, count: 12 },
-    { key: "Electrical", label: content.userReviews.categories.electrical, count: 8 },
-    { key: "Plumbing", label: content.userReviews.categories.plumbing, count: 6 },
-    { key: "Cleaning", label: content.userReviews.categories.cleaning, count: 15 },
-    { key: "Beauty & Wellness", label: content.userReviews.categories.beauty, count: 9 },
-    { key: "Moving & Delivery", label: content.userReviews.categories.moving, count: 4 },
-    { key: "Repairs", label: content.userReviews.categories.repairs, count: 7 },
-    { key: "Security", label: content.userReviews.categories.security, count: 3 }
+    { key: "Home Services", label: content.userReviews.categories.home, count: getCategoryCount("Home Services") },
+    { key: "Electrical", label: content.userReviews.categories.electrical, count: getCategoryCount("Electrical") },
+    { key: "Plumbing", label: content.userReviews.categories.plumbing, count: getCategoryCount("Plumbing") },
+    { key: "Cleaning", label: content.userReviews.categories.cleaning, count: getCategoryCount("Cleaning") },
+    { key: "Beauty & Wellness", label: content.userReviews.categories.beauty, count: getCategoryCount("Beauty & Wellness") },
+    { key: "Moving & Delivery", label: content.userReviews.categories.moving, count: getCategoryCount("Moving & Delivery") },
+    { key: "Repairs", label: content.userReviews.categories.repairs, count: getCategoryCount("Repairs") },
+    { key: "Security", label: content.userReviews.categories.security, count: getCategoryCount("Security") }
   ];
 
   // Filtering implementation
@@ -991,7 +1025,7 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
           </aside>
 
           {/* List */}
-          <div className="reviews-list">
+          <div className="reviews-list-scroll-box">
             {sortedReviews.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '48px 0', color: '#6B7280' }}>
                 No reviews found matching the filter criteria.
@@ -1124,7 +1158,10 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
             {content.skills.lists[activeSkillTab as keyof typeof content.skills.lists]?.map((columnList, colIdx) => (
               <div className="skills-col" key={colIdx}>
                 {columnList.map((skill, skillIdx) => (
-                  <span className="skill-link" key={skillIdx} onClick={() => onNavigate('services')}>
+                  <span className="skill-link" key={skillIdx} onClick={() => {
+                    onSelectSkill(skill);
+                    onNavigate('skill_detail');
+                  }}>
                     {skill}
                   </span>
                 ))}

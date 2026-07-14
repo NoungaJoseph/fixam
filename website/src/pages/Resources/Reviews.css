@@ -558,6 +558,38 @@
   flex: 1;
 }
 
+.reviews-list-scroll-box {
+  flex: 1;
+  max-height: 580px;
+  overflow-y: auto;
+  padding-right: 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding-left: 20px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  background-color: #FFFFFF;
+}
+
+/* Premium Scrollbar Styling */
+.reviews-list-scroll-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviews-list-scroll-box::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+
+.reviews-list-scroll-box::-webkit-scrollbar-thumb {
+  background: #14B8A6;
+  border-radius: 4px;
+}
+
+.reviews-list-scroll-box::-webkit-scrollbar-thumb:hover {
+  background: #0D9488;
+}
+
 .review-list-item {
   border-bottom: 1px solid #E5E7EB;
   padding: 24px 0;

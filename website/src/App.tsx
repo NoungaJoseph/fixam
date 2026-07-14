@@ -36,12 +36,13 @@ import Updates from './pages/WhatsNew/Updates'
 import Research from './pages/WhatsNew/Research'
 import Blog from './pages/WhatsNew/Blog'
 import ReleaseNotes from './pages/WhatsNew/ReleaseNotes'
+import SkillDetail from './pages/Resources/SkillDetail'
 
 import './App.css'
 import './marketplace.css'
 import './components/Megamenu.css'
 
-export type Page = 'home' | 'services' | 'about' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide' | 'terms' | 'privacy' | 'success_stories' | 'reviews' | 'updates' | 'research' | 'blog' | 'release_notes'
+export type Page = 'home' | 'services' | 'about' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide' | 'terms' | 'privacy' | 'success_stories' | 'reviews' | 'updates' | 'research' | 'blog' | 'release_notes' | 'skill_detail'
 
 export type IconName =
   | 'appliance' | 'bell' | 'briefcase' | 'calendar' | 'chat' | 'check' | 'cleaning'
@@ -51,7 +52,7 @@ export type IconName =
 
 export const asset = (fileName: string) => `/assets/${fileName}`
 
-const getApiUrl = () => {
+export const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:5000/api'
@@ -190,6 +191,7 @@ function MaintenanceScreen({ message }: { message: string }) {
 
 function App() {
   const [page, setPage] = useState<Page>('home')
+  const [selectedSkill, setSelectedSkill] = useState<string>('')
   const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
   const [livePros, setLivePros] = useState<any[]>([]);
   const [userRole, setUserRole] = useState<'client' | 'pro'>('client');
@@ -214,7 +216,7 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-      const validPages: Page[] = ['home', 'services', 'about', 'login', 'register', 'forgot_password', 'otp', 'dashboard', 'guide', 'terms', 'privacy', 'success_stories', 'reviews', 'updates', 'research', 'blog', 'release_notes'];
+      const validPages: Page[] = ['home', 'services', 'about', 'login', 'register', 'forgot_password', 'otp', 'dashboard', 'guide', 'terms', 'privacy', 'success_stories', 'reviews', 'updates', 'research', 'blog', 'release_notes', 'skill_detail'];
       const pathPage = window.location.pathname.replace(/^\/+/, '').replace(/\/$/, '').replace(/-/g, '_').toLowerCase();
       if (validPages.includes(hash as Page)) {
         setPage(hash as Page);
@@ -316,12 +318,13 @@ function App() {
             {page === 'terms' && <TermsOfService onNavigate={setPage} />}
             {page === 'privacy' && <PrivacyPolicy onNavigate={setPage} />}
             {page === 'success_stories' && <SuccessStories onNavigate={setPage} />}
-            {page === 'reviews' && <ReviewsPage onNavigate={setPage} />}
+            {page === 'reviews' && <ReviewsPage onNavigate={setPage} onSelectSkill={setSelectedSkill} />}
+            {page === 'skill_detail' && <SkillDetail onNavigate={setPage} skillName={selectedSkill} onSelectSkill={setSelectedSkill} livePros={livePros} />}
             {page === 'updates' && <Updates onNavigate={setPage} />}
             {page === 'research' && <Research onNavigate={setPage} />}
             {page === 'blog' && <Blog onNavigate={setPage} />}
             {page === 'release_notes' && <ReleaseNotes onNavigate={setPage} />}
-            {page === 'home' && <Home onNavigate={setPage} livePros={livePros} />}
+            {page === 'home' && <Home onNavigate={setPage} livePros={livePros} onSelectSkill={setSelectedSkill} />}
           </main>
         </>
       )}

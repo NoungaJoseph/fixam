@@ -347,7 +347,7 @@ const faqQuestions = [
   }
 ];
 
-export default function Home({ onNavigate, livePros }: { onNavigate: (page: Page) => void; livePros: any[] }) {
+export default function Home({ onNavigate, livePros, onSelectSkill }: { onNavigate: (page: Page) => void; livePros: any[]; onSelectSkill?: (skill: string) => void }) {
   const { t, i18n } = useTranslation();
   const proGridRef = useRef<HTMLDivElement>(null);
   
@@ -386,8 +386,14 @@ export default function Home({ onNavigate, livePros }: { onNavigate: (page: Page
 
   const displayedPros = livePros && livePros.length > 0 ? livePros : pros;
 
-  const handlePillClick = () => {
-    onNavigate('services');
+  const handlePillClick = (pill: string) => {
+    const cleanPill = pill.replace(/→$/, '').trim();
+    if (onSelectSkill) {
+      onSelectSkill(cleanPill);
+      onNavigate('skill_detail');
+    } else {
+      onNavigate('services');
+    }
   };
 
   const filteredFaq = faqQuestions.filter(faq => {
@@ -423,7 +429,7 @@ export default function Home({ onNavigate, livePros }: { onNavigate: (page: Page
             <div className="hero-pills-row">
               <span className="pills-label">{i18n.language === 'fr' ? 'Populaire :' : 'Popular:'}</span>
               {tContent.hero.pills.map((pill, idx) => (
-                <button key={idx} className="hero-pill-btn" onClick={handlePillClick}>
+                <button key={idx} className="hero-pill-btn" onClick={() => handlePillClick(pill)}>
                   {pill} →
                 </button>
               ))}
