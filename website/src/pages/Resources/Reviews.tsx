@@ -50,21 +50,21 @@ const reviewsContent = {
           initials: "AK",
           bgColor: "#14B8A6",
           title: "How Alain Kamga grew his electrical business from 3 to 30 clients in 6 months using Fixam",
-          img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?w=800&auto=format&fit=crop&q=80"
         },
         {
           title: "How Marie Ngo found reliable home cleaning services she could actually trust for her family in Douala",
-          img: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80"
         },
         {
           title: "How Pierre Biya doubled his monthly income as a plumber by joining the Fixam provider network",
-          img: "https://images.unsplash.com/photo-1556157382-97eda2f9e2bf?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=80"
         },
         {
           initials: "SF",
           bgColor: "#F97316",
           title: "How Sophie Fotso found the right beauty professional for her wedding day in just 24 hours on Fixam",
-          img: "" // gradient placeholder
+          img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800&auto=format&fit=crop&q=80"
         }
       ]
     },
@@ -341,21 +341,21 @@ const reviewsContent = {
           initials: "AK",
           bgColor: "#14B8A6",
           title: "Comment Alain Kamga a développé son activité électrique de 3 à 30 clients en 6 mois grâce à Fixam",
-          img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?w=800&auto=format&fit=crop&q=80"
         },
         {
           title: "Comment Marie Ngo a trouvé des services de nettoyage fiables auxquels elle peut faire confiance",
-          img: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80"
         },
         {
           title: "Comment Pierre Biya a doublé son revenu mensuel en tant que plombier en rejoignant Fixam",
-          img: "https://images.unsplash.com/photo-1556157382-97eda2f9e2bf?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=80"
         },
         {
           initials: "SF",
           bgColor: "#F97316",
           title: "Comment Sophie Fotso a trouvé la bonne professionnelle de beauté pour son mariage en seulement 24 heures",
-          img: "" // gradient placeholder
+          img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800&auto=format&fit=crop&q=80"
         }
       ]
     },

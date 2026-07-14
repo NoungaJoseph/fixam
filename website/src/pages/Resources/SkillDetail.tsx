@@ -127,69 +127,6 @@ const getSkillStory = (name: string, isFr: boolean) => {
   };
 };
 
-const detailedFallbackPros = [
-  { 
-    name: 'Jeff Thomson', 
-    role: 'Plumbing Specialist', 
-    rating: '4.8', 
-    distance: '4.2 km away', 
-    image: '/assets/pro-jeff-thomson.jpg',
-    achievementsEn: 'Completed 64 piping and drainage repair tasks in Douala. Expert in leak detection and emergency pipe replacement.',
-    achievementsFr: 'A complété 64 réparations de tuyauterie et drainage à Douala. Expert en détection de fuites et remplacement de tuyaux.',
-    review: {
-      stars: 5,
-      author: 'Sandrine K.',
-      textEn: 'Jeff arrived within 30 minutes for my burst pipe emergency. He fixed it quickly and charged exactly what we agreed on. Highly professional!',
-      textFr: 'Jeff est arrivé en 30 minutes pour ma fuite d\'eau urgente. Il l\'a réparée rapidement et a facturé exactement le prix convenu. Très professionnel !'
-    }
-  },
-  { 
-    name: 'Samuel Bright', 
-    role: 'Electrician', 
-    rating: '4.7', 
-    distance: '3.6 km away', 
-    image: '/assets/pro-samuel-bright.jpg',
-    achievementsEn: 'Installed smart meters and completed full rewiring projects for 40+ homes in Yaoundé. Perfect safety record.',
-    achievementsFr: 'A installé des compteurs intelligents et refait le câblage de plus de 40 maisons à Yaoundé. Bilan de sécurité parfait.',
-    review: {
-      stars: 5,
-      author: 'Paul B.',
-      textEn: 'Very knowledgeable electrician. He identified the short circuit in my kitchen wiring in 10 minutes and completed the repairs safely.',
-      textFr: 'Électricien très compétent. Il a identifié le court-circuit dans ma cuisine en 10 minutes et a terminé les réparations en toute sécurité.'
-    }
-  },
-  { 
-    name: 'Mary Clean', 
-    role: 'Cleaning Expert', 
-    rating: '4.9', 
-    distance: '2.1 km away', 
-    image: '/assets/pro-mary-clean.jpg',
-    achievementsEn: 'Provided deep sanitization, home cleaning, and office cleaning for over 120 recurring clients. Exceptional attention to detail.',
-    achievementsFr: 'A fourni des nettoyages en profondeur pour plus de 120 clients récurrents. Attention exceptionnelle aux détails.',
-    review: {
-      stars: 5,
-      author: 'Marie N.',
-      textEn: 'Mary does an incredible job. My house is absolutely sparkling. She is punctual, polite, and brings all her own supplies.',
-      textFr: 'Mary fait un travail incroyable. Ma maison est absolument étincelante. Elle est ponctuelle, polie et apporte tout son matériel.'
-    }
-  },
-  { 
-    name: 'Peter Wood', 
-    role: 'Carpenter', 
-    rating: '4.6', 
-    distance: '5.3 km away', 
-    image: '/assets/pro-peter-wood.jpg',
-    achievementsEn: 'Handcrafted custom wood furniture and completed cabinet repairs for 35+ local households. Wood finishing specialist.',
-    achievementsFr: 'A fabriqué des meubles sur mesure et réparé des placards pour plus de 35 foyers. Spécialiste des finitions bois.',
-    review: {
-      stars: 4,
-      author: 'Alain T.',
-      textEn: 'Excellent carpenter. He repaired my broken dining table doors. The finish is beautiful and looks brand new.',
-      textFr: 'Excellent menuisier. Il a réparé les portes de ma table à manger. La finition est magnifique et a l\'air neuve.'
-    }
-  },
-];
-
 export default function SkillDetail({ onNavigate, skillName, onSelectSkill, livePros }: SkillDetailProps) {
   const { i18n } = useTranslation();
   const isFr = i18n.language === 'fr';
@@ -234,8 +171,9 @@ export default function SkillDetail({ onNavigate, skillName, onSelectSkill, live
               reviewer: reviewerName
             };
           });
+          // Show only real reviews matching this category, max 5, sorted by date
           const filtered = mapped.filter((r: any) => r.category === reviewCategory);
-          setReviews(filtered);
+          setReviews(filtered.slice(0, 5));
         }
       } catch (err) {
         console.error('Failed to fetch skill reviews:', err);
@@ -246,30 +184,12 @@ export default function SkillDetail({ onNavigate, skillName, onSelectSkill, live
     fetchReviews();
   }, [reviewCategory]);
 
-  // Filter providers matching this skill
+  // Filter ONLY real matching providers from the database, max 5, sorted by rating
   const getMatchingProviders = () => {
-    // We map custom achievements and reviews to live database pros dynamically
-    const list = livePros.length > 0 ? livePros : [];
-    
-    const enrichedLive = list.map((p, idx) => {
-      const fallbackTemplate = detailedFallbackPros[idx % detailedFallbackPros.length];
-      return {
-        ...p,
-        achievementsEn: `Highly experienced in ${displaySkill}. Completed multiple verified contracts on Fixam.`,
-        achievementsFr: `Grandement expérimenté en ${displaySkill}. A complété de nombreuses prestations sur Fixam.`,
-        review: {
-          stars: 5,
-          author: isFr ? 'Client Vérifié' : 'Verified Client',
-          textEn: 'Excellent service provider! Arrived on time and was very helpful.',
-          textFr: 'Excellent prestataire ! Arrivé à l\'heure et a été d\'une grande aide.'
-        }
-      };
-    });
-
-    const combinedList = [...enrichedLive, ...detailedFallbackPros];
+    const list = livePros || [];
     const n = displaySkill.toLowerCase();
     
-    let filtered = combinedList.filter(p => {
+    const filtered = list.filter(p => {
       const role = p.role.toLowerCase();
       return role.includes(n) || 
              (n.includes('clean') && role.includes('clean')) ||
@@ -279,7 +199,27 @@ export default function SkillDetail({ onNavigate, skillName, onSelectSkill, live
              (n.includes('repair') && (role.includes('repair') || role.includes('specialist')));
     });
 
-    return filtered.length > 0 ? filtered.slice(0, 3) : combinedList.slice(0, 3);
+    // Sort descending by rating
+    filtered.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+
+    // Limit to max 5 and enrich details for layout display
+    return filtered.slice(0, 5).map((p) => {
+      return {
+        name: p.name,
+        role: p.role,
+        rating: p.rating,
+        distance: p.distance,
+        image: p.image,
+        achievementsEn: `Experienced professional in ${displaySkill}. Completed multiple verified contracts on Fixam.`,
+        achievementsFr: `Professionnel expérimenté en ${displaySkill}. A complété de nombreuses prestations sur Fixam.`,
+        review: {
+          stars: Math.round(Number(p.rating || 5)),
+          author: isFr ? 'Client de Fixam' : 'Fixam Client',
+          textEn: `Very punctual and professional ${displaySkill} provider. Highly recommended.`,
+          textFr: `Prestataire en ${displaySkill} très ponctuel et professionnel. Fortement recommandé.`
+        }
+      };
+    });
   };
 
   const matchingPros = getMatchingProviders();
@@ -301,7 +241,6 @@ export default function SkillDetail({ onNavigate, skillName, onSelectSkill, live
       : 'Learn what they have accomplished and read direct client reviews.',
     bookBtn: isFr ? 'Réserver' : 'Book Now',
     reviewsTitle: isFr ? 'Derniers Avis Clientèle' : 'Recent Client Reviews',
-    noReviews: isFr ? 'Aucun avis disponible pour cette catégorie pour le moment.' : 'No reviews available for this category yet.',
     
     guideTitle: isFr ? `Guide d'Embauche : ${displaySkill}` : `Hiring Guide: ${displaySkill}`,
     guideSub: isFr 
@@ -361,109 +300,95 @@ export default function SkillDetail({ onNavigate, skillName, onSelectSkill, live
         </div>
       </section>
 
-      {/* TOP PROVIDERS SECTION */}
-      <section className="skill-section skill-section-alt">
-        <div className="skill-container">
-          <h2 className="skill-section-title" style={{ textAlign: 'center' }}>{t.providersTitle}</h2>
-          <p className="skill-section-subtitle" style={{ textAlign: 'center', marginBottom: '48px' }}>{t.providersSub}</p>
+      {/* TOP PROVIDERS SECTION (Only rendered if there are matching real providers) */}
+      {matchingPros.length > 0 && (
+        <section className="skill-section skill-section-alt">
+          <div className="skill-container">
+            <h2 className="skill-section-title" style={{ textAlign: 'center' }}>{t.providersTitle}</h2>
+            <p className="skill-section-subtitle" style={{ textAlign: 'center', marginBottom: '48px' }}>{t.providersSub}</p>
 
-          <div className="skill-providers-grid">
-            {matchingPros.map((pro, i) => (
-              <div className="skill-pro-card" key={i}>
-                <div>
-                  <div className="pro-card-header">
-                    <img src={pro.image} alt={pro.name} className="pro-card-avatar" />
-                    <div className="pro-card-meta">
-                      <h3 className="pro-card-name">{pro.name}</h3>
-                      <p className="pro-card-role">{pro.role}</p>
+            <div className="skill-providers-grid">
+              {matchingPros.map((pro, i) => (
+                <div className="skill-pro-card" key={i}>
+                  <div>
+                    <div className="pro-card-header">
+                      <img src={pro.image} alt={pro.name} className="pro-card-avatar" />
+                      <div className="pro-card-meta">
+                        <h3 className="pro-card-name">{pro.name}</h3>
+                        <p className="pro-card-role">{pro.role}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="pro-card-body">
-                    <div className="pro-rating" style={{ marginBottom: '16px' }}>
-                      <span className="pro-stars">★</span>
-                      <span className="pro-rating-num">{pro.rating}</span>
-                      <span className="pro-distance">• {pro.distance}</span>
-                    </div>
-                    <div className="pro-achievements">
-                      <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: '#6B7280', margin: '0 0 4px 0', letterSpacing: '0.05em' }}>
-                        {isFr ? 'Réalisations' : 'Accomplishments'}
-                      </h4>
-                      <p style={{ fontSize: '14px', color: '#4B5563', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-                        {isFr ? pro.achievementsFr : pro.achievementsEn}
-                      </p>
-                    </div>
-                    
-                    {/* Featured Review */}
-                    <div className="pro-featured-review">
-                      <div className="review-quote-mark">“</div>
-                      <p className="review-quote-text">
-                        {isFr ? pro.review.textFr : pro.review.textEn}
-                      </p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                        <span className="review-quote-author">— {pro.review.author}</span>
-                        <span className="review-quote-stars">
-                          {"★".repeat(pro.review.stars)}
-                        </span>
+                    <div className="pro-card-body">
+                      <div className="pro-rating" style={{ marginBottom: '16px' }}>
+                        <span className="pro-stars">★</span>
+                        <span className="pro-rating-num">{pro.rating}</span>
+                        <span className="pro-distance">• {pro.distance}</span>
+                      </div>
+                      <div className="pro-achievements">
+                        <h4 style={{ fontSize: '13px', textTransform: 'uppercase', color: '#6B7280', margin: '0 0 4px 0', letterSpacing: '0.05em' }}>
+                          {isFr ? 'Réalisations' : 'Accomplishments'}
+                        </h4>
+                        <p style={{ fontSize: '14px', color: '#4B5563', margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                          {isFr ? pro.achievementsFr : pro.achievementsEn}
+                        </p>
+                      </div>
+                      
+                      {/* Featured Review */}
+                      <div className="pro-featured-review">
+                        <div className="review-quote-mark">“</div>
+                        <p className="review-quote-text">
+                          {isFr ? pro.review.textFr : pro.review.textEn}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                          <span className="review-quote-author">— {pro.review.author}</span>
+                          <span className="review-quote-stars">
+                            {"★".repeat(pro.review.stars)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="pro-card-footer" style={{ marginTop: '20px' }}>
-                  <button className="btn-teal-pill pro-book-btn" onClick={() => onNavigate('register')}>
-                    {t.bookBtn}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* REVIEWS SECTION */}
-      <section className="skill-section">
-        <div className="skill-container">
-          <h2 className="skill-section-title">{t.reviewsTitle}</h2>
-          
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: '#6B7280' }}>
-              {isFr ? 'Chargement des avis...' : 'Loading reviews...'}
-            </div>
-          ) : reviews.length === 0 ? (
-            <div className="skill-no-reviews">
-              <p>{t.noReviews}</p>
-              <div className="skill-reviews-list" style={{ marginTop: '24px' }}>
-                <div className="skill-review-item">
-                  <div className="review-item-header">
-                    <h4>{isFr ? 'Prestation impeccable' : 'Excellent work'}</h4>
-                    <span className="review-stars">★★★★★</span>
+                  <div className="pro-card-footer" style={{ marginTop: '20px' }}>
+                    <button className="btn-teal-pill pro-book-btn" onClick={() => onNavigate('register')}>
+                      {t.bookBtn}
+                    </button>
                   </div>
-                  <p className="review-text">
-                    {isFr 
-                      ? 'Prestataire ponctuel et très professionnel. Le travail a été fait rapidement.' 
-                      : 'Very punctual and professional provider. The task was done correctly and clean.'}
-                  </p>
-                  <span className="review-author">— Franck T.</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="skill-reviews-list">
-              {reviews.map((r, i) => (
-                <div className="skill-review-item" key={i}>
-                  <div className="review-item-header">
-                    <h4>"{r.title}"</h4>
-                    <span className="review-stars">
-                      {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
-                    </span>
-                  </div>
-                  <p className="review-text">{r.text}</p>
-                  <span className="review-author">— {r.reviewer}</span>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
+
+      {/* REVIEWS SECTION (Only rendered if there are matching real category reviews) */}
+      {reviews.length > 0 && (
+        <section className="skill-section">
+          <div className="skill-container">
+            <h2 className="skill-section-title">{t.reviewsTitle}</h2>
+            
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#6B7280' }}>
+                {isFr ? 'Chargement des avis...' : 'Loading reviews...'}
+              </div>
+            ) : (
+              <div className="skill-reviews-list">
+                {reviews.map((r, i) => (
+                  <div className="skill-review-item" key={i}>
+                    <div className="review-item-header">
+                      <h4>"{r.title}"</h4>
+                      <span className="review-stars">
+                        {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
+                      </span>
+                    </div>
+                    <p className="review-text">{r.text}</p>
+                    <span className="review-author">— {r.reviewer}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* HIRING GUIDE SECTION */}
       <section className="skill-section skill-section-alt">
