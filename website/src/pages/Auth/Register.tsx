@@ -3,6 +3,60 @@ import { useTranslation } from 'react-i18next';
 import { Page } from '../../App';
 import './Auth.css';
 
+// 10 regions of Cameroon with their major cities/quarters
+const regionData: Record<string, { nameEn: string; nameFr: string; cities: string[] }> = {
+  littoral: {
+    nameEn: 'Littoral',
+    nameFr: 'Littoral',
+    cities: ['Douala', 'Edéa', 'Nkongsamba', 'Yabassi', 'Mouanko']
+  },
+  centre: {
+    nameEn: 'Centre',
+    nameFr: 'Centre',
+    cities: ['Yaoundé', 'Mbalmayo', 'Bafia', 'Eseka', 'Akonolinga']
+  },
+  west: {
+    nameEn: 'West',
+    nameFr: 'Ouest',
+    cities: ['Bafoussam', 'Foumban', 'Dschang', 'Mbouda', 'Bangangté']
+  },
+  southwest: {
+    nameEn: 'South West',
+    nameFr: 'Sud-Ouest',
+    cities: ['Buea', 'Limbe', 'Kumba', 'Tiko', 'Mamfe']
+  },
+  northwest: {
+    nameEn: 'North West',
+    nameFr: 'Nord-Ouest',
+    cities: ['Bamenda', 'Wum', 'Kumbo', 'Nkambe', 'Mbengwi']
+  },
+  south: {
+    nameEn: 'South',
+    nameFr: 'Sud',
+    cities: ['Ebolowa', 'Kribi', 'Sangmélima', 'Ambam', 'Campo']
+  },
+  east: {
+    nameEn: 'East',
+    nameFr: 'Est',
+    cities: ['Bertoua', 'Batouri', 'Yokadouma', 'Abong-Mbang', 'Belabo']
+  },
+  adamawa: {
+    nameEn: 'Adamawa',
+    nameFr: 'Adamaoua',
+    cities: ['Ngaoundéré', 'Tibati', 'Banyo', 'Meiganga', 'Tignère']
+  },
+  north: {
+    nameEn: 'North',
+    nameFr: 'Nord',
+    cities: ['Garoua', 'Guider', 'Lagdo', 'Poli', 'Figuil']
+  },
+  farnorth: {
+    nameEn: 'Far North',
+    nameFr: 'Extrême-Nord',
+    cities: ['Maroua', 'Kousséri', 'Mokolo', 'Yagoua', 'Mora']
+  }
+};
+
 export default function Register({ onNavigate, onRegister }: { onNavigate: (page: Page) => void; onRegister?: (role: 'client' | 'pro') => void }) {
   const { i18n } = useTranslation();
   const isFr = i18n.language === 'fr';
@@ -12,14 +66,14 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
   const [countryCode, setCountryCode] = useState('+237');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [dob, setDob] = useState('');
+  const [region, setRegion] = useState('');
+  const [city, setCity] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
 
   // Provider-only fields
   const [serviceCategory, setServiceCategory] = useState('');
-  const [city, setCity] = useState('');
   const [experience, setExperience] = useState('');
 
   // Checkbox States
@@ -30,12 +84,12 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
   const [fullNameError, setFullNameError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [dobError, setDobError] = useState('');
+  const [regionError, setRegionError] = useState('');
+  const [cityError, setCityError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [termsError, setTermsError] = useState('');
   const [categoryError, setCategoryError] = useState('');
-  const [cityError, setCityError] = useState('');
   const [experienceError, setExperienceError] = useState('');
   
   // Custom alerts and UI states
@@ -72,6 +126,12 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     }
   }, [phone, countryCode]);
 
+  // Reset city if region changes
+  useEffect(() => {
+    setCity('');
+    if (cityError) setCityError('');
+  }, [region]);
+
   const countries = [
     { code: '+237', name: 'Cameroon', flag: 'https://flagcdn.com/w40/cm.png' },
     { code: '+254', name: 'Kenya', flag: 'https://flagcdn.com/w40/ke.png' },
@@ -101,12 +161,12 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     setFullNameError('');
     setPhoneError('');
     setEmailError('');
-    setDobError('');
+    setRegionError('');
+    setCityError('');
     setPasswordError('');
     setConfirmPasswordError('');
     setTermsError('');
     setCategoryError('');
-    setCityError('');
     setExperienceError('');
 
     if (!fullName.trim()) {
@@ -129,8 +189,13 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
       }
     }
 
-    if (!dob) {
-      setDobError(isFr ? 'Veuillez entrer votre date de naissance' : 'Please enter your date of birth');
+    if (!region) {
+      setRegionError(isFr ? 'Veuillez choisir une région' : 'Please select a region');
+      isValid = false;
+    }
+
+    if (!city) {
+      setCityError(isFr ? 'Veuillez choisir une ville / un quartier' : 'Please select a city / quarter');
       isValid = false;
     }
 
@@ -153,10 +218,6 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     if (accountType === 'pro') {
       if (!serviceCategory) {
         setCategoryError(isFr ? 'Veuillez choisir une catégorie' : 'Please select a category');
-        isValid = false;
-      }
-      if (!city) {
-        setCityError(isFr ? 'Veuillez choisir votre ville' : 'Please select your city');
         isValid = false;
       }
       if (!experience) {
@@ -212,7 +273,12 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     emailLabel: isFr ? 'Adresse Email (optionnel)' : 'Email Address (optional)',
     emailPlaceholder: 'your@email.com',
     
-    dobLabel: isFr ? 'Date de Naissance' : 'Date of Birth',
+    regionLabel: isFr ? 'Région' : 'Region',
+    regionPlaceholder: isFr ? '-- Choisissez une région --' : '-- Choose a region --',
+    
+    cityLabel: isFr ? 'Ville / Quartier' : 'City / Quarter',
+    cityPlaceholder: isFr ? '-- Choisissez votre ville --' : '-- Choose your city --',
+    cityChooseRegion: isFr ? 'Choisissez d\'abord une région' : 'Select a region first',
     
     passwordLabel: isFr ? 'Mot de Passe' : 'Password',
     passwordPlaceholder: isFr ? 'Créez un mot de passe (min 8 caractères)' : 'Create a password (min 8 characters)',
@@ -226,9 +292,6 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
 
     categoryLabel: isFr ? 'Votre Catégorie de Service' : 'Your Service Category',
     categoryPlaceholder: isFr ? '-- Choisissez une catégorie --' : '-- Choose a category --',
-    
-    cityLabel: isFr ? 'Votre Ville' : 'Your City',
-    cityPlaceholder: isFr ? '-- Choisissez votre ville --' : '-- Choose your city --',
     
     expLabel: isFr ? 'Années d\'Expérience' : 'Years of Experience',
     expPlaceholder: isFr ? '-- Choisissez l\'expérience --' : '-- Choose experience --',
@@ -261,20 +324,6 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     { value: 'other', labelEn: 'Other', labelFr: 'Autre' },
   ];
 
-  const cities = [
-    { value: 'douala', label: 'Douala' },
-    { value: 'yaounde', label: 'Yaoundé' },
-    { value: 'bafoussam', label: 'Bafoussam' },
-    { value: 'bamenda', label: 'Bamenda' },
-    { value: 'garoua', label: 'Garoua' },
-    { value: 'maroua', label: 'Maroua' },
-    { value: 'ngaoundere', label: 'Ngaoundéré' },
-    { value: 'bertoua', label: 'Bertoua' },
-    { value: 'ebolowa', label: 'Ebolowa' },
-    { value: 'kribi', label: 'Kribi' },
-    { value: 'other', labelEn: 'Other', labelFr: 'Autre' },
-  ];
-
   const experiences = [
     { value: 'less1', labelEn: 'Less than 1 year', labelFr: 'Moins d\'1 an' },
     { value: '1-2', labelEn: '1-2 years', labelFr: '1-2 ans' },
@@ -282,6 +331,9 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
     { value: '5-10', labelEn: '5-10 years', labelFr: '5-10 ans' },
     { value: '10plus', labelEn: '10+ years', labelFr: '10+ ans' },
   ];
+
+  // Get active cities list
+  const activeCities = region && regionData[region] ? regionData[region].cities : [];
 
   const strength = getStrengthFeedback();
 
@@ -421,24 +473,59 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
               {emailError && <span className="error-text-message">{emailError}</span>}
             </div>
 
-            {/* DATE OF BIRTH */}
+            {/* REGION (LOCATION PART 1) */}
             <div className="field-group">
-              <label>{t.dobLabel}</label>
-              <div className={`input-container has-left-icon ${dobError ? 'error-state' : ''}`}>
+              <label>{t.regionLabel}</label>
+              <div className={`input-container has-left-icon ${regionError ? 'error-state' : ''}`}>
                 <svg className="input-left-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <input
-                  type="date"
-                  value={dob}
+                <select
+                  value={region}
                   onChange={(e) => {
-                    setDob(e.target.value);
-                    if (dobError) setDobError('');
+                    setRegion(e.target.value);
+                    if (regionError) setRegionError('');
                   }}
                   required
-                />
+                >
+                  <option value="">{t.regionPlaceholder}</option>
+                  {Object.keys(regionData).map((key) => (
+                    <option key={key} value={key}>
+                      {isFr ? regionData[key].nameFr : regionData[key].nameEn}
+                    </option>
+                  ))}
+                </select>
               </div>
-              {dobError && <span className="error-text-message">{dobError}</span>}
+              {regionError && <span className="error-text-message">{regionError}</span>}
+            </div>
+
+            {/* CITY / QUARTER (LOCATION PART 2) */}
+            <div className="field-group">
+              <label>{t.cityLabel}</label>
+              <div className={`input-container has-left-icon ${cityError ? 'error-state' : ''}`}>
+                <svg className="input-left-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <select
+                  value={city}
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    if (cityError) setCityError('');
+                  }}
+                  disabled={!region}
+                  required
+                >
+                  <option value="">{region ? t.cityPlaceholder : t.cityChooseRegion}</option>
+                  {activeCities.map((cityName) => (
+                    <option key={cityName} value={cityName}>
+                      {cityName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {cityError && <span className="error-text-message">{cityError}</span>}
             </div>
 
             {/* PASSWORD */}
@@ -610,32 +697,6 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
                   </select>
                 </div>
                 {categoryError && <span className="error-text-message">{categoryError}</span>}
-              </div>
-
-              {/* City */}
-              <div className="field-group">
-                <label>{t.cityLabel}</label>
-                <div className={`input-container has-left-icon ${cityError ? 'error-state' : ''}`}>
-                  <svg className="input-left-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <select
-                    value={city}
-                    onChange={(e) => {
-                      setCity(e.target.value);
-                      if (cityError) setCityError('');
-                    }}
-                  >
-                    <option value="">{t.cityPlaceholder}</option>
-                    {cities.map((ct) => (
-                      <option key={ct.value} value={ct.value}>
-                        {ct.value === 'other' && isFr ? ct.labelFr : ct.labelEn || ct.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {cityError && <span className="error-text-message">{cityError}</span>}
               </div>
 
               {/* Experience */}

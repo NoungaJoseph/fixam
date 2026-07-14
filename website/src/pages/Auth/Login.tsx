@@ -7,7 +7,6 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
   const { i18n } = useTranslation();
   const isFr = i18n.language === 'fr';
 
-  const [role, setRole] = useState<'client' | 'pro'>('client');
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('phone');
   const [countryCode, setCountryCode] = useState(() => {
     return localStorage.getItem('FIXAM_LAST_SELECTED_DIAL_CODE') || '+237';
@@ -101,7 +100,9 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
         setIsLoading(false);
       } else {
         setIsLoading(false);
-        onLogin?.(role);
+        // Auto-detect role: if password has 'pro' or phone has '677', log in as provider
+        const detectedRole = password.toLowerCase().includes('pro') || phone.includes('677') ? 'pro' : 'client';
+        onLogin?.(detectedRole);
         onNavigate('dashboard');
       }
     }, 1200);
@@ -112,8 +113,6 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
     newToFixam: isFr ? 'Nouveau sur Fixam ?' : 'New to Fixam?',
     joinNow: isFr ? 'Rejoindre' : 'Join Now',
     signInTitle: isFr ? 'Se connecter à Fixam' : 'Sign in to Fixam',
-    clientTab: isFr ? 'Client' : 'Client',
-    providerTab: isFr ? 'Prestataire' : 'Provider',
     phoneLabel: isFr ? 'Numéro de Téléphone' : 'Phone Number',
     useEmail: isFr ? 'Utiliser l\'adresse e-mail' : 'Use Email instead',
     emailLabel: isFr ? 'Adresse E-mail' : 'Email Address',
@@ -125,8 +124,6 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
     forgotPassword: isFr ? 'Mot de passe oublié ?' : 'Forgot password?',
     signInBtn: isFr ? 'Se Connecter' : 'Sign In',
     signingIn: isFr ? 'Connexion...' : 'Signing in...',
-    or: isFr ? 'ou' : 'or',
-    signInAsProBtn: isFr ? 'Se connecter en tant que Prestataire' : 'Sign in as Provider',
     dontHaveAccount: isFr ? 'Vous n\'avez pas de compte Fixam ?' : 'Don\'t have a Fixam account?',
     createAccount: isFr ? 'Créer un Compte' : 'Create Account',
   };
@@ -148,25 +145,7 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
       <main className="auth-main-content">
         <div className="auth-card">
           <h1 className="auth-card-title">{t.signInTitle}</h1>
-          <p className="auth-card-subtitle" style={{ marginBottom: '24px' }}></p>
-
-          {/* ROLE TOGGLE */}
-          <div className="account-type-tabs">
-            <button
-              type="button"
-              className={`account-type-tab ${role === 'client' ? 'active' : ''}`}
-              onClick={() => setRole('client')}
-            >
-              {t.clientTab}
-            </button>
-            <button
-              type="button"
-              className={`account-type-tab ${role === 'pro' ? 'active' : ''}`}
-              onClick={() => setRole('pro')}
-            >
-              {t.providerTab}
-            </button>
-          </div>
+          <p className="auth-card-subtitle" style={{ marginBottom: '32px' }}></p>
 
           {/* API ERROR BANNER */}
           {apiError && (
@@ -311,29 +290,6 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
             >
               {isLoading && <span className="auth-spinner"></span>}
               <span>{isLoading ? t.signingIn : t.signInBtn}</span>
-            </button>
-
-            {/* DIVIDER */}
-            <div className="auth-or-divider">
-              <div className="auth-or-line"></div>
-              <span className="auth-or-text">{t.or}</span>
-              <div className="auth-or-line"></div>
-            </div>
-
-            {/* CONTINUE AS PROVIDER */}
-            <button
-              type="button"
-              className="btn-auth-outline"
-              onClick={() => {
-                setRole('pro');
-                onLogin?.('pro');
-                onNavigate('dashboard');
-              }}
-            >
-              <svg style={{ color: '#14B8A6', width: '20px', height: '20px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <span>{t.signInAsProBtn}</span>
             </button>
           </form>
 
