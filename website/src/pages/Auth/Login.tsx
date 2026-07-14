@@ -304,6 +304,33 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
               {t.createAccount}
             </button>
           </p>
+
+          {/* QUICK DEV LOGINS */}
+          <div className="quick-login-sandbox">
+            <span className="quick-login-title">Quick Developer Sandbox</span>
+            <div className="quick-login-buttons">
+              <button
+                type="button"
+                className="btn-quick-login client"
+                onClick={() => {
+                  onLogin?.('client');
+                  onNavigate('dashboard');
+                }}
+              >
+                👤 Login as Client
+              </button>
+              <button
+                type="button"
+                className="btn-quick-login pro"
+                onClick={() => {
+                  onLogin?.('pro');
+                  onNavigate('dashboard');
+                }}
+              >
+                🛠️ Login as Provider
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -620,3 +620,58 @@
     padding: 4px 12px;
   }
 }
+
+/* QUICK DEV LOGINS */
+.quick-login-sandbox {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px dashed #E5E7EB;
+  text-align: center;
+}
+.quick-login-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+.quick-login-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn-quick-login {
+  flex: 1;
+  height: 38px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #E5E7EB;
+  background-color: #F9FAFB;
+  color: #4B5563;
+}
+.btn-quick-login.client:hover {
+  border-color: #14B8A6;
+  background-color: rgba(20, 184, 166, 0.05);
+  color: #14B8A6;
+}
+.btn-quick-login.pro:hover {
+  border-color: #0369A1;
+  background-color: rgba(3, 105, 161, 0.05);
+  color: #0369A1;
+}
+
+@media (max-width: 480px) {
+  .quick-login-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
