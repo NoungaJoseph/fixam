@@ -58,13 +58,13 @@ const reviewsContent = {
         },
         {
           title: "How Pierre Biya doubled his monthly income as a plumber by joining the Fixam provider network",
-          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=800&auto=format&fit=crop&q=80"
         },
         {
           initials: "SF",
           bgColor: "#F97316",
           title: "How Sophie Fotso found the right beauty professional for her wedding day in just 24 hours on Fixam",
-          img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop&q=80"
         }
       ]
     },
@@ -349,13 +349,13 @@ const reviewsContent = {
         },
         {
           title: "Comment Pierre Biya a doublé son revenu mensuel en tant que plombier en rejoignant Fixam",
-          img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=800&auto=format&fit=crop&q=80"
         },
         {
           initials: "SF",
           bgColor: "#F97316",
           title: "Comment Sophie Fotso a trouvé la bonne professionnelle de beauté pour son mariage en seulement 24 heures",
-          img: "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=800&auto=format&fit=crop&q=80"
+          img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=800&auto=format&fit=crop&q=80"
         }
       ]
     },
