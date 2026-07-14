@@ -618,6 +618,16 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
   const [activeFaqCategory, setActiveFaqCategory] = useState<string>('started');
   const [faqsExpanded, setFaqsExpanded] = useState<Record<number, boolean>>({});
   const [activeSkillTab, setActiveSkillTab] = useState<string>('Top Services');
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [isCategoryFilterExpanded, setIsCategoryFilterExpanded] = useState(true);
+  const [isUserTypeFilterExpanded, setIsUserTypeFilterExpanded] = useState(true);
+
+  const skillTabLabels: Record<string, { en: string; fr: string }> = {
+    "Top Services": { en: "Top Services", fr: "Services Principaux" },
+    "Most Booked": { en: "Most Booked", fr: "Les Plus Réservés" },
+    "Best Rated": { en: "Best Rated", fr: "Mieux Notés" },
+    "New on Fixam": { en: "New on Fixam", fr: "Nouveautés" }
+  };
 
   // Slide carousel controls
   const handlePrevSlide = () => {
@@ -653,6 +663,10 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
       (selectedUserType === 'Providers' && review.isPro);
     return categoryMatch && userTypeMatch;
   });
+
+  const categoriesToShow = showAllCategories 
+    ? categoryCounts 
+    : categoryCounts.slice(0, 6); // All + 5 categories
 
   // Simple sorting simulation
   const sortedReviews = [...filteredReviews].sort((a, b) => {
@@ -703,13 +717,13 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
           <div className="reviews-hero-right">
             <div className="hero-stats-container">
               <div className="stat-card">
-                <div className="stat-stars">★★★★★</div>
+                <div className="stat-stars">★★★★★ <span style={{ color: '#6B7280', fontSize: '14px', marginLeft: '6px', fontWeight: 500 }}>5/5</span></div>
                 <div className="stat-number">{content.hero.stats.stat1Num}</div>
                 <div className="stat-desc">{content.hero.stats.stat1Label}</div>
               </div>
               <div className="stat-divider" />
               <div className="stat-card">
-                <div className="stat-stars">★★★★☆</div>
+                <div className="stat-stars">★★★★½ <span style={{ color: '#6B7280', fontSize: '14px', marginLeft: '6px', fontWeight: 500 }}>4.8/5</span></div>
                 <div className="stat-number">{content.hero.stats.stat2Num}</div>
                 <div className="stat-desc">{content.hero.stats.stat2Label}</div>
               </div>
@@ -894,50 +908,82 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
             <div className="filter-divider" style={{ borderTop: '1px solid #E5E7EB', margin: '20px 0' }} />
 
             <div className="filter-group">
-              <label className="filter-label">{content.userReviews.categoryLabel}</label>
-              {categoryCounts.map((cat, i) => (
-                <div 
-                  className="filter-checkbox-row" 
-                  key={i}
-                  onClick={() => setSelectedCategory(cat.key)}
-                >
-                  <div className={`custom-checkbox ${selectedCategory === cat.key ? 'checked' : ''}`}>
-                    {selectedCategory === cat.key && (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="checkbox-text">{cat.label}</span>
-                  {cat.count !== undefined && <span className="checkbox-count">({cat.count})</span>}
-                </div>
-              ))}
+              <label 
+                className="filter-label"
+                onClick={() => setIsCategoryFilterExpanded(!isCategoryFilterExpanded)}
+                style={{ cursor: 'pointer' }}
+              >
+                {content.userReviews.categoryLabel}
+                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{isCategoryFilterExpanded ? '▲' : '▼'}</span>
+              </label>
+              {isCategoryFilterExpanded && (
+                <>
+                  {categoriesToShow.map((cat, i) => (
+                    <div 
+                      className="filter-checkbox-row" 
+                      key={i}
+                      onClick={() => setSelectedCategory(cat.key)}
+                    >
+                      <div className={`custom-checkbox ${selectedCategory === cat.key ? 'checked' : ''}`}>
+                        {selectedCategory === cat.key && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="checkbox-text">{cat.label}</span>
+                      {cat.count !== undefined && <span className="checkbox-count">({cat.count})</span>}
+                    </div>
+                  ))}
+                  {categoryCounts.length > 6 && (
+                    <button 
+                      className="see-more-link" 
+                      onClick={() => setShowAllCategories(!showAllCategories)}
+                    >
+                      {showAllCategories 
+                        ? (isFr ? "Voir moins ↑" : "See less ↑") 
+                        : (isFr ? "Voir plus ↓" : "See more ↓")}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="filter-divider" style={{ borderTop: '1px solid #E5E7EB', margin: '20px 0' }} />
 
             <div className="filter-group">
-              <label className="filter-label">{content.userReviews.userTypeLabel}</label>
-              {['All', 'Clients', 'Providers'].map((type, i) => (
-                <div 
-                  className="filter-checkbox-row" 
-                  key={i}
-                  onClick={() => setSelectedUserType(type)}
-                >
-                  <div className={`custom-checkbox ${selectedUserType === type ? 'checked' : ''}`}>
-                    {selectedUserType === type && (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="checkbox-text">
-                    {type === 'All' ? content.userReviews.userTypes.all : 
-                     type === 'Clients' ? content.userReviews.userTypes.clients : 
-                     content.userReviews.userTypes.providers}
-                  </span>
-                </div>
-              ))}
+              <label 
+                className="filter-label"
+                onClick={() => setIsUserTypeFilterExpanded(!isUserTypeFilterExpanded)}
+                style={{ cursor: 'pointer' }}
+              >
+                {content.userReviews.userTypeLabel}
+                <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{isUserTypeFilterExpanded ? '▲' : '▼'}</span>
+              </label>
+              {isUserTypeFilterExpanded && (
+                <>
+                  {['All', 'Clients', 'Providers'].map((type, i) => (
+                    <div 
+                      className="filter-checkbox-row" 
+                      key={i}
+                      onClick={() => setSelectedUserType(type)}
+                    >
+                      <div className={`custom-checkbox ${selectedUserType === type ? 'checked' : ''}`}>
+                        {selectedUserType === type && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="checkbox-text">
+                        {type === 'All' ? content.userReviews.userTypes.all : 
+                         type === 'Clients' ? content.userReviews.userTypes.clients : 
+                         content.userReviews.userTypes.providers}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </aside>
 
@@ -1035,7 +1081,7 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
               const isExpanded = !!faqsExpanded[i];
               return (
                 <div className="faq-item" key={i}>
-                  <h3 className="faq-q">{faq.q}</h3>
+                  <h3 className="faq-q" style={{ cursor: 'pointer' }} onClick={() => toggleFaqExpand(i)}>{faq.q}</h3>
                   {isExpanded ? (
                     <p className="faq-a-full">{faq.a}</p>
                   ) : (
@@ -1056,13 +1102,13 @@ export default function ReviewsPage({ onNavigate }: { onNavigate: (page: Page) =
         {/* SECTION: Top Skills/Categories tabs */}
         <div className="skills-container">
           <aside className="skills-nav">
-            {content.skills.categories.map((cat, i) => (
+            {Object.keys(skillTabLabels).map((key) => (
               <button 
-                className={`skill-tab ${activeSkillTab === cat ? 'active' : ''}`}
-                key={i}
-                onClick={() => setActiveSkillTab(cat)}
+                className={`skill-tab ${activeSkillTab === key ? 'active' : ''}`}
+                key={key}
+                onClick={() => setActiveSkillTab(key)}
               >
-                {cat}
+                {isFr ? skillTabLabels[key].fr : skillTabLabels[key].en}
               </button>
             ))}
           </aside>
