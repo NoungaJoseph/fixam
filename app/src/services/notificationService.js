@@ -9,6 +9,7 @@ class NotificationService {
     this._unsubscribeOpened = null;
     this._localResponseSubscription = null;
     this._initialized = false;
+    this._lastHandledNotificationResponseId = null;
   }
 
   /**
@@ -199,6 +200,13 @@ class NotificationService {
     }
     // Listen for notification taps on local notifications
     this._localResponseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const notificationId = response.notification.request.identifier;
+      if (this._lastHandledNotificationResponseId === notificationId) {
+        console.log('[Local Notification] Already handled:', notificationId);
+        return;
+      }
+      this._lastHandledNotificationResponseId = notificationId;
+
       const data = response.notification.request.content.data;
       console.log('[Local Notification] Tapped:', JSON.stringify(data));
       if (data) {
@@ -211,6 +219,15 @@ class NotificationService {
       this._unsubscribeOpened();
     }
     this._unsubscribeOpened = messaging().onNotificationOpenedApp((remoteMessage) => {
+      const messageId = remoteMessage?.messageId;
+      if (messageId && this._lastHandledNotificationResponseId === messageId) {
+        console.log('[FCM] Already handled background notification:', messageId);
+        return;
+      }
+      if (messageId) {
+        this._lastHandledNotificationResponseId = messageId;
+      }
+
       console.log('[FCM] onNotificationOpenedApp:', JSON.stringify(remoteMessage?.data));
       if (remoteMessage?.data) {
         this.handleNotificationNavigation(remoteMessage.data);
@@ -222,6 +239,15 @@ class NotificationService {
       .getInitialNotification()
       .then((remoteMessage) => {
         if (remoteMessage?.data) {
+          const messageId = remoteMessage.messageId;
+          if (messageId && this._lastHandledNotificationResponseId === messageId) {
+            console.log('[FCM] Already handled initial notification:', messageId);
+            return;
+          }
+          if (messageId) {
+            this._lastHandledNotificationResponseId = messageId;
+          }
+
           console.log('[FCM] getInitialNotification:', JSON.stringify(remoteMessage.data));
           // Delay to let the navigation tree mount fully
           setTimeout(() => {

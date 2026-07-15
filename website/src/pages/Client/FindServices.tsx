@@ -1,7 +1,6 @@
 import './FindServices.css';
 import { useState } from 'react';
 import { Icon, IconName, images } from '../../App';
-import { useTranslation } from 'react-i18next';
 
 interface FindServicesProps {
   setSelectedProvider: (pro: any) => void;
@@ -18,9 +17,6 @@ export default function FindServices({
   setClientBookings,
   setActiveChatUser
 }: FindServicesProps) {
-  const { i18n } = useTranslation();
-  const isFr = i18n.language === 'fr';
-
   // Find Services interactive states (relocated locally)
   const [findServicesSearch, setFindServicesSearch] = useState('');
   const [findServicesLoc, setFindServicesLoc] = useState('Douala, Cameroon');
@@ -31,7 +27,7 @@ export default function FindServices({
   const [availToday, setAvailToday] = useState(false);
   const [serviceTypeInPerson, setServiceTypeInPerson] = useState(true);
   const [serviceTypeRemote, setServiceTypeRemote] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<'loc' | 'cat' | 'price' | 'rating' | 'avail' | 'type' | null>(null);
 
   // Mock providers list matching original inline code
   const providersList = [
@@ -178,72 +174,260 @@ export default function FindServices({
         </div>
       </div>
 
-      <div className="fs-directory-layout">
-        <div className="fs-directory-left">
-          <div className="fs-results-header">
-            <span>{isFr ? 'Affichage de' : 'Showing'} {filteredProviders.length} {isFr ? 'prestataires' : 'providers'}</span>
-            <div className="fs-results-actions">
-              <button type="button" className="btn-mobile-filters-trigger" onClick={() => setIsFiltersOpen(true)}>
-                <Icon name="menu" /> {isFr ? 'Filtres' : 'Filters'}
-              </button>
-              <div className="fs-sort-dropdown">
-                <span>{isFr ? 'Trier par: ' : 'Sort by: '}</span>
-                <select>
-                  <option>{isFr ? 'Recommandé' : 'Recommended'}</option>
-                  <option>{isFr ? 'Note: du plus élevé au plus bas' : 'Rating: High to Low'}</option>
-                  <option>{isFr ? 'Prix: du plus bas au plus élevé' : 'Price: Low to High'}</option>
-                </select>
+      {/* Box-less Horizontal Filter Row */}
+      <div className="fs-horizontal-filters-bar">
+        {/* Location Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'loc' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'loc' ? null : 'loc')}
+          >
+            📍 Location: {findServicesLoc.split(',')[0]} ▾
+          </button>
+          {activeDropdown === 'loc' && (
+            <div className="fs-dropdown-menu-card animate-fade-in">
+              <h4>Select Location</h4>
+              <select value={findServicesLoc} onChange={(e) => { setFindServicesLoc(e.target.value); setActiveDropdown(null); }}>
+                <option value="Douala, Cameroon">Douala, Cameroon</option>
+                <option value="Yaoundé, Cameroon">Yaoundé, Cameroon</option>
+              </select>
+              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
+            </div>
+          )}
+        </div>
+
+        {/* Category Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'cat' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'cat' ? null : 'cat')}
+          >
+            📂 Category: {findServicesCat} ▾
+          </button>
+          {activeDropdown === 'cat' && (
+            <div className="fs-dropdown-menu-card animate-fade-in">
+              <h4>Select Category</h4>
+              <select value={findServicesCat} onChange={(e) => { setFindServicesCat(e.target.value); setActiveDropdown(null); }}>
+                <option value="All Categories">All Categories</option>
+                <option value="Cleaning Service">Cleaning Service</option>
+                <option value="Plumbing Service">Plumbing Service</option>
+                <option value="Electrical Service">Electrical Service</option>
+                <option value="Painting Service">Painting Service</option>
+                <option value="Carpentry Service">Carpentry Service</option>
+              </select>
+              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
+            </div>
+          )}
+        </div>
+
+        {/* Price Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'price' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
+          >
+            💵 Max Price: {findServicesPrice === 5 ? '5+ coins' : `${findServicesPrice} coins`} ▾
+          </button>
+          {activeDropdown === 'price' && (
+            <div className="fs-dropdown-menu-card animate-fade-in">
+              <h4>Price (per hour)</h4>
+              <input 
+                type="range" 
+                min="0" 
+                max="5" 
+                value={findServicesPrice}
+                onChange={(e) => setFindServicesPrice(Number(e.target.value))}
+                className="price-slider-range"
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)', margin: '0.5rem 0' }}>
+                <span>0 coin</span>
+                <span>{findServicesPrice === 5 ? '5+ coins' : `${findServicesPrice} coins`}</span>
               </div>
+              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
+            </div>
+          )}
+        </div>
+
+        {/* Rating Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'rating' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'rating' ? null : 'rating')}
+          >
+            ⭐ Rating: {findServicesRating} ▾
+          </button>
+          {activeDropdown === 'rating' && (
+            <div className="fs-dropdown-menu-card animate-fade-in" style={{ minWidth: '180px' }}>
+              <h4>Provider Rating</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0' }}>
+                {['All', '4.0 & up', '4.5 & up'].map((r) => (
+                  <button 
+                    key={r}
+                    type="button" 
+                    className={`rating-pill-btn ${findServicesRating === r ? 'active' : ''}`}
+                    onClick={() => { setFindServicesRating(r); setActiveDropdown(null); }}
+                    style={{ 
+                      padding: '0.45rem', 
+                      border: '1px solid var(--line)', 
+                      background: findServicesRating === r ? 'var(--teal-light)' : 'var(--soft)', 
+                      color: findServicesRating === r ? 'var(--teal)' : 'var(--ink)', 
+                      borderRadius: '6px', 
+                      fontWeight: 700, 
+                      cursor: 'pointer' 
+                    }}
+                  >
+                    {r === 'All' ? 'All Ratings' : r === '4.0 & up' ? '4★ & up' : '4.5★ & up'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Availability Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'avail' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'avail' ? null : 'avail')}
+          >
+            📅 Availability ▾
+          </button>
+          {activeDropdown === 'avail' && (
+            <div className="fs-dropdown-menu-card animate-fade-in">
+              <h4>Availability</h4>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
+                <input type="checkbox" checked={availNow} onChange={(e) => setAvailNow(e.target.checked)} />
+                <span>Available Now</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
+                <input type="checkbox" checked={availToday} onChange={(e) => setAvailToday(e.target.checked)} />
+                <span>Available Today</span>
+              </label>
+              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
+            </div>
+          )}
+        </div>
+
+        {/* Service Type Dropdown */}
+        <div className="fs-filter-dropdown-container">
+          <button 
+            type="button"
+            className={`fs-filter-pill-btn ${activeDropdown === 'type' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
+          >
+            📍 Service Type ▾
+          </button>
+          {activeDropdown === 'type' && (
+            <div className="fs-dropdown-menu-card animate-fade-in">
+              <h4>Service Type</h4>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
+                <input type="checkbox" checked={serviceTypeInPerson} onChange={(e) => setServiceTypeInPerson(e.target.checked)} />
+                <span>In Person</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
+                <input type="checkbox" checked={serviceTypeRemote} onChange={(e) => setServiceTypeRemote(e.target.checked)} />
+                <span>Remote</span>
+              </label>
+              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
+            </div>
+          )}
+        </div>
+
+        {/* Clear Filters Button */}
+        {(findServicesSearch || findServicesCat !== 'All Categories' || findServicesRating !== 'All' || findServicesPrice !== 5 || availNow || availToday || !serviceTypeInPerson || serviceTypeRemote) && (
+          <button 
+            type="button"
+            className="fs-clear-filters-btn-inline"
+            onClick={() => {
+              setFindServicesSearch('');
+              setFindServicesCat('All Categories');
+              setFindServicesRating('All');
+              setFindServicesPrice(5);
+              setAvailNow(false);
+              setAvailToday(false);
+              setServiceTypeInPerson(true);
+              setServiceTypeRemote(false);
+              setActiveDropdown(null);
+            }}
+          >
+            Clear All
+          </button>
+        )}
+      </div>
+
+      <div className="fs-directory-layout" style={{ display: 'block', width: '100%' }}>
+        <div className="fs-directory-main" style={{ width: '100%', maxWidth: '100%' }}>
+          <div className="fs-results-header">
+            <span>Showing {filteredProviders.length} providers</span>
+            <div className="fs-sort-dropdown">
+              <span>Sort by: </span>
+              <select>
+                <option>Recommended</option>
+                <option>Rating: High to Low</option>
+                <option>Price: Low to High</option>
+              </select>
             </div>
           </div>
 
           <div className="fs-providers-list">
             {filteredProviders.map((p, idx) => (
-              <div className="provider-card" key={idx}>
-                {/* ROW 1: Avatar + Name + badge */}
-                <div className="provider-card-row-1">
-                  <img src={p.image} alt={p.name} className="provider-avatar" />
-                  <div className="provider-info-col">
-                    <h3 className="provider-name">
-                      {p.name} 
-                      {p.verified && <span className="verified-badge-inline">✓</span>}
-                    </h3>
-                    <span className="provider-category">{p.role}</span>
-                    <span className="provider-location"><Icon name="location" /> {p.location}</span>
+              <div className="fs-provider-card" key={idx}>
+                <img src={p.image} alt={p.name} className="prov-avatar" />
+                
+                <div className="prov-card-middle">
+                  <div className="prov-header-row">
+                    <h3>{p.name}</h3>
+                    {p.verified && <span className="verified-check-fs"><Icon name="shield" /></span>}
+                    {p.badge && <span className={`badge-prov ${p.badge.toLowerCase().replace(' ', '-')}`}>{p.badge}</span>}
                   </div>
-                  {p.badge && (
-                    <span className="provider-top-rated-badge">
-                      {p.badge}
-                    </span>
-                  )}
-                </div>
-
-                {/* ROW 2: Rating + Price */}
-                <div className="provider-card-row-2">
-                  <div className="provider-rating">
-                    <span className="star-icon">★</span>
+                  <p className="prov-role-desc">{p.role}</p>
+                  
+                  <div className="prov-rating-row">
+                    <Icon name="star" />
                     <strong>{p.rating}</strong>
-                    <span className="reviews-count">({p.reviews} {isFr ? 'avis' : 'reviews'})</span>
+                    <span>({p.reviews} reviews)</span>
+                    <span className="dot-sep">•</span>
+                    <span className="loc-text"><Icon name="location" /> {p.location}</span>
                   </div>
-                  <div className="provider-price">
-                    {isFr ? `À partir de ${p.price.split(' ')[0]} pièce / h` : `From ${p.price} / hr`}
+                  
+                  <p className="prov-summary-desc">{p.desc}</p>
+                  
+                  <div className="prov-tags-row">
+                    {p.tags.map((tag, tIdx) => (
+                      <span key={tIdx} className="prov-tag-badge">{tag}</span>
+                    ))}
                   </div>
                 </div>
 
-                {/* ROW 3: Action buttons */}
-                <div className="provider-card-row-3">
-                  <button type="button" className="btn-view-profile-flat" onClick={() => setSelectedProvider(p)}>
-                    {isFr ? 'Voir le Profil' : 'View Profile'}
-                  </button>
-                  <button type="button" className="btn-chat-icon-flat" onClick={() => {
+                <div className="prov-card-right">
+                  <div className="prov-price-box">
+                    <span>From</span>
+                    <strong>{p.price} <small>/ hour</small></strong>
+                  </div>
+                  <button className="btn-view-prov" style={{ marginBottom: '0.4rem' }} onClick={() => {
+                    setSelectedProvider(p);
+                  }}>View Profile</button>
+                  <button className="btn-view-prov" style={{ background: 'var(--soft)', color: 'var(--teal)', border: '1px solid var(--teal)' }} onClick={() => {
                     setActiveTab('Messages');
                     setActiveChatUser(p.name);
-                  }} aria-label="Chat">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="chat-svg-icon"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                  </button>
+                  }}>Chat</button>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Promo Card Banner at the bottom */}
+          <div className="dash-panel-premium promo-card-fs" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', marginTop: '2.5rem', width: '100%', position: 'relative', overflow: 'hidden' }}>
+            <div className="promo-text-fs" style={{ flex: 1, maxWidth: '80%' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 800, color: 'var(--ink)' }}>Get the best experience</h4>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>Book your favorite providers faster and manage all your bookings in one place.</p>
+            </div>
+            <button type="button" className="btn-promo-action-fs" onClick={() => setActiveTab('Dashboard')} style={{ flexShrink: 0, minWidth: '140px' }}>Book a Service</button>
           </div>
 
           <div className="fs-pagination-row">
@@ -258,108 +442,6 @@ export default function FindServices({
             <button className="page-arrow" onClick={() => alert('Next page')}>&gt;</button>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Sheet Filter Overlay */}
-      <div className={`filter-overlay ${isFiltersOpen ? 'active' : ''}`} onClick={() => setIsFiltersOpen(false)}></div>
-      <div className={`filter-sheet ${isFiltersOpen ? 'open' : ''}`}>
-        <div className="filter-handle" onClick={() => setIsFiltersOpen(false)}></div>
-        
-        <div className="filter-sheet-header">
-          <h3>{isFr ? 'Filtres' : 'Filters'}</h3>
-          <button type="button" className="btn-clear-filters-flat" onClick={() => {
-            setFindServicesSearch('');
-            setFindServicesCat('All Categories');
-            setFindServicesRating('All');
-            setFindServicesPrice(5);
-            setAvailNow(false);
-            setAvailToday(false);
-            setServiceTypeInPerson(true);
-            setServiceTypeRemote(false);
-          }}>{isFr ? 'Effacer tout' : 'Clear all'}</button>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">{isFr ? 'Emplacement' : 'Location'}</label>
-          <select className="filter-select-flat-input" value={findServicesLoc} onChange={(e) => setFindServicesLoc(e.target.value)}>
-            <option value="Douala, Cameroon">Douala, Cameroon</option>
-            <option value="Yaoundé, Cameroon">Yaoundé, Cameroon</option>
-          </select>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">Category</label>
-          <select className="filter-select-flat-input" value={findServicesCat} onChange={(e) => setFindServicesCat(e.target.value)}>
-            <option value="All Categories">{isFr ? 'Toutes Catégories' : 'All Categories'}</option>
-            <option value="Cleaning Service">{isFr ? 'Service de Nettoyage' : 'Cleaning Service'}</option>
-            <option value="Plumbing Service">{isFr ? 'Service de Plomberie' : 'Plumbing Service'}</option>
-            <option value="Electrical Service">{isFr ? 'Service Électrique' : 'Electrical Service'}</option>
-            <option value="Painting Service">{isFr ? 'Service de Peinture' : 'Painting Service'}</option>
-            <option value="Carpentry Service">{isFr ? 'Service de Menuiserie' : 'Carpentry Service'}</option>
-          </select>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">{isFr ? 'Prix (par heure)' : 'Price (per hour)'}</label>
-          <div className="price-slider-flat-box">
-            <input 
-              type="range" 
-              min="0" 
-              max="5" 
-              value={findServicesPrice}
-              onChange={(e) => setFindServicesPrice(Number(e.target.value))}
-              className="price-slider-flat-range"
-            />
-            <div className="price-slider-flat-labels">
-              <span>0 coin</span>
-              <span>{findServicesPrice === 5 ? '5+ coins' : `${findServicesPrice} coins`}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">{isFr ? 'Note du Prestataire' : 'Provider Rating'}</label>
-          <div className="filter-rating-flat-options">
-            {['All', '4.0 & up', '4.5 & up'].map((ratingOpt) => (
-              <button 
-                type="button" 
-                key={ratingOpt}
-                className={`rating-pill-flat-btn ${findServicesRating === ratingOpt ? 'active' : ''}`}
-                onClick={() => setFindServicesRating(ratingOpt)}
-              >
-                {ratingOpt === 'All' ? (isFr ? 'Tous' : 'All') : `${ratingOpt.split(' ')[0]}★ & up`}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">{isFr ? 'Disponibilité' : 'Availability'}</label>
-          <label className="checkbox-flat-row">
-            <input type="checkbox" checked={availNow} onChange={(e) => setAvailNow(e.target.checked)} />
-            <span>{isFr ? 'Disponible Immédiatement' : 'Available Now'}</span>
-          </label>
-          <label className="checkbox-flat-row">
-            <input type="checkbox" checked={availToday} onChange={(e) => setAvailToday(e.target.checked)} />
-            <span>{isFr ? 'Disponible Aujourd\'hui' : 'Available Today'}</span>
-          </label>
-        </div>
-
-        <div className="filter-group-flat">
-          <label className="filter-lbl-flat-name">{isFr ? 'Type de Service' : 'Service Type'}</label>
-          <label className="checkbox-flat-row">
-            <input type="checkbox" checked={serviceTypeInPerson} onChange={(e) => setServiceTypeInPerson(e.target.checked)} />
-            <span>{isFr ? 'En Personne' : 'In Person'}</span>
-          </label>
-          <label className="checkbox-flat-row">
-            <input type="checkbox" checked={serviceTypeRemote} onChange={(e) => setServiceTypeRemote(e.target.checked)} />
-            <span>{isFr ? 'À Distance' : 'Remote'}</span>
-          </label>
-        </div>
-
-        <button type="button" className="btn-apply-flat-filters" onClick={() => { setIsFiltersOpen(false); alert(isFr ? 'Filtres appliqués !' : 'Filters applied!'); }}>
-          {isFr ? 'Appliquer les Filtres' : 'Apply Filters'}
-        </button>
       </div>
     </div>
   );

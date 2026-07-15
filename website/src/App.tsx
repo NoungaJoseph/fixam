@@ -64,7 +64,7 @@ export const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:5000/api'
-    : 'https://fixam-backend-production.up.railway.app/api';
+    : 'https://api.usefixam.com/api';
 };
 
 const getMediaUrl = (path?: string) => {
@@ -809,29 +809,6 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
     setSelectedProvider(null);
   }, [userRole]);
 
-  // Lock body scroll when sidebar is open on mobile
-  useEffect(() => {
-    if (isSidebarOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isSidebarOpen]);
-
-  // Close sidebar on Escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsSidebarOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
-
   const [tickerItems, setTickerItems] = useState<Array<{ isNews: boolean; badgeText: string; text: string }>>([
     { isNews: false, badgeText: 'SPORTS', text: '⚽ Cameroon 2 - 0 Egypt (LIVE)' },
     { isNews: false, badgeText: 'SPORTS', text: '📅 Upcoming: Nigeria vs Ghana (19:00)' },
@@ -943,27 +920,45 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
 
     return (
       <main className={`dashboard-shell-new ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <div 
-          className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} 
-          id="sidebarOverlay"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        {isSidebarOpen && (
+          <div 
+            className="sidebar-backdrop" 
+            onClick={() => setIsSidebarOpen(false)} 
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 998 }}
+          ></div>
+        )}
         {/* Left Sidebar */}
-        <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`} id="sidebar">
-          
-          <div className="sidebar-profile-section" onClick={() => setActiveTab('My Profile')} style={{ cursor: 'pointer' }}>
-            {images.proJeff ? (
-              <img src={images.proJeff} alt="User Avatar" className="sidebar-avatar" />
-            ) : (
-              <div className="sidebar-avatar-placeholder">N</div>
-            )}
-            <h3 className="sidebar-username">Nounga</h3>
-            <div className="sidebar-role-row">
-              <span className="sidebar-role-pill">Client</span>
-              <span className="sidebar-verified-badge">✓ Verified</span>
+        <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
+          <div className="brand-header">
+            <button className="brand brand-button dash-brand-compact" onClick={() => onNavigate('home')}>
+              <span className="logo-mark-dash">F</span>
+              <span className="logo-text-dash">Fixam</span>
+            </button>
+            <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
+              {isSidebarCollapsed ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              )}
+            </button>
+            <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
+              <Icon name="x" />
+            </button>
+          </div>
+
+          <div className="user-card-new" onClick={() => setActiveTab('My Profile')} style={{ cursor: 'pointer' }}>
+            <img src={images.proJeff} alt="User Avatar" />
+            <div className="user-info-new">
+              <h3>Nounga</h3>
+              <div className="role-row">
+                <span className="role-text">Client</span>
+                <span className="verified-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.7rem', height: '0.7rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Verified
+                </span>
+              </div>
             </div>
           </div>
-          <div className="sidebar-separator"></div>
 
           <nav className="sidebar-links-new">
             {clientNavItems.map((item) => (
@@ -998,15 +993,14 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
         <section className="dash-main-new">
           {/* Top Bar Header */}
           <header className="dash-header-premium">
-            <button type="button" className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)} aria-label="Open menu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)} aria-label="Open menu" style={{ display: 'none' }}>
+              <Icon name="menu" />
             </button>
-            
-            <div className="navbar-brand-center">
+            <div className="mobile-logo-dash" style={{ display: 'none', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1.2rem', color: 'var(--ink)' }}>
+              <span className="logo-mark-dash" style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#14B8A6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>F</span>
               Fixam
             </div>
-
-            {/* Live Ticker instead of Search bar (hidden on mobile via CSS) */}
+            {/* Live Ticker instead of Search bar */}
             <div className="header-news-ticker">
               <span className="ticker-static-badge">Live Scores</span>
               <div className="ticker-scroll-container">
@@ -1029,20 +1023,27 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
             </div>
 
             <div className="actions-right-dash">
-              <button type="button" className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
+              <button className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
                 <Icon name="chat" />
                 <span className="badge-indicator">3</span>
               </button>
-              <button type="button" className="icon-btn-dash" onClick={() => setActiveTab('Notifications')} aria-label="Notifications">
+              <button className="icon-btn-dash" onClick={() => setActiveTab('Notifications')} aria-label="Notifications">
                 <Icon name="bell" />
                 <span className="badge-indicator">8</span>
               </button>
-              <button type="button" className="icon-btn-dash" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label="Toggle Theme">
+              <button className="icon-btn-dash" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label="Toggle Theme">
                 <Icon name={theme === 'light' ? 'moon' : 'sun'} />
               </button>
 
-              <button type="button" className="profile-chip-dash" onClick={() => setActiveTab('My Profile')} aria-label="Profile">
+              <button className="profile-chip-dash" onClick={() => setActiveTab('My Profile')}>
                 <img src={images.proJeff} alt="Nounga profile" />
+                <div className="profile-details-dash">
+                  <span className="profile-name-dash">
+                    Nounga
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </span>
+                  <span className="profile-role-dash">Client</span>
+                </div>
               </button>
             </div>
           </header>
@@ -1296,27 +1297,45 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
 
   return (
     <main className={`dashboard-shell-new ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <div 
-        className={`sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} 
-        id="sidebarOverlay"
-        onClick={() => setIsSidebarOpen(false)}
-      ></div>
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-backdrop" 
+          onClick={() => setIsSidebarOpen(false)} 
+          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 998 }}
+        ></div>
+      )}
       {/* Left Sidebar */}
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`} id="sidebar">
-        
-        <div className="sidebar-profile-section" style={{ cursor: 'pointer' }}>
-          {images.proSamuel ? (
-            <img src={images.proSamuel} alt="User Avatar" className="sidebar-avatar" />
-          ) : (
-            <div className="sidebar-avatar-placeholder">P</div>
-          )}
-          <h3 className="sidebar-username">Pro Nounga</h3>
-          <div className="sidebar-role-row">
-            <span className="sidebar-role-pill pro">Provider</span>
-            <span className="sidebar-verified-badge">✓ Verified</span>
+      <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="brand-header">
+          <button className="brand brand-button dash-brand-compact" onClick={() => onNavigate('home')}>
+            <span className="logo-mark-dash">F</span>
+            <span className="logo-text-dash">Fixam</span>
+          </button>
+          <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
+            {isSidebarCollapsed ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            )}
+          </button>
+          <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
+            <Icon name="x" />
+          </button>
+        </div>
+
+        <div className="user-card-new" style={{ cursor: 'pointer' }}>
+          <img src={images.proSamuel} alt="User Avatar" />
+          <div className="user-info-new">
+            <h3>Pro Nounga</h3>
+            <div className="role-row">
+              <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1' }}>Provider</span>
+              <span className="verified-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.7rem', height: '0.7rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Verified
+              </span>
+            </div>
           </div>
         </div>
-        <div className="sidebar-separator"></div>
 
         <nav className="sidebar-links-new">
           {providerNavItems.map((item) => (
@@ -1349,15 +1368,15 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
       {/* Main Dashboard Area */}
       <section className="dash-main-new">
         <header className="dash-header-premium">
-          <button type="button" className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)} aria-label="Open menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <button className="menu-toggle-btn" onClick={() => setIsSidebarOpen(true)} aria-label="Open menu" style={{ display: 'none' }}>
+            <Icon name="menu" />
           </button>
-          
-          <div className="navbar-brand-center">
+          <div className="mobile-logo-dash" style={{ display: 'none', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '1.2rem', color: 'var(--ink)' }}>
+            <span className="logo-mark-dash" style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#14B8A6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>F</span>
             Fixam
           </div>
-
-          {/* Live Ticker (hidden on mobile via CSS) */}
+          
+          {/* Live Ticker */}
           <div className="header-news-ticker">
             <span className="ticker-static-badge">Live Scores</span>
             <div className="ticker-scroll-container">
@@ -1379,16 +1398,23 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange, theme, setThe
           </div>
 
           <div className="actions-right-dash">
-            <button type="button" className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
+            <button className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
               <Icon name="chat" />
               <span className="badge-indicator">2</span>
             </button>
-            <button type="button" className="icon-btn-dash" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label="Toggle Theme">
+            <button className="icon-btn-dash" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label="Toggle Theme">
               <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             </button>
 
-            <button type="button" className="profile-chip-dash" onClick={() => setActiveTab('My Profile')} aria-label="Profile">
+            <button className="profile-chip-dash">
               <img src={images.proSamuel} alt="Nounga profile" />
+              <div className="profile-details-dash">
+                <span className="profile-name-dash">
+                  Pro Nounga
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
+                <span className="profile-role-dash">Provider</span>
+              </div>
             </button>
           </div>
         </header>
