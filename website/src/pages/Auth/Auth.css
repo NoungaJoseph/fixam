@@ -682,11 +682,22 @@
 /* Multi-step Stepper styling */
 .stepper-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 36px;
   position: relative;
   width: 100%;
+}
+
+.stepper-container::before {
+  content: '';
+  position: absolute;
+  top: 19px; /* exactly half of the 38px circle height */
+  left: 50px;
+  right: 50px;
+  height: 2px;
+  background-color: var(--line);
+  z-index: 1;
 }
 
 .step-item {
@@ -695,13 +706,14 @@
   align-items: center;
   z-index: 2;
   position: relative;
+  flex: 1;
 }
 
 .step-number {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--soft);
+  background: var(--surface); /* covers the line behind it */
   border: 2px solid var(--line);
   color: var(--muted);
   display: flex;
@@ -711,6 +723,7 @@
   font-size: 15px;
   transition: all 300ms ease;
   user-select: none;
+  z-index: 3;
 }
 
 .step-label {
@@ -720,7 +733,7 @@
   margin-top: 8px;
   text-align: center;
   transition: all 300ms ease;
-  white-space: nowrap;
+  z-index: 3;
 }
 
 .step-item.active .step-number {
@@ -732,15 +745,6 @@
 
 .step-item.active .step-label {
   color: #14B8A6;
-}
-
-.step-line {
-  flex: 1;
-  height: 2px;
-  background-color: var(--line);
-  margin-bottom: 24px; /* aligns with step-number center */
-  margin-left: 8px;
-  margin-right: 8px;
 }
 
 /* Wider Form Grid Layout */
@@ -795,8 +799,21 @@
   .stepper-container {
     margin-bottom: 28px;
   }
+  .stepper-container::before {
+    top: 17px;
+    left: 30px;
+    right: 30px;
+  }
+  .step-number {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
   .step-label {
     font-size: 10px;
+    margin-top: 6px;
+    white-space: normal; /* allow wrap on small mobile */
+    max-width: 80px;
   }
 }
 

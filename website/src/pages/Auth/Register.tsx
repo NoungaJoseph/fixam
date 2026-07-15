@@ -389,12 +389,10 @@ export default function Register({ onNavigate, onRegister }: { onNavigate: (page
               <div className="step-number">1</div>
               <div className="step-label">{isFr ? 'Infos' : 'Info'}</div>
             </div>
-            <div className="step-line"></div>
             <div className={`step-item ${currentStep >= 2 ? 'active' : ''}`}>
               <div className="step-number">2</div>
               <div className="step-label">{isFr ? 'Lieu & Métier' : 'Location & Job'}</div>
             </div>
-            <div className="step-line"></div>
             <div className={`step-item ${currentStep >= 3 ? 'active' : ''}`}>
               <div className="step-number">3</div>
               <div className="step-label">{isFr ? 'Sécurité' : 'Security'}</div>
