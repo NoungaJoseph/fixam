@@ -11,8 +11,7 @@ export default function Navbar() {
   const navLinks = [
     { key: 'careerPaths', href: '#career-paths' },
     { key: 'howItWorks', href: '#how-it-works' },
-    { key: 'certificates', href: '#certificates' },
-    { key: 'forProviders', href: '#for-providers' },
+    { key: 'forProviders', href: '/for-providers' },
   ];
 
   return (
@@ -31,15 +30,26 @@ export default function Navbar() {
 
           {/* Center-right: Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.key}
-                href={link.href}
-                className="text-sm font-normal text-gray-600 hover:text-primary transition-colors duration-200"
-              >
-                {t(`nav.${link.key}`)}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isAnchor = link.href.startsWith('#');
+              return isAnchor ? (
+                <a
+                  key={link.key}
+                  href={link.href}
+                  className="text-sm font-normal text-gray-600 hover:text-primary transition-colors duration-200"
+                >
+                  {t(`nav.${link.key}`)}
+                </a>
+              ) : (
+                <Link
+                  key={link.key}
+                  to={link.href}
+                  className="text-sm font-normal text-gray-600 hover:text-primary transition-colors duration-200"
+                >
+                  {t(`nav.${link.key}`)}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Far right: Lang toggle + buttons */}
@@ -87,16 +97,28 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white py-4 px-4 space-y-2">
-          {navLinks.map((link) => (
-            <a
-              key={link.key}
-              href={link.href}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2.5 text-sm font-normal text-gray-700 hover:text-primary transition-colors"
-            >
-              {t(`nav.${link.key}`)}
-            </a>
-          ))}
+          {navLinks.map((link) => {
+            const isAnchor = link.href.startsWith('#');
+            return isAnchor ? (
+              <a
+                key={link.key}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-3 py-2.5 text-sm font-normal text-gray-700 hover:text-primary transition-colors"
+              >
+                {t(`nav.${link.key}`)}
+              </a>
+            ) : (
+              <Link
+                key={link.key}
+                to={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-3 py-2.5 text-sm font-normal text-gray-700 hover:text-primary transition-colors"
+              >
+                {t(`nav.${link.key}`)}
+              </Link>
+            );
+          })}
           <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
             <Link
               to="/signup"

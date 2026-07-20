@@ -8,7 +8,6 @@ export default function Footer() {
       titleKey: 'learners',
       links: [
         { labelKey: 'explorePaths', href: '#career-paths' },
-        { labelKey: 'certificates', href: '#certificates' },
         { labelKey: 'faqs', href: '#faqs' },
       ],
     },

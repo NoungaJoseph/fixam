@@ -7,6 +7,7 @@ import CatalogPage from './pages/CatalogPage';
 import OpportunitiesPage from './pages/OpportunitiesPage';
 import DetailPage from './pages/DetailPage';
 import CertificatesPage from './pages/CertificatesPage';
+import ForProvidersPage from './pages/ForProvidersPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/career-paths/:categoryKey" element={<DetailPage />} />
         <Route path="/certificates" element={<CertificatesPage />} />
+        <Route path="/for-providers" element={<ForProvidersPage />} />
       </Routes>
     </div>
   );

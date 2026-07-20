@@ -106,5 +106,30 @@
     "terms": "Terms of Use",
     "contact": "Contact",
     "copyright": "© 2026 Fixam. All rights reserved."
+  },
+  "providersPage": {
+    "heroTitle": "Grow your business as a verified pro.",
+    "heroSubtitle": "Demonstrate your trade skills, earn official Fixam digital badges, and win high-paying contracts from premium clients in your area.",
+    "heroCta": "Get Certified Now",
+    "benefit1Title": "Build Trust instantly",
+    "benefit1Desc": "Display credentials on your profile. Verified badges tell clients you are a qualified expert before they hire you.",
+    "benefit2Title": "Earn Higher Rates",
+    "benefit2Desc": "Providers with completed career paths receive priority matching for premium residential and commercial jobs.",
+    "benefit3Title": "Reduce Work Mistakes",
+    "benefit3Desc": "Review step-by-step diagnostic workflows, material selections, and on-site security standards created by expert trainers.",
+    "whyTitle": "Why Join Fixam Pathways?",
+    "whySubtitle": "We bridge the gap between skilled trade professionals and high-end clients.",
+    "stepsTitle": "How it works for providers",
+    "step1Title": "Choose Your Pathway",
+    "step1Desc": "Select your trade category and start completing interactive simulations at your own pace.",
+    "step2Title": "Pass Practical Tests",
+    "step2Desc": "Solve typical customer problems, compare with expert models, and learn correct safety guidelines.",
+    "step3Title": "Earn Verified Badges",
+    "step3Desc": "Your badges are automatically displayed on your public Fixam provider profile page.",
+    "step4Title": "Receive Priority Jobs",
+    "step4Desc": "Fixam's dispatch system prioritizes verified providers, sending you better leads and bookings.",
+    "ctaTitle": "Ready to elevate your career status?",
+    "ctaSubtitle": "Join thousands of trade experts who are using Fixam Career Pathways to grow their businesses and earnings.",
+    "ctaBtn": "Register as a Provider"
   }
 }

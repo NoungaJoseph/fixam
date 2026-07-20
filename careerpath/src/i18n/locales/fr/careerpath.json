@@ -106,5 +106,27 @@
     "terms": "Conditions d'utilisation",
     "contact": "Contact",
     "copyright": "© 2026 Fixam. Tous droits réservés."
+  },
+  "providersPage": {
+    "heroTitle": "Développez votre activité en tant que pro vérifié.",
+    "heroSubtitle": "Démontrez vos compétences, obtenez des badges numériques officiels Fixam et décrochez des contrats haut de gamme.",
+    "heroCta": "Se Faire Certifier Maintenant",
+    "benefit1Title": "Inspirez Confiance",
+    "benefit1Desc": "Affichez des badges vérifiés sur votre profil pour prouver vos qualifications aux clients avant même d'être embauché.",
+    "benefit2Title": "Gagnez Plus",
+    "benefit2Desc": "Les prestataires certifiés bénéficient d'une mise en relation prioritaire pour les chantiers résidentiels et commerciaux.",
+    "benefit3Title": "Évitez les Erreurs",
+    "benefit3Desc": "Révisez des guides d'intervention étape par étape et des normes de sécurité rédigés par des formateurs experts.",
+    "whyTitle": "Pourquoi Rejoindre Fixam Pathways ?",
+    "whySubtitle": "Nous connectons les professionnels qualifiés avec les meilleurs clients de votre région.",
+    "stepsTitle": "Comment ça marche pour les prestataires",
+    "step1Title": "Choisissez votre Parcours",
+    "step1Desc": "Sélectionnez votre métier et commencez à compléter les modules interactifs à votre propre rythme.",
+    "step2Title": "Validez les Étapes",
+    "step2Desc": "Résolvez des cas clients réels, comparez avec les réponses modèles et maîtrisez la sécurité.",
+    "step3Title": "Obtenez vos Badges",
+    "step3Desc": "Vos certifications et badges s'affichent automatiquement sur votre profil public Fixam.",
+    "step4Title": "Recevez des Missions Prioritaires",
+    "step4Desc": "L'algorithme de répartition de Fixam donne la priorité aux pros vérifiés pour les contrats premium."
   }
 }
