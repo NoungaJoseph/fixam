@@ -796,7 +796,7 @@ export default function DetailPage() {
             <div className="grid lg:grid-cols-12 gap-8 items-start">
               
               {/* Left Column: Tasks List */}
-              <div className="lg:col-span-4 bg-white border border-gray-200 rounded-lg h-[460px] overflow-y-auto flex flex-col pr-1 scrollbar-thin">
+              <div className="lg:col-span-4 bg-white border border-gray-200 rounded-lg lg:h-[460px] lg:overflow-y-auto flex flex-col pr-1 scrollbar-thin">
                 <div className="divide-y divide-dashed divide-gray-200">
                   {currentPath.tasks.map((task, idx) => (
                     <button
@@ -831,7 +831,7 @@ export default function DetailPage() {
               </div>
 
               {/* Right Column: Task details panel */}
-              <div className="lg:col-span-8 bg-white border border-gray-200 rounded-lg p-6 h-[460px] overflow-y-auto pr-3 scrollbar-thin space-y-6">
+              <div className="lg:col-span-8 bg-white border border-gray-200 rounded-lg p-6 lg:h-[460px] lg:overflow-y-auto pr-3 scrollbar-thin space-y-6">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800 mb-1">
                     Task {currentTask.num}: {currentLang === 'en' ? currentTask.titleEn : currentTask.titleFr}

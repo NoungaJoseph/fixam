@@ -67,6 +67,25 @@ export default function DashboardNav() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Tab Navigation (Horizontal Scrollable Sub-nav) */}
+      <div className="flex md:hidden bg-slate-50 border-t border-gray-150 overflow-x-auto scrollbar-none">
+        <div className="flex px-4 gap-6 w-full justify-between sm:justify-start">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.key}
+              to={tab.to}
+              className={`text-xs py-3.5 border-b-2 whitespace-nowrap transition-colors duration-200 ${
+                tab.active
+                  ? 'font-bold text-gray-800 border-primary'
+                  : 'font-normal text-gray-500 border-transparent hover:text-gray-800'
+              }`}
+            >
+              {t(`dashboard.nav.${tab.key}`)}
+            </Link>
+          ))}
+        </div>
+      </div>
     </nav>
   );
 }
