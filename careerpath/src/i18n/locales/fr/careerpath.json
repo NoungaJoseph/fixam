@@ -1,0 +1,110 @@
+{
+  "nav": {
+    "logoAlt": "Fixam Parcours Professionnels",
+    "careerPaths": "Parcours Pro",
+    "howItWorks": "Comment ça Marche",
+    "certificates": "Certificats",
+    "forProviders": "Pour les Prestataires",
+    "signIn": "Se Connecter",
+    "signUp": "S'Inscrire"
+  },
+  "hero": {
+    "title": "Développez de vraies compétences. Soyez embauché plus vite.",
+    "subtitle": "Explorez des parcours professionnels pratiques et gratuits dans les métiers les plus demandés du Cameroun — plomberie, électricité, beauté, menuiserie et plus — conçus par Fixam.",
+    "cta": "Commencer →"
+  },
+  "stats": {
+    "stat1Num": "12",
+    "stat1Label": "Catégories de Métiers",
+    "stat2Num": "1 250+",
+    "stat2Label": "Parcours Terminés",
+    "stat3Num": "850+",
+    "stat3Label": "Prestataires Vérifiés",
+    "cta": "Trouver un Parcours Pro →"
+  },
+  "logoStrip": {
+    "title": "Présentant les compétences les plus demandées de Fixam"
+  },
+  "carousel": {
+    "title": "Explorez nos parcours professionnels gratuits",
+    "subtitle": "Apprenez par la pratique avec des tâches interactives adaptées au secteur des métiers au Cameroun.",
+    "difficulty": {
+      "beginner": "Débutant",
+      "intermediate": "Intermédiaire"
+    },
+    "duration": "{{count}} heures",
+    "viewPath": "Voir le Parcours →"
+  },
+  "trades": {
+    "electrical": "Travaux Électriques",
+    "plumbing": "Plomberie",
+    "carpentry": "Menuiserie",
+    "cleaning": "Nettoyage",
+    "beauty": "Beauté & Soins",
+    "painting": "Peinture",
+    "appliance": "Réparation d'Appareils",
+    "gardening": "Jardinage & Paysagisme",
+    "tailoring": "Couture",
+    "catering": "Cuisine & Traiteur",
+    "tutoring": "Cours Particuliers",
+    "handyman": "Bricolage Général"
+  },
+  "howWorks": {
+    "title": "Comment fonctionne le Parcours Fixam",
+    "subtitle": "Nos parcours professionnels développent des compétences réelles pour des rôles concrets, offrant un aperçu du métier et de leur quotidien. Les parcours Fixam sont 100% gratuits, en libre accès et à votre rythme.",
+    "step1": "Inscrivez-vous et choisissez une catégorie",
+    "step2": "Réalisez des tâches et leçons réelles à votre propre rythme",
+    "step3": "Comparez votre travail aux réponses modèles et recevez des retours",
+    "step4": "Obtenez votre certificat et soyez mis en relation avec des clients sur Fixam",
+    "cta": "Découvrir le Fonctionnement →"
+  },
+  "featured": {
+    "title": "Catégories de Métiers Fixam",
+    "subtitle": "Certifiez-vous dans des compétences précises recherchées par les clients à Douala, Yaoundé et dans tout le Cameroun.",
+    "viewPath": "Voir le Parcours →"
+  },
+  "testimonials": {
+    "title": "Trop beau pour être vrai ? Écoutez nos prestataires",
+    "cta": "Trouver un Parcours Pro →",
+    "provider1": {
+      "quote": "\"Les tâches d'électricité étaient très pratiques. Le modèle de retour m'a montré exactement comment organiser ma boîte à outils et vérifier les connexions de terre de sécurité.\"",
+      "name": "Jean-Pierre T.",
+      "role": "Électricien Certifié, Douala"
+    },
+    "provider2": {
+      "quote": "\"J'ai appris la désinfection et l'installation professionnelles d'un spa à domicile. Mes clients voient la différence et ma note est passée de 4.2 à 4.9 étoiles !\"",
+      "name": "Fabiola M.",
+      "role": "Beauté & Bien-être, Yaoundé"
+    },
+    "provider3": {
+      "quote": "\"La leçon de logistique de déménagement a sauvé mon dos. Je fatiguais vite, mais maintenant je porte et range les cartons comme un pro.\"",
+      "name": "Emmanuel N.",
+      "role": "Spécialiste Logistique, Douala"
+    }
+  },
+  "mission": {
+    "title": "Nous croyons que le travail qualifié mérite une vraie reconnaissance.",
+    "subtitle": "Fixam aide les professionnels indépendants locaux à bâtir un historique de réussite vérifié, ouvrant la voie à des revenus plus élevés et des clients de confiance.",
+    "cta": "S'inscrire Maintenant →"
+  },
+  "footer": {
+    "tagline": "Valoriser les professionnels du Cameroun grâce aux compétences, certifications et opportunités d'emploi.",
+    "learners": "Pour les Apprenants",
+    "providers": "Pour les Prestataires",
+    "aboutFixam": "À propos de Fixam",
+    "support": "Support",
+    "explorePaths": "Explorer les parcours",
+    "certificates": "Certificats",
+    "faqs": "Questions fréquentes",
+    "getVerified": "Être vérifié",
+    "findJobs": "Trouver des emplois",
+    "aboutUs": "À propos de nous",
+    "careers": "Recrutement",
+    "blog": "Blog",
+    "helpCenter": "Centre d'aide",
+    "privacy": "Charte de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "contact": "Contact",
+    "copyright": "© 2026 Fixam. Tous droits réservés."
+  }
+}

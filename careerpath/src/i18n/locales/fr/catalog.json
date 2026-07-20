@@ -1,0 +1,37 @@
+{
+  "title": "Parcours Professionnels Fixam",
+  "subtitle": "Trouvez le parcours idéal pour développer vos compétences et être réservé par des clients sur Fixam.",
+  "quickFilters": "FILTRES RAPIDES",
+  "filters": {
+    "all": "Tous",
+    "new": "Nouveaux",
+    "under60": "Moins de 60 Minutes",
+    "recommended": "Recommandés",
+    "completed": "Terminés"
+  },
+  "dropdowns": {
+    "category": "Catégorie",
+    "skillLevel": "Niveau",
+    "duration": "Durée",
+    "all": "Tout"
+  },
+  "displaying": "Affichage de {{start}} - {{end}} sur {{total}} parcours professionnels",
+  "completedBadge": "✓ TERMINÉ",
+  "faq": {
+    "q1": "Qu'est-ce qu'un parcours professionnel ?",
+    "a1": "Les parcours professionnels Fixam sont des programmes d'apprentissage pratiques et en autonomie structurés pour vous aider à maîtriser des métiers spécifiques au niveau local. Chaque parcours inclut des exercices concrets et des modèles de réponses conçus par des professionnels au Cameroun.",
+    "a1Bullets": [
+      "100% gratuit et ouvert à tous",
+      "À votre rythme — apprenez selon votre propre emploi du temps",
+      "Obtenez un certificat partageable pour votre profil Fixam",
+      "Aucune expérience ou qualification préalable requise"
+    ],
+    "q2": "Que sont les compétences rapides ?",
+    "a2": "Les compétences rapides sont des leçons courtes de moins de 15 minutes. Elles se concentrent sur des techniques spécifiques — comme la désinfection d'un poste de beauté ou la mise à la terre d'un circuit — pour enrichir rapidement votre boîte à outils.",
+    "a2Bullets": [
+      "Apprenez en moins de 15 minutes",
+      "Astuces directement applicables pour vos prestations clients",
+      "Idéal pour réviser ou rafraîchir vos connaissances sur le pouce"
+    ]
+  }
+}

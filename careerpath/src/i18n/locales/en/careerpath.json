@@ -1,0 +1,110 @@
+{
+  "nav": {
+    "logoAlt": "Fixam Career Pathways",
+    "careerPaths": "Career Paths",
+    "howItWorks": "How It Works",
+    "certificates": "Certificates",
+    "forProviders": "For Providers",
+    "signIn": "Sign In",
+    "signUp": "Sign Up"
+  },
+  "hero": {
+    "title": "Build real skills. Get hired faster.",
+    "subtitle": "Explore free, hands-on career paths across Cameroon's most in-demand trades — plumbing, electrical, beauty, carpentry and more — built by Fixam.",
+    "cta": "Get Started →"
+  },
+  "stats": {
+    "stat1Num": "12",
+    "stat1Label": "Skill Categories",
+    "stat2Num": "1,250+",
+    "stat2Label": "Completed Pathways",
+    "stat3Num": "850+",
+    "stat3Label": "Verified Providers",
+    "cta": "Find a Career Path →"
+  },
+  "logoStrip": {
+    "title": "Featuring Fixam's most in-demand skills"
+  },
+  "carousel": {
+    "title": "Explore our free career paths",
+    "subtitle": "Learn by doing with interactive, bite-sized tasks structured for Cameroon's trade industry.",
+    "difficulty": {
+      "beginner": "Beginner-friendly",
+      "intermediate": "Intermediate"
+    },
+    "duration": "{{count}} hours",
+    "viewPath": "View Path →"
+  },
+  "trades": {
+    "electrical": "Electrical Work",
+    "plumbing": "Plumbing",
+    "carpentry": "Carpentry",
+    "cleaning": "Cleaning",
+    "beauty": "Beauty & Grooming",
+    "painting": "Painting",
+    "appliance": "Appliance Repair",
+    "gardening": "Gardening & Landscaping",
+    "tailoring": "Tailoring",
+    "catering": "Catering",
+    "tutoring": "Tutoring",
+    "handyman": "General Handyman"
+  },
+  "howWorks": {
+    "title": "How Fixam Career Path works",
+    "subtitle": "Our career paths build real-life skills for real-life roles, offering a window into the trade and a preview of their day-to-day. Fixam career paths are 100% free, open access and self-paced.",
+    "step1": "Sign up and pick a skill category",
+    "step2": "Work through real tasks and lessons at your own pace",
+    "step3": "Compare your work with model answers and get feedback",
+    "step4": "Earn your certificate and get matched with clients on Fixam",
+    "cta": "See How It Works →"
+  },
+  "featured": {
+    "title": "Fixam Skill Categories",
+    "subtitle": "Get certified in specific skills that clients in Douala, Yaoundé, and across Cameroon are looking for right now.",
+    "viewPath": "See Path →"
+  },
+  "testimonials": {
+    "title": "Too good to be true? Hear from real providers",
+    "cta": "Find a Career Path →",
+    "provider1": {
+      "quote": "\"The electrical tasks were very practical. The feedback model showed me exactly how to organize my toolbox and check safety ground connections properly.\"",
+      "name": "Jean-Pierre T.",
+      "role": "Certified Electrician, Douala"
+    },
+    "provider2": {
+      "quote": "\"I learned professional home spa sanitization and setup. My clients notice the difference and my ratings went from 4.2 to 4.9 stars!\"",
+      "name": "Fabiola M.",
+      "role": "Beauty & Wellness, Yaoundé"
+    },
+    "provider3": {
+      "quote": "\"The safe moving and logistics lesson saved my back. I used to get tired easily, but now I lift and organize packing boxes like a true professional.\"",
+      "name": "Emmanuel N.",
+      "role": "Logistics Specialist, Douala"
+    }
+  },
+  "mission": {
+    "title": "We believe skilled work deserves real recognition.",
+    "subtitle": "Fixam helps local independent pros build verified records of excellence, unlocking better paying jobs and trusted client connections.",
+    "cta": "Enroll Now →"
+  },
+  "footer": {
+    "tagline": "Empowering Cameroonian trade professionals with skills, certifications, and high-paying jobs.",
+    "learners": "For Learners",
+    "providers": "For Providers",
+    "aboutFixam": "About Fixam",
+    "support": "Support",
+    "explorePaths": "Explore Paths",
+    "certificates": "Certificates",
+    "faqs": "FAQs",
+    "getVerified": "Get Verified",
+    "findJobs": "Find Jobs",
+    "aboutUs": "About Us",
+    "careers": "Careers",
+    "blog": "Blog",
+    "helpCenter": "Help Center",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use",
+    "contact": "Contact",
+    "copyright": "© 2026 Fixam. All rights reserved."
+  }
+}

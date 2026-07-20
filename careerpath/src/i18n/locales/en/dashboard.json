@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "careerPaths": "Career Paths",
+    "myCertificates": "My Certificates"
+  },
+  "greeting": {
+    "hi": "Hi {{name}}!"
+  },
+  "recommended": {
+    "label": "Recommended for you!",
+    "dismiss": "Dismiss",
+    "startPath": "Start Path →",
+    "card1": {
+      "category": "Electrical Work",
+      "title": "Residential Wiring Basics"
+    },
+    "card2": {
+      "category": "Plumbing",
+      "title": "Pipe Fitting & Water Systems"
+    }
+  },
+  "activePaths": {
+    "title": "Active Career Paths",
+    "emptyTitle": "Nothing here yet…",
+    "emptyText": "When you enroll in a career path, it will appear here. Choose from Fixam's skill categories and start building real experience today.",
+    "explorePaths": "Explore Career Paths »",
+    "viewAll": "View All Recommended Career Paths »",
+    "dismiss": "Dismiss",
+    "viewDetails": "View Details →"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "certificatesCount": "{{count}} Certificates",
+    "certificatesCaption": "Add your Fixam career path certificates to your profile and share them with clients.",
+    "skillsCount": "{{count}} Skills",
+    "skillsCaption": "Skills you've demonstrated through completed career path tasks and assessments.",
+    "goToCompleted": "Go To Completed Paths »"
+  },
+  "opportunities": {
+    "title": "Opportunities on Fixam",
+    "notInterested": "Not Interested",
+    "viewDetails": "View Details →",
+    "job1": {
+      "title": "New Client Requests Near You",
+      "description": "3 clients in Douala are looking for verified electricians this week.",
+      "date": "Available now — Jul 2026"
+    },
+    "job2": {
+      "title": "Weekend Plumbing Jobs",
+      "description": "Earn extra income with short-term plumbing gigs in your area.",
+      "date": "Sat–Sun, weekly"
+    }
+  }
+}

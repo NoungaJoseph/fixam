@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "dashboard": "Tableau de Bord",
+    "careerPaths": "Parcours Pro",
+    "myCertificates": "Mes Certificats"
+  },
+  "greeting": {
+    "hi": "Salut {{name}} !"
+  },
+  "recommended": {
+    "label": "Recommandé pour vous !",
+    "dismiss": "Ignorer",
+    "startPath": "Commencer →",
+    "card1": {
+      "category": "Travaux Électriques",
+      "title": "Câblage Résidentiel — Les Bases"
+    },
+    "card2": {
+      "category": "Plomberie",
+      "title": "Raccordement de Tuyaux & Systèmes d'Eau"
+    }
+  },
+  "activePaths": {
+    "title": "Parcours Actifs",
+    "emptyTitle": "Rien ici pour l'instant…",
+    "emptyText": "Quand vous vous inscrirez à un parcours professionnel, il apparaîtra ici. Choisissez parmi les catégories de métiers Fixam et commencez à acquérir de l'expérience concrète.",
+    "explorePaths": "Explorer les Parcours »",
+    "viewAll": "Voir Tous les Parcours Recommandés »",
+    "dismiss": "Ignorer",
+    "viewDetails": "Voir les Détails →"
+  },
+  "achievements": {
+    "title": "Réalisations",
+    "certificatesCount": "{{count}} Certificats",
+    "certificatesCaption": "Ajoutez vos certificats de parcours Fixam à votre profil et partagez-les avec vos clients.",
+    "skillsCount": "{{count}} Compétences",
+    "skillsCaption": "Compétences que vous avez démontrées à travers les tâches et évaluations de vos parcours.",
+    "goToCompleted": "Voir les Parcours Terminés »"
+  },
+  "opportunities": {
+    "title": "Opportunités sur Fixam",
+    "notInterested": "Pas Intéressé",
+    "viewDetails": "Voir les Détails →",
+    "job1": {
+      "title": "Nouvelles Demandes de Clients Près de Vous",
+      "description": "3 clients à Douala recherchent des électriciens vérifiés cette semaine.",
+      "date": "Disponible maintenant — Juil 2026"
+    },
+    "job2": {
+      "title": "Travaux de Plomberie le Week-end",
+      "description": "Gagnez un revenu supplémentaire avec des missions de plomberie courtes dans votre zone.",
+      "date": "Sam–Dim, chaque semaine"
+    }
+  }
+}
