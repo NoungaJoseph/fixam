@@ -4,6 +4,9 @@ import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import CatalogPage from './pages/CatalogPage';
+import OpportunitiesPage from './pages/OpportunitiesPage';
+import DetailPage from './pages/DetailPage';
+import CertificatesPage from './pages/CertificatesPage';
 
 function App() {
   return (
@@ -14,6 +17,9 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
+        <Route path="/opportunities" element={<OpportunitiesPage />} />
+        <Route path="/career-paths/:categoryKey" element={<DetailPage />} />
+        <Route path="/certificates" element={<CertificatesPage />} />
       </Routes>
     </div>
   );

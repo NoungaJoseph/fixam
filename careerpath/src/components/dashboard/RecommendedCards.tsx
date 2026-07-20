@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Zap, Droplets, RefreshCw } from 'lucide-react';
 
 export default function RecommendedCards() {
@@ -7,6 +8,7 @@ export default function RecommendedCards() {
   const cards = [
     {
       key: 'card1',
+      categoryKey: 'electrical',
       icon: Zap,
       iconBg: 'bg-yellow-50',
       iconColor: 'text-yellow-600',
@@ -14,6 +16,7 @@ export default function RecommendedCards() {
     },
     {
       key: 'card2',
+      categoryKey: 'plumbing',
       icon: Droplets,
       iconBg: 'bg-blue-50',
       iconColor: 'text-blue-600',
@@ -31,7 +34,7 @@ export default function RecommendedCards() {
             className={`${card.cardBg} border border-gray-200 rounded-lg p-5 relative`}
           >
             {/* Refresh icon top-right */}
-            <button className="absolute top-4 right-4 w-7 h-7 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-400 hover:text-primary transition-colors">
+            <button className="absolute top-4 right-4 w-7 h-7 rounded-full border border-gray-250 bg-white flex items-center justify-center text-gray-400 hover:text-primary transition-colors">
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
@@ -56,13 +59,16 @@ export default function RecommendedCards() {
             </h3>
 
             {/* Divider + actions */}
-            <div className="border-t border-gray-200 pt-3 flex items-center justify-between">
+            <div className="border-t border-gray-250 pt-3 flex items-center justify-between">
               <button className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors">
                 {t('dashboard.recommended.dismiss')}
               </button>
-              <a href="#" className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors">
+              <Link
+                to={`/career-paths/${card.categoryKey}`}
+                className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
+              >
                 {t('dashboard.recommended.startPath')}
-              </a>
+              </Link>
             </div>
           </div>
         );

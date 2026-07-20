@@ -1,0 +1,51 @@
+{
+  "title": "Real Work Opportunities and Fixam Events",
+  "subtitle": "Discover real client job requests and Fixam community events, matched to your certified skills.",
+  "quickFilters": "QUICK FILTERS",
+  "filters": {
+    "all": "All",
+    "recommended": "★ Recommended",
+    "saved": "🔖 Saved",
+    "applied": "✓ Applied"
+  },
+  "dropdowns": {
+    "opportunityType": "Opportunity Type",
+    "region": "Region",
+    "category": "Category",
+    "skillLevel": "Skill Level",
+    "all": "All"
+  },
+  "displaying": "Displaying {{start}} - {{end}} of {{total}} Opportunities",
+  "badges": {
+    "opportunity": "OPPORTUNITY",
+    "event": "EVENT",
+    "upcoming": "UPCOMING"
+  },
+  "promo": {
+    "title": "3x your chances of getting booked",
+    "bullet1": "Get real-world experience",
+    "bullet2": "Build the skills clients are looking for",
+    "bullet3": "Stand out from other providers"
+  },
+  "details": {
+    "location": "Location",
+    "requirements": "Requirements",
+    "register": "Register",
+    "registered": "I've Registered",
+    "viewMore": "View More ⌄",
+    "viewLess": "View Less ⌃",
+    "relatedPaths": "Related Career Paths",
+    "relatedPathsSub": "Complete these paths to unlock this opportunity or event.",
+    "achievements": "Available Achievements",
+    "achievementsSub": "These are the achievements you can earn from completing the connected career paths:",
+    "achievementItems": {
+      "resume": "Resume Snippet",
+      "interview": "Interview Tips",
+      "certificate": "Certificate",
+      "skills": "Skills"
+    }
+  },
+  "mobileBack": "← Back to list",
+  "empty": "No opportunities found matching your filters.",
+  "clearFilters": "Clear all filters"
+}

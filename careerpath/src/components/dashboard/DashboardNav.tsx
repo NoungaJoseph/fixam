@@ -13,7 +13,8 @@ export default function DashboardNav() {
   const tabs = [
     { key: 'dashboard', to: '/dashboard', active: pathname === '/dashboard' },
     { key: 'careerPaths', to: '/catalog', active: pathname === '/catalog' },
-    { key: 'myCertificates', to: '#', active: false },
+    { key: 'opportunities', to: '/opportunities', active: pathname === '/opportunities' },
+    { key: 'myCertificates', to: '/certificates', active: pathname === '/certificates' },
   ];
 
   return (

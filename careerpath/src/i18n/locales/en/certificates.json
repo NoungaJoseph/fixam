@@ -1,0 +1,13 @@
+{
+  "title": "My Certificates & Achievements",
+  "subtitle": "View, download, and share the professional trade certificates you have earned on Fixam.",
+  "earnedTitle": "Earned Certificates",
+  "availableTitle": "Available Certificates",
+  "availableSub": "Complete these paths to unlock your professional certifications:",
+  "dateCompleted": "Completed on {{date}}",
+  "download": "Download PDF",
+  "share": "Add to Profile",
+  "startPath": "Start Path",
+  "noCertificates": "You haven't earned any certificates yet. Complete a career path to get certified!",
+  "verifyBadge": "VERIFIED PROVIDER"
+}

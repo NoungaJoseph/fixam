@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Zap, Clock } from 'lucide-react';
 
 type ActivePath = {
@@ -70,9 +71,9 @@ export default function ActivePaths() {
               <p className="text-sm text-gray-500 leading-relaxed mb-3">
                 {t('dashboard.activePaths.emptyText')}
               </p>
-              <a href="/#career-paths" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
+              <Link to="/catalog" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
                 {t('dashboard.activePaths.explorePaths')}
-              </a>
+              </Link>
             </div>
           </div>
         ) : (
@@ -111,9 +112,9 @@ export default function ActivePaths() {
                   <button className="text-xs font-medium text-gray-400 hover:text-gray-600">
                     {t('dashboard.activePaths.dismiss')}
                   </button>
-                  <a href="#" className="text-xs font-semibold text-primary hover:text-primary-hover">
+                  <Link to={`/career-paths/${path.categoryKey}`} className="text-xs font-semibold text-primary hover:text-primary-hover">
                     {t('dashboard.activePaths.viewDetails')}
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -123,9 +124,9 @@ export default function ActivePaths() {
 
       {/* View all link */}
       <div className="mt-4">
-        <a href="/#career-paths" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
+        <Link to="/catalog" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
           {t('dashboard.activePaths.viewAll')}
-        </a>
+        </Link>
       </div>
     </div>
   );

@@ -1,0 +1,51 @@
+{
+  "title": "Opportunités de Travail Réelles et Événements Fixam",
+  "subtitle": "Découvrez des demandes de travail réelles de clients et des événements de la communauté Fixam, assortis à vos compétences certifiées.",
+  "quickFilters": "FILTRES RAPIDES",
+  "filters": {
+    "all": "Tous",
+    "recommended": "★ Recommandés",
+    "saved": "🔖 Enregistrés",
+    "applied": "✓ Postulés"
+  },
+  "dropdowns": {
+    "opportunityType": "Type d'opportunité",
+    "region": "Région",
+    "category": "Catégorie",
+    "skillLevel": "Niveau de compétence",
+    "all": "Tout"
+  },
+  "displaying": "Affichage de {{start}} - {{end}} sur {{total}} opportunités",
+  "badges": {
+    "opportunity": "OPPORTUNITÉ",
+    "event": "ÉVÉNEMENT",
+    "upcoming": "À VENIR"
+  },
+  "promo": {
+    "title": "Multipliez par 3 vos chances d'être réservé",
+    "bullet1": "Obtenez une expérience pratique réelle",
+    "bullet2": "Développez les compétences que les clients recherchent",
+    "bullet3": "Démarquez-vous des autres prestataires"
+  },
+  "details": {
+    "location": "Lieu",
+    "requirements": "Exigences",
+    "register": "S'inscrire",
+    "registered": "Je me suis inscrit",
+    "viewMore": "Voir plus ⌄",
+    "viewLess": "Voir moins ⌃",
+    "relatedPaths": "Parcours professionnels associés",
+    "relatedPathsSub": "Complétez ces parcours pour débloquer cette opportunité ou cet événement.",
+    "achievements": "Réalisations disponibles",
+    "achievementsSub": "Voici les réalisations que vous pouvez obtenir en complétant les parcours connectés :",
+    "achievementItems": {
+      "resume": "Extrait de CV",
+      "interview": "Conseils d'entretien",
+      "certificate": "Certificat",
+      "skills": "Compétences"
+    }
+  },
+  "mobileBack": "← Retour à la liste",
+  "empty": "Aucune opportunité trouvée correspondant à vos filtres.",
+  "clearFilters": "Effacer tous les filtres"
+}

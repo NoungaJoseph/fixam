@@ -1,0 +1,13 @@
+{
+  "title": "Mes Certificats et Réalisations",
+  "subtitle": "Consultez, téléchargez et partagez les certificats professionnels que vous avez obtenus sur Fixam.",
+  "earnedTitle": "Certificats obtenus",
+  "availableTitle": "Certificats disponibles",
+  "availableSub": "Complétez ces parcours pour débloquer vos certifications professionnelles :",
+  "dateCompleted": "Terminé le {{date}}",
+  "download": "Télécharger PDF",
+  "share": "Ajouter au profil",
+  "startPath": "Commencer le parcours",
+  "noCertificates": "Vous n'avez pas encore obtenu de certificats. Complétez un parcours pro pour être certifié !",
+  "verifyBadge": "PRESTATAIRE VÉRIFIÉ"
+}

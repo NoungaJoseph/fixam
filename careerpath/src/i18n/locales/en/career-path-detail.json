@@ -1,0 +1,59 @@
+{
+  "stickyHeader": {
+    "startBtn": "Start Career Path"
+  },
+  "hero": {
+    "meta": "{{category}} · Free · 340+ 5 Star Reviews"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "about": "About the Path",
+    "tasks": "Tasks",
+    "reviews": "Reviews"
+  },
+  "ctaCard": {
+    "badge": "CERTIFICATION AVAILABLE",
+    "title": "Get Career Ready",
+    "bullet1": "Complete real hands-on tasks, self-paced",
+    "bullet2": "Stand out to clients when you get certified",
+    "startBtn": "Start Career Path"
+  },
+  "overview": {
+    "whyTitle": "Why complete this Career Path",
+    "whyBody": "Build the confidence and practical experience needed to succeed on the Fixam platform. In this career path, you will work through realistic case studies, practice correct tool usage, and compare your solutions with standard model answers from certified trainers.",
+    "metaLine": "Self-paced · {{hours}} hours · No grades · No assessments · {{level}}",
+    "viewAll": "View All",
+    "sidebar": {
+      "calloutBadge": "FIXAM VERIFIED",
+      "calloutTitle": "Verified Provider Network",
+      "calloutDesc": "Gain fast-track entry into our elite verified group of service providers in Douala and Yaoundé.",
+      "skillsTitle": "Skills you will learn and practice:"
+    }
+  },
+  "howWorks": {
+    "title": "How it works",
+    "viewAll": "View All",
+    "step1": "Complete tasks guided by step-by-step lessons and example answers from Fixam's trainers. No live sessions, all self-paced.",
+    "step2": "Earn a certificate and add it to your Fixam profile to show clients you're qualified.",
+    "step3": "Stand out when applying to jobs. Confidently explain your skills and experience to clients."
+  },
+  "about": {
+    "introTitle": "Introduction from Fixam Academy",
+    "exploreBtn": "Explore Career Paths →"
+  },
+  "tasksSection": {
+    "title": "Tasks in this Career Path",
+    "learnTitle": "What you'll learn",
+    "doTitle": "What you'll do",
+    "finishLine": "Finish Line"
+  },
+  "reviewsSection": {
+    "title": "Reviews",
+    "overRating": "Over 4.8",
+    "starsLabel": "5 Star Reviews"
+  },
+  "closingBanner": {
+    "title": "Not the right path for you?",
+    "btn": "Browse Other Career Paths →"
+  }
+}

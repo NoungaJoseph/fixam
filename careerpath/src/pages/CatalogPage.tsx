@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import DashboardNav from '../components/dashboard/DashboardNav';
@@ -200,9 +200,10 @@ export default function CatalogPage() {
             {paginatedPaths.map((path) => {
               const Icon = path.icon;
               return (
-                <div
+                <Link
                   key={path.id}
-                  className="bg-white border border-gray-250 rounded-lg overflow-hidden flex flex-col transition-all duration-200 hover:border-primary"
+                  to={`/career-paths/${path.categoryKey}`}
+                  className="bg-white border border-gray-250 rounded-lg overflow-hidden flex flex-col transition-all duration-200 hover:border-primary hover:shadow-sm cursor-pointer"
                 >
                   {/* Card Image */}
                   <div className="relative w-full h-36 bg-gray-100 flex-shrink-0">
@@ -264,7 +265,7 @@ export default function CatalogPage() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

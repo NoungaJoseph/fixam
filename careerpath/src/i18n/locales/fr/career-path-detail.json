@@ -1,0 +1,59 @@
+{
+  "stickyHeader": {
+    "startBtn": "Commencer le Parcours"
+  },
+  "hero": {
+    "meta": "{{category}} · Gratuit · 340+ Avis 5 Étoiles"
+  },
+  "tabs": {
+    "overview": "Aperçu",
+    "about": "À propos du Parcours",
+    "tasks": "Modules/Tâches",
+    "reviews": "Avis"
+  },
+  "ctaCard": {
+    "badge": "CERTIFICATION DISPONIBLE",
+    "title": "Préparez votre carrière",
+    "bullet1": "Complétez des tâches pratiques réelles, à votre rythme",
+    "bullet2": "Démarquez-vous auprès des clients une fois certifié",
+    "startBtn": "Commencer le Parcours"
+  },
+  "overview": {
+    "whyTitle": "Pourquoi compléter ce parcours",
+    "whyBody": "Développez la confiance et l'expérience pratique nécessaires pour réussir sur la plateforme Fixam. Dans ce parcours, vous travaillerez sur des cas réels, pratiquerez l'utilisation correcte des outils et comparerez vos solutions avec les réponses types de nos formateurs certifiés.",
+    "metaLine": "À votre rythme · {{hours}} heures · Sans notes · Sans évaluation · {{level}}",
+    "viewAll": "Voir tout",
+    "sidebar": {
+      "calloutBadge": "VÉRIFIÉ PAR FIXAM",
+      "calloutTitle": "Réseau de prestataires vérifiés",
+      "calloutDesc": "Bénéficiez d'une intégration accélérée dans notre groupe d'élite de prestataires de services à Douala et Yaoundé.",
+      "skillsTitle": "Compétences que vous allez apprendre et pratiquer :"
+    }
+  },
+  "howWorks": {
+    "title": "Comment ça marche",
+    "viewAll": "Voir tout",
+    "step1": "Effectuez des tâches guidées par des leçons étape par étape et des modèles de réponses. Pas de sessions en direct, tout est en autonomie.",
+    "step2": "Obtenez un certificat et ajoutez-le à votre profil Fixam pour montrer aux clients que vous êtes qualifié.",
+    "step3": "Démarquez-vous lors de vos demandes. Expliquez en toute confiance vos compétences et votre expérience aux clients."
+  },
+  "about": {
+    "introTitle": "Introduction de la Fixam Academy",
+    "exploreBtn": "Explorer les Parcours →"
+  },
+  "tasksSection": {
+    "title": "Tâches de ce Parcours Professionnel",
+    "learnTitle": "Ce que vous allez apprendre",
+    "doTitle": "Ce que vous allez faire",
+    "finishLine": "Ligne d'arrivée"
+  },
+  "reviewsSection": {
+    "title": "Avis",
+    "overRating": "Plus de 4.8",
+    "starsLabel": "Avis 5 Étoiles"
+  },
+  "closingBanner": {
+    "title": "Ce parcours ne vous convient pas ?",
+    "btn": "Parcourir les autres Parcours →"
+  }
+}
