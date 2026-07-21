@@ -235,19 +235,6 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
   const handleMethodChange = (newMethod) => {
     setSelectedMethod(newMethod);
     setPhoneError(null);
-
-    if (userCountry === 'Cameroon') {
-      const provider = newMethod === 'MTN_MOMO' ? 'MTN' : 'ORANGE';
-      const cleaned = formData.phone.replace(/[\s\-]/g, '').replace(/^\+?237/, '');
-      if (cleaned.length >= 9) {
-        const validation = validatePhoneForProvider(formData.phone, provider);
-        if (!validation.valid) {
-          setFormData({ ...formData, phone: '' });
-          setNetworkDetected(null);
-          setPhoneError(t(validation.error));
-        }
-      }
-    }
   };
 
   const handleSubmitPayment = async () => {
@@ -267,12 +254,13 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
       phoneToValidate = phoneToValidate.slice(1);
     }
 
-    // Validate phone matches selected provider
+    // Validate phone matches selected provider or auto-detect
     if (userCountry === 'Cameroon') {
-      const provider = selectedMethod === 'MTN_MOMO' ? 'MTN' : 'ORANGE';
-      const validation = validatePhoneForProvider(phoneToValidate, provider);
-      if (!validation.valid) {
-        setPhoneError(t(validation.error));
+      const detected = getNetworkFromPhone(phoneToValidate);
+      if (detected && detected !== 'UNKNOWN') {
+        setSelectedMethod(detected === 'MTN' ? 'MTN_MOMO' : 'ORANGE_MONEY');
+      } else if (phoneToValidate.length !== 9 || !phoneToValidate.startsWith('6')) {
+        setPhoneError(t('validation.invalidCameroonNumber', 'Please enter a valid 9-digit mobile number starting with 6'));
         return;
       }
     } else {
