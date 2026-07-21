@@ -21,11 +21,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
   const userCountry = user?.country || detectCountryFromPhone(user?.phone) || 'Cameroon';
   const countryConfig = COUNTRY_DATA[userCountry] || COUNTRY_DATA.Cameroon;
 
-  console.log('[CoinPaymentFormScreen] User profile info:', {
-    phone: user?.phone,
-    countryField: user?.country,
-    detectedCountry: userCountry
-  });
+  console.log('[CoinPaymentFormScreen] Active screen loaded for user:', user?.id);
 
   const PAYMENT_METHODS = countryConfig.paymentMethods
     .filter(m => m.type === 'momo')
@@ -274,6 +270,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
       const amount = getNumericAmount(pkg.amount || pkg.price);
       // Prepend dynamic dial code without "+" to standardise format sent to API
       const fullPhone = dialCodeNoPlus + phoneToValidate;
+      console.log('[CoinPaymentFormScreen] Submitting topup with custom payment phone:', fullPhone);
 
       const response = await api.post('/payments/topup', {
         amount,
@@ -379,6 +376,9 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
                 onChangeText={handlePhoneChange}
                 keyboardType="phone-pad"
               />
+              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                Enter your Mobile Money number or any other number (friend/sponsor) to pay.
+              </Text>
               {/* Network detection badge */}
               {userCountry === 'Cameroon' && formData.phone.replace(/[\s\-]/g, '').replace(/^\+?237/, '').length >= 3 && networkDetected && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
