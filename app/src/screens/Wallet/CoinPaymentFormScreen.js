@@ -256,7 +256,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
       if (detected && detected !== 'UNKNOWN') {
         setSelectedMethod(detected === 'MTN' ? 'MTN_MOMO' : 'ORANGE_MONEY');
       } else if (phoneToValidate.length !== 9 || !phoneToValidate.startsWith('6')) {
-        setPhoneError(t('validation.invalidCameroonNumber', 'Please enter a valid 9-digit mobile number starting with 6'));
+        setPhoneError(t('payments.invalidCameroonNumber'));
         return;
       }
     } else {
@@ -377,7 +377,7 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
                 keyboardType="phone-pad"
               />
               <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
-                Enter your Mobile Money number or any other number (friend/sponsor) to pay.
+                {t('payments.customPhoneHint')}
               </Text>
               {/* Network detection badge */}
               {userCountry === 'Cameroon' && formData.phone.replace(/[\s\-]/g, '').replace(/^\+?237/, '').length >= 3 && networkDetected && (
