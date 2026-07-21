@@ -447,9 +447,14 @@ const CoinPaymentFormScreen = ({ navigation, route }) => {
             {paymentStatus !== 'IDLE' && (
               <View style={[styles.statusBox, { backgroundColor: colors.accentSoft }]}>
                 <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={[styles.statusText, { color: colors.accent }]}>
-                  {paymentStatus === 'PROCESSING' ? t('payments.waiting') : paymentStatus}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.statusText, { color: colors.accent }]}>
+                    {paymentStatus === 'PROCESSING' ? t('payments.waiting') : paymentStatus}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.accent, marginTop: 2 }}>
+                    {t('payments.momoApprovalHint')}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
