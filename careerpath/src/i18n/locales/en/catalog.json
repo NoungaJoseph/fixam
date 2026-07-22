@@ -19,15 +19,15 @@
   "completedBadge": "✓ COMPLETED",
   "faq": {
     "q1": "What is a Career Path?",
-    "a1": "Fixam Career Paths are self-paced, hands-on programs structured to help you master specific local trade skills. Each path includes practical exercises, standard model answers, and guidance designed by industry experts in Cameroon.",
+    "a1": "Fixam Career Paths are self-paced, hands-on programs structured to help you master specific local trade skills. Each path includes practical exercises, standard model answers, and guidance designed by industry experts.",
     "a1Bullets": [
       "100% free and open to everyone",
-      "Self-paced — learn on your own schedule",
+      "Self-paced (learn on your own schedule)",
       "Earn a shareable certificate for your Fixam profile",
       "No prior experience or qualifications needed"
     ],
     "q2": "What are Quick Skills?",
-    "a2": "Quick Skills are short, bite-sized lessons under 15 minutes. They focus on specific techniques — like sanitizing a beauty station or grounding a circuit — to quickly expand your professional toolkit.",
+    "a2": "Quick Skills are short, bite-sized lessons under 15 minutes. They focus on specific techniques (like sanitizing a beauty station or grounding a circuit) to quickly expand your professional toolkit.",
     "a2Bullets": [
       "Learn in under 15 minutes",
       "Directly applicable tips for client jobs",

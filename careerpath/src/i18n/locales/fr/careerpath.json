@@ -10,7 +10,7 @@
   },
   "hero": {
     "title": "Développez de vraies compétences. Soyez embauché plus vite.",
-    "subtitle": "Explorez des parcours professionnels pratiques et gratuits dans les métiers les plus demandés du Cameroun — plomberie, électricité, beauté, menuiserie et plus — conçus par Fixam.",
+    "subtitle": "Explorez des parcours professionnels pratiques et gratuits dans les métiers les plus demandés (notamment la plomberie, l'électricité, la beauté, la menuiserie et bien plus) conçus par Fixam.",
     "cta": "Commencer →"
   },
   "stats": {
@@ -27,7 +27,7 @@
   },
   "carousel": {
     "title": "Explorez nos parcours professionnels gratuits",
-    "subtitle": "Apprenez par la pratique avec des tâches interactives adaptées au secteur des métiers au Cameroun.",
+    "subtitle": "Apprenez par la pratique avec des tâches interactives adaptées au secteur des métiers professionnels.",
     "difficulty": {
       "beginner": "Débutant",
       "intermediate": "Intermédiaire"
@@ -60,7 +60,7 @@
   },
   "featured": {
     "title": "Catégories de Métiers Fixam",
-    "subtitle": "Certifiez-vous dans des compétences précises recherchées par les clients à Douala, Yaoundé et dans tout le Cameroun.",
+    "subtitle": "Certifiez-vous dans des compétences précises recherchées par les clients à l'échelle internationale.",
     "viewPath": "Voir le Parcours →"
   },
   "testimonials": {
@@ -69,17 +69,17 @@
     "provider1": {
       "quote": "\"Les tâches d'électricité étaient très pratiques. Le modèle de retour m'a montré exactement comment organiser ma boîte à outils et vérifier les connexions de terre de sécurité.\"",
       "name": "Jean-Pierre T.",
-      "role": "Électricien Certifié, Douala"
+      "role": "Électricien Certifié"
     },
     "provider2": {
       "quote": "\"J'ai appris la désinfection et l'installation professionnelles d'un spa à domicile. Mes clients voient la différence et ma note est passée de 4.2 à 4.9 étoiles !\"",
       "name": "Fabiola M.",
-      "role": "Beauté & Bien-être, Yaoundé"
+      "role": "Spécialiste Beauté & Bien-être"
     },
     "provider3": {
       "quote": "\"La leçon de logistique de déménagement a sauvé mon dos. Je fatiguais vite, mais maintenant je porte et range les cartons comme un pro.\"",
       "name": "Emmanuel N.",
-      "role": "Spécialiste Logistique, Douala"
+      "role": "Spécialiste Logistique"
     }
   },
   "mission": {
@@ -88,7 +88,7 @@
     "cta": "S'inscrire Maintenant →"
   },
   "footer": {
-    "tagline": "Valoriser les professionnels du Cameroun grâce aux compétences, certifications et opportunités d'emploi.",
+    "tagline": "Valoriser les professionnels du secteur grâce aux compétences, certifications et opportunités d'emploi.",
     "learners": "Pour les Apprenants",
     "providers": "Pour les Prestataires",
     "aboutFixam": "À propos de Fixam",

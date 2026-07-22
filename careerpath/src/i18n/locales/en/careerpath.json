@@ -10,7 +10,7 @@
   },
   "hero": {
     "title": "Build real skills. Get hired faster.",
-    "subtitle": "Explore free, hands-on career paths across Cameroon's most in-demand trades — plumbing, electrical, beauty, carpentry and more — built by Fixam.",
+    "subtitle": "Explore free, hands-on career paths across the most in-demand trades (including plumbing, electrical, beauty, carpentry and more) built by Fixam.",
     "cta": "Get Started →"
   },
   "stats": {
@@ -27,7 +27,7 @@
   },
   "carousel": {
     "title": "Explore our free career paths",
-    "subtitle": "Learn by doing with interactive, bite-sized tasks structured for Cameroon's trade industry.",
+    "subtitle": "Learn by doing with interactive, bite-sized tasks structured for the professional trade industry.",
     "difficulty": {
       "beginner": "Beginner-friendly",
       "intermediate": "Intermediate"
@@ -60,7 +60,7 @@
   },
   "featured": {
     "title": "Fixam Skill Categories",
-    "subtitle": "Get certified in specific skills that clients in Douala, Yaoundé, and across Cameroon are looking for right now.",
+    "subtitle": "Get certified in specific skills that clients worldwide are looking for right now.",
     "viewPath": "See Path →"
   },
   "testimonials": {
@@ -69,17 +69,17 @@
     "provider1": {
       "quote": "\"The electrical tasks were very practical. The feedback model showed me exactly how to organize my toolbox and check safety ground connections properly.\"",
       "name": "Jean-Pierre T.",
-      "role": "Certified Electrician, Douala"
+      "role": "Certified Electrician"
     },
     "provider2": {
       "quote": "\"I learned professional home spa sanitization and setup. My clients notice the difference and my ratings went from 4.2 to 4.9 stars!\"",
       "name": "Fabiola M.",
-      "role": "Beauty & Wellness, Yaoundé"
+      "role": "Beauty & Wellness Specialist"
     },
     "provider3": {
       "quote": "\"The safe moving and logistics lesson saved my back. I used to get tired easily, but now I lift and organize packing boxes like a true professional.\"",
       "name": "Emmanuel N.",
-      "role": "Logistics Specialist, Douala"
+      "role": "Logistics Specialist"
     }
   },
   "mission": {
@@ -88,7 +88,7 @@
     "cta": "Enroll Now →"
   },
   "footer": {
-    "tagline": "Empowering Cameroonian trade professionals with skills, certifications, and high-paying jobs.",
+    "tagline": "Empowering trade professionals with skills, certifications, and high-paying jobs.",
     "learners": "For Learners",
     "providers": "For Providers",
     "aboutFixam": "About Fixam",

@@ -84,22 +84,22 @@ export default function DetailPage() {
   const reviewsList = [
     {
       name: 'Arnaud K.',
-      contextEn: 'Certified Electrician in Douala',
-      contextFr: 'Électricien Certifié à Douala',
+      contextEn: 'Certified Electrician',
+      contextFr: 'Électricien Certifié',
       textEn: 'Completing this path helped me understand client safety expectations. My booking rates increased significantly.',
       textFr: 'Ce parcours m\'a aidé à comprendre les attentes de sécurité des clients. Mon taux de réservation a beaucoup augmenté.'
     },
     {
       name: 'Marie-Claire N.',
-      contextEn: 'Wellness Expert in Yaoundé',
-      contextFr: 'Experte Bien-être à Yaoundé',
+      contextEn: 'Wellness Expert',
+      contextFr: 'Experte Bien-être',
       textEn: 'Highly recommended! The step-by-step videos and model answers are very practical.',
       textFr: 'Hautement recommandé ! Les vidéos étape par étape et les réponses modèles sont très pratiques.'
     },
     {
       name: 'Jean-Pierre T.',
-      contextEn: 'Plumbing Specialist in Edéa',
-      contextFr: 'Spécialiste Plomberie à Edéa',
+      contextEn: 'Plumbing Specialist',
+      contextFr: 'Spécialiste Plomberie',
       textEn: 'The leak diagnosis tasks were extremely realistic. It felt like I was solving a real client issue on site.',
       textFr: 'Les tâches de diagnostic de fuite étaient extrêmement réalistes. C\'était comme si je résolvais un vrai problème client sur place.'
     }
@@ -534,7 +534,7 @@ export default function DetailPage() {
 
             {/* Description subtext */}
             <p className="text-base text-gray-300 max-w-2xl leading-relaxed">
-              Explore hands-on tasks structured by professional Cameroonian trainers to launch your trade career.
+              Explore hands-on tasks structured by professional industry trainers to launch your trade career.
             </p>
           </div>
         </div>
@@ -594,7 +594,7 @@ export default function DetailPage() {
                 </div>
                 <div className="border-t border-gray-150 pt-5 text-sm text-gray-550 leading-relaxed">
                   <p>
-                    By completing this Fixam simulated job training, you prove your dedication to excellence and on-the-job safety. This program walks you through the step-by-step diagnostic workflow, materials configuration, and safety guidelines required on residential and commercial project sites in Cameroon.
+                    By completing this Fixam simulated job training, you prove your dedication to excellence and on-the-job safety. This program walks you through the step-by-step diagnostic workflow, materials configuration, and safety guidelines required on residential and commercial project sites globally.
                   </p>
                   <a href="#" className="text-xs font-bold text-primary mt-3 block hover:underline">
                     {t('detail.overview.viewAll')}

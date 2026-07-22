@@ -14,7 +14,7 @@
     "startPath": "Commencer →",
     "card1": {
       "category": "Travaux Électriques",
-      "title": "Câblage Résidentiel — Les Bases"
+      "title": "Câblage Résidentiel (Les Bases)"
     },
     "card2": {
       "category": "Plomberie",
@@ -44,8 +44,8 @@
     "viewDetails": "Voir les Détails →",
     "job1": {
       "title": "Nouvelles Demandes de Clients Près de Vous",
-      "description": "3 clients à Douala recherchent des électriciens vérifiés cette semaine.",
-      "date": "Disponible maintenant — Juil 2026"
+      "description": "3 clients dans votre zone recherchent des électriciens vérifiés cette semaine.",
+      "date": "Disponible maintenant (Juil 2026)"
     },
     "job2": {
       "title": "Travaux de Plomberie le Week-end",

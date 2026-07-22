@@ -67,8 +67,8 @@ export default function OpportunitiesPage() {
       id: '1',
       client: 'Maisonette Electrical Repair',
       title: 'Residential Wiring & Safety Check',
-      description: 'Homeowner in Douala needs a certified electrician to troubleshoot circuit breakers and update kitchen wiring.',
-      location: 'Akwa, Douala',
+      description: 'A local homeowner needs a certified electrician to troubleshoot circuit breakers and update kitchen wiring.',
+      location: 'Central Area',
       date: 'Apply by Jul 30, 2026',
       requirements: 'Must be a verified Fixam provider with Electrical Certification',
       isOpportunity: true,
@@ -90,14 +90,14 @@ export default function OpportunitiesPage() {
       client: 'Fixam Community',
       title: 'Fixam Professional Tools & Safety Workshop',
       description: 'Join our masterclass on professional tool management, client communications, and on-site safety standards.',
-      location: 'Virtual (Zoom) / Yaoundé Center',
+      location: 'Virtual (Zoom) / Community Center',
       date: 'Starts Jul 28, 2026',
       requirements: 'Open to all registered providers',
       isOpportunity: false,
       isUpcoming: true,
       bannerBg: 'bg-gradient-to-r from-purple-500 to-indigo-600',
       icon: Hammer,
-      details: 'Learn from top trade professionals in Cameroon. This community workshop covers how to organize your toolbox for maximum efficiency, how to communicate professionally with clients to earn 5-star ratings, and critical workplace safety protocols. Attendance is free but registration is required to access the webinar link or attend in person.',
+      details: 'Learn from top trade professionals. This community workshop covers how to organize your toolbox for maximum efficiency, how to communicate professionally with clients to earn 5-star ratings, and critical workplace safety protocols. Attendance is free but registration is required to access the webinar link or attend in person.',
       relatedPaths: [
         {
           title: 'General Handyman',
@@ -110,10 +110,10 @@ export default function OpportunitiesPage() {
     },
     {
       id: '3',
-      client: 'Douala Commercial Plumbing',
+      client: 'Commercial Plumbing Project',
       title: 'Office Bathrooms Water Leak Repair',
       description: 'Commercial property owner needs pipe sealing and toilet valve replacements in a 3-story office building.',
-      location: 'Bonapriso, Douala',
+      location: 'North Area',
       date: 'Apply by Aug 5, 2026',
       requirements: 'Must be a verified Fixam provider with Plumbing Certification',
       isOpportunity: true,
@@ -135,7 +135,7 @@ export default function OpportunitiesPage() {
       client: 'Fixam Wellness',
       title: 'Beauty & Spa Sanitization Masterclass',
       description: 'A comprehensive training session on advanced home spa sanitization and customer safety regulations.',
-      location: 'Bastos, Yaoundé',
+      location: 'West Area',
       date: 'Jul 25, 2026',
       requirements: 'Open to Beauty & Wellness providers',
       isOpportunity: false,
@@ -154,10 +154,10 @@ export default function OpportunitiesPage() {
     },
     {
       id: '5',
-      client: 'Yaoundé Residential Painting',
+      client: 'Residential Painting Job',
       title: '3-Bedroom Apartment Interior Paint',
       description: 'Full interior paint job including walls, ceilings, and baseboard trims. Quality matte finish paint provided.',
-      location: 'Mvan, Yaoundé',
+      location: 'East Area',
       date: 'Apply by Aug 2, 2026',
       requirements: 'Must be a verified Fixam Painting provider',
       isOpportunity: true,
@@ -273,8 +273,8 @@ export default function OpportunitiesPage() {
               className="bg-white border border-gray-200 hover:border-gray-300 rounded-full py-2 px-4 text-xs font-semibold text-gray-755 focus:outline-none cursor-pointer"
             >
               <option value="all">{t('opportunities.dropdowns.region')}: {t('opportunities.dropdowns.all')}</option>
-              <option value="douala">Douala</option>
-              <option value="yaounde">Yaoundé</option>
+              <option value="central">Central Area</option>
+              <option value="north">North Area</option>
             </select>
 
             <select

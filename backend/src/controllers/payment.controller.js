@@ -6,7 +6,7 @@ const { sendPushNotification } =
 
 const topup = async (req, res) => {
   try {
-    const { amount, phone, coins } = req.body
+    const { amount, phone, coins, provider } = req.body
     const userId = req.user.id
 
     // Validate inputs
@@ -29,8 +29,6 @@ const topup = async (req, res) => {
       })
     }
 
-    // Phone formatting handled dynamically after user profile fetch
-
     // Get or create user wallet
     let wallet = await prisma.wallet.findUnique({
       where: { userId }
@@ -41,43 +39,22 @@ const topup = async (req, res) => {
       })
     }
 
-    // Get user info for Kora
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { fullName: true, email: true, country: true }
-    })
-
-    const countryDialCodes = {
-      'Cameroon': '237',
-      'Kenya': '254',
-      'Ghana': '233',
-      'Ivory Coast': '225',
-      'Tanzania': '255',
-      'Egypt': '20',
-      'Nigeria': '234'
-    };
-
-    const countryToCurrency = {
-      'Cameroon': 'XAF',
-      'Kenya': 'KES',
-      'Ghana': 'GHS',
-      'Ivory Coast': 'XOF',
-      'Tanzania': 'TZS',
-      'Egypt': 'EGP',
-      'Nigeria': 'NGN'
-    };
-
-    const userCountry = user?.country || 'Cameroon';
-    const currency = countryToCurrency[userCountry] || 'XAF';
-    const prefix = countryDialCodes[userCountry] || '237';
-
-    // Format phone - ensure it has dynamic country code
+    // Format phone — must be 237XXXXXXXXX no + sign
     const formatPhone = (p) => {
-      const cleaned = String(p).replace(/\s+/g, '').replace(/-/g, '').replace('+', '');
-      if (cleaned.startsWith(prefix)) return cleaned;
-      return prefix + cleaned;
-    };
-    const formattedPhone = formatPhone(phone);
+      const cleaned = String(p)
+        .replace(/\s+/g, '')
+        .replace(/-/g, '')
+        .replace('+', '')
+      if (cleaned.startsWith('237')) return cleaned
+      return '237' + cleaned
+    }
+    const formattedPhone = formatPhone(phone)
+
+    // Get user info
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { fullName: true, email: true }
+    })
 
     // Create pending transaction record
     const transaction = await prisma.transaction.create({
@@ -93,23 +70,23 @@ const topup = async (req, res) => {
       }
     })
 
-    // Call Kora API
-    const baseUrl = process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
-    const redirectUrl = `${baseUrl}/api/payments/redirect`;
-    const notificationUrl = `${baseUrl}/api/payments/webhook/kora`;
-
+    // Call Kora with ALL required fields filled
     const koraResult = await requestToPayWithKora({
       amount: Number(amount),
-      currency: currency,
-      description: `Fixam - ${coins} coins purchase`,
-      redirectUrl,
-      notificationUrl,
-      name: user?.fullName || 'Fixam User',
-      email: user?.email || 'user@fixam.net',
-      phone: formattedPhone
+      currency: 'XAF',
+      description: `Fixam App - ${coins} coin purchase`,  
+      redirectUrl: 'https://api.usefixam.com/api/payments/redirect',
+      notificationUrl: 'https://api.usefixam.com/api/payments/webhook/kora',
+      name: 'Fixam - ' + (user.fullName || 'User'),
+      email: user.email || undefined,
+      phone: formattedPhone,  // must be 237XXXXXXXXX
+      provider: provider
     })
 
+    // Check for validation errors
     if (koraResult.error) {
+      console.error('[Payment] Kora validation error:', 
+        koraResult.error)
       // Mark transaction as failed
       await prisma.transaction.update({
         where: { id: transaction.id },
@@ -117,8 +94,8 @@ const topup = async (req, res) => {
       })
       return res.status(400).json({
         success: false,
-        message: koraResult.error[0] ||
-          'Payment initiation failed'
+        message: koraResult.error[0] || 'Payment failed',
+        fullError: koraResult.koraError || koraResult.error
       })
     }
 
@@ -191,7 +168,7 @@ const checkPaymentStatus = async (req, res) => {
 
     console.log('[Payment] Kora status:', reference, koraStatus)
 
-    if (koraStatus === 'success') {
+    if (['success', 'successful', 'completed', 'paid'].includes(koraStatus)) {
       // Add coins to wallet
       await prisma.wallet.update({
         where: { id: transaction.walletId },
@@ -220,7 +197,7 @@ const checkPaymentStatus = async (req, res) => {
       })
     }
 
-    if (koraStatus === 'failed') {
+    if (['failed', 'cancelled', 'canceled', 'expired', 'rejected', 'declined', 'error'].includes(koraStatus)) {
       await prisma.transaction.update({
         where: { reference },
         data: { status: 'FAILED' }
