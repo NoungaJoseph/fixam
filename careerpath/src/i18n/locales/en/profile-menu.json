@@ -1,0 +1,19 @@
+{
+  "strengthMeter": {
+    "title": "Your profile strength is {{tier}}!",
+    "description": "A complete profile helps you get matched with clients faster.",
+    "explore": "Explore Opportunities \u2192",
+    "tiers": {
+      "basic": "Basic",
+      "good": "Good",
+      "excellent": "Excellent"
+    }
+  },
+  "menu": {
+    "messages": "Messages",
+    "editProfile": "Edit Profile",
+    "accountSettings": "Account Settings",
+    "referFriend": "Refer a Friend",
+    "signOut": "Sign Out"
+  }
+}

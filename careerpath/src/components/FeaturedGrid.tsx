@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   Zap, Droplets, Hammer, Sparkles, Scissors, Paintbrush,
   Wrench, Leaf, Shirt, Utensils, GraduationCap, Construction,
@@ -53,12 +54,12 @@ export default function FeaturedGrid() {
                 <h3 className="text-sm font-semibold text-gray-800 mb-3">
                   {t(`trades.${cat.key}`)}
                 </h3>
-                <a
-                  href="#"
+                <Link
+                  to={`/info/${cat.key}`}
                   className="text-xs font-medium text-primary underline underline-offset-2 hover:text-primary-hover"
                 >
                   {t('featured.viewPath')}
-                </a>
+                </Link>
               </div>
             );
           })}

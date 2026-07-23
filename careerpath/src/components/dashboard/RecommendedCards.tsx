@@ -1,9 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Zap, Droplets, RefreshCw } from 'lucide-react';
+import { Zap, Droplets, RefreshCw, PlayCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
-export default function RecommendedCards() {
+type RecommendedCardsProps = {
+  recommended: any[];
+};
+
+export default function RecommendedCards({ }: RecommendedCardsProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   const cards = [
     {
@@ -24,6 +30,18 @@ export default function RecommendedCards() {
     },
   ];
 
+  // If user has an active path, override the first card
+  if (user?.activePath) {
+    cards[0] = {
+      key: 'continue',
+      categoryKey: user.activePath.categoryKey,
+      icon: PlayCircle,
+      iconBg: 'bg-primary/20',
+      iconColor: 'text-primary',
+      cardBg: 'bg-teal-50/80',
+    };
+  }
+
   return (
     <div className="grid md:grid-cols-2 gap-5 mb-8">
       {cards.map((card) => {
@@ -39,8 +57,8 @@ export default function RecommendedCards() {
             </button>
 
             {/* Label */}
-            <p className="text-xs font-medium text-gray-400 mb-3">
-              {t('dashboard.recommended.label')}
+            <p className="text-xs font-medium text-gray-400 mb-3 uppercase tracking-wide">
+              {card.key === 'continue' ? 'IN PROGRESS' : t('dashboard.recommended.label')}
             </p>
 
             {/* Category */}
@@ -55,7 +73,9 @@ export default function RecommendedCards() {
 
             {/* Title */}
             <h3 className="text-base font-semibold text-gray-700 mb-4">
-              {t(`dashboard.recommended.${card.key}.title`)}
+              {card.key === 'continue' 
+                ? `Continue ${t(`dashboard.recommended.${cards[0].key === 'continue' ? 'card1' : card.key}.category`)} Path`
+                : t(`dashboard.recommended.${card.key}.title`)}
             </h3>
 
             {/* Divider + actions */}
@@ -64,10 +84,10 @@ export default function RecommendedCards() {
                 {t('dashboard.recommended.dismiss')}
               </button>
               <Link
-                to={`/career-paths/${card.categoryKey}`}
-                className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors"
+                to={card.key === 'continue' ? `/career-paths/${card.categoryKey}/flow` : `/career-paths/${card.categoryKey}`}
+                className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
               >
-                {t('dashboard.recommended.startPath')}
+                {card.key === 'continue' ? 'Resume Path' : t('dashboard.recommended.startPath')}
               </Link>
             </div>
           </div>

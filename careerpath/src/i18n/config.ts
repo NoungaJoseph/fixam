@@ -14,16 +14,20 @@ import detailEn from './locales/en/career-path-detail.json';
 import detailFr from './locales/fr/career-path-detail.json';
 import certificatesEn from './locales/en/certificates.json';
 import certificatesFr from './locales/fr/certificates.json';
+import surveyEn from './locales/en/intake-survey.json';
+import surveyFr from './locales/fr/intake-survey.json';
+import profileMenuEn from './locales/en/profile-menu.json';
+import profileMenuFr from './locales/fr/profile-menu.json';
 
 i18n
   .use(initReactI18next)
   .init({
     resources: {
       en: {
-        translation: { ...careerpathEn, dashboard: dashboardEn, auth: authEn, catalog: catalogEn, opportunities: opportunitiesEn, detail: detailEn, certificates: certificatesEn },
+        translation: { ...careerpathEn, dashboard: dashboardEn, auth: authEn, catalog: catalogEn, opportunities: opportunitiesEn, detail: detailEn, certificates: certificatesEn, survey: surveyEn, profileMenu: profileMenuEn },
       },
       fr: {
-        translation: { ...careerpathFr, dashboard: dashboardFr, auth: authFr, catalog: catalogFr, opportunities: opportunitiesFr, detail: detailFr, certificates: certificatesFr },
+        translation: { ...careerpathFr, dashboard: dashboardFr, auth: authFr, catalog: catalogFr, opportunities: opportunitiesFr, detail: detailFr, certificates: certificatesFr, survey: surveyFr, profileMenu: profileMenuFr },
       },
     },
     lng: 'en',

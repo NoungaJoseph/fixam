@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   Zap, Droplets, Hammer, Sparkles, Scissors, Paintbrush,
   Wrench, Leaf, Shirt, Utensils, GraduationCap, Construction,
@@ -17,6 +19,8 @@ type TradeCategory = {
 export default function CategoryCarousel() {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
   const categories: TradeCategory[] = [
     { key: 'electrical', icon: Zap, difficulty: 'intermediate', hours: 6, image: '/images/electrical.jpg' },
@@ -93,7 +97,6 @@ export default function CategoryCarousel() {
             <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Scrollable track */}
           <div
             ref={scrollRef}
             className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth"
@@ -102,9 +105,10 @@ export default function CategoryCarousel() {
             {categories.map((cat) => {
               const Icon = cat.icon;
               return (
-                <div
+                <Link
                   key={cat.key}
-                  className="w-[260px] sm:w-[280px] bg-white border border-gray-200 rounded-lg overflow-hidden flex-shrink-0 snap-start"
+                  to={`/info/${cat.key}`}
+                  className="w-[260px] sm:w-[280px] bg-white border border-gray-200 rounded-lg overflow-hidden flex-shrink-0 snap-start flex flex-col hover:shadow-lg transition-shadow duration-200 cursor-pointer text-left"
                 >
                   {/* Card image */}
                   <div className="w-full h-36 overflow-hidden">
@@ -129,15 +133,31 @@ export default function CategoryCarousel() {
                     </h3>
 
                     {/* Meta row: difficulty dots + duration */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       {difficultyDots(cat.difficulty)}
                       <span className="text-xs text-gray-400 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {t('carousel.duration', { count: cat.hours })}
                       </span>
                     </div>
+
+                    <div className="border-t border-gray-150 pt-3">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault(); // prevent the Link from navigating
+                          if (isLoggedIn) {
+                            navigate(`/career-paths/${cat.key}`);
+                          } else {
+                            navigate(`/login?redirect=/career-paths/${cat.key}`);
+                          }
+                        }}
+                        className="text-xs font-semibold text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
+                      >
+                        {t('carousel.viewPath', 'Start Path')}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

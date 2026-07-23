@@ -53,7 +53,26 @@
     "starsLabel": "Avis 5 Étoiles"
   },
   "closingBanner": {
-    "title": "Ce parcours ne vous convient pas ?",
-    "btn": "Parcourir les autres Parcours →"
+    "title": "Ce n'est pas la bonne voie pour vous ?",
+    "btn": "Parcourir d'autres parcours →"
+  },
+  "taskFlow": {
+    "overview": "Aperçu de la tâche",
+    "intro": "Super, commençons votre première tâche !",
+    "videoIntro": "Écoutez un formateur Fixam présenter cette tâche",
+    "backgroundTitle": "Voici les informations de base de votre tâche",
+    "instructionsTitle": "Voici votre tâche",
+    "submitHint": "Lorsque vous avez terminé votre travail, cliquez sur Suivant pour soumettre.",
+    "resourcesTitle": "Ressources",
+    "linkNote": "Ce lien s'ouvrira dans un nouvel onglet.",
+    "uploadTitle": "Téléchargement de fichier",
+    "uploadInstruction": "Téléchargez une photo ou un PDF montrant votre travail terminé.",
+    "dragDrop": "Sélectionnez un fichier ou glissez-le ici",
+    "uploadBtn": "Télécharger le fichier",
+    "allowedTypes": "PNG, PDF, JPEG, JPG, SVG, GIF, BMP, ICO, AI, PS, PSD, TIF, TIFF, WEBP",
+    "submitFile": "Soumettre le fichier",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer le parcours"
   }
 }

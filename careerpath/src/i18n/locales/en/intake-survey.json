@@ -1,0 +1,46 @@
+{
+  "title": "Your opinion counts",
+  "subtitle": "We have some important questions for you before you begin",
+  "q1": {
+    "title": "How did you hear about this program?",
+    "options": {
+      "google": "Google",
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "whatsapp": "WhatsApp",
+      "friend": "A friend or family member",
+      "fixam": "Fixam app",
+      "other": "Other"
+    }
+  },
+  "q2": {
+    "title": "I am enrolling in this path because:",
+    "helper": "Please select all that apply.",
+    "options": {
+      "unsure": "I'm not really sure what this type of work involves",
+      "home": "I want to learn this skill for my own home",
+      "income": "I want to build my skills to increase my income",
+      "certification": "I want to get certified and get more bookings on Fixam"
+    }
+  },
+  "q3": {
+    "title": "I have a good understanding of what this type of work involves.",
+    "helper": "Don't worry if you don't know much yet! You'll learn as you complete the path."
+  },
+  "q4": {
+    "title": "Based on what I currently know, I am likely to pursue certification in this skill on Fixam."
+  },
+  "likert": {
+    "1": "Strongly Disagree",
+    "2": "Disagree",
+    "3": "Neutral",
+    "4": "Agree",
+    "5": "Strongly Agree"
+  },
+  "footer": {
+    "privacy": "Please click here for further details on sharing your data.",
+    "clickHere": "click here",
+    "submit": "Submit"
+  }
+}

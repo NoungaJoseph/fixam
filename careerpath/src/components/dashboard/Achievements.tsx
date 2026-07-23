@@ -2,7 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { Award, Wrench } from 'lucide-react';
 
-export default function Achievements() {
+type AchievementsProps = {
+  achievements: any[];
+};
+
+export default function Achievements({ achievements }: AchievementsProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
 
@@ -11,7 +15,7 @@ export default function Achievements() {
       icon: Award,
       iconBg: 'bg-teal-50',
       iconColor: 'text-primary',
-      count: t('dashboard.achievements.certificatesCount', { count: user?.certificatesCount ?? 0 }),
+      count: t('dashboard.achievements.certificatesCount', { count: achievements.length }),
       caption: t('dashboard.achievements.certificatesCaption'),
     },
     {

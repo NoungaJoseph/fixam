@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,15 +7,25 @@ export default function LoginPage() {
   const { t, i18n } = useTranslation();
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isFr = i18n.language === 'fr';
 
-  const [email, setEmail] = useState('');
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email) {
-      login(email);
-      navigate('/dashboard');
+      try {
+        await login(email, password);
+        navigate(redirectTo);
+      } catch (error) {
+        console.error("Login Error:", error);
+        alert("Invalid login credentials. Ensure your backend is running!");
+      }
     }
   };
 
@@ -128,14 +138,32 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* SSO / Sign-in link options */}
-              <div className="flex justify-between text-xs font-semibold text-primary">
-                <a href="#" className="hover:underline">
-                  {t('auth.signin.sso')}
-                </a>
-                <a href="#" className="hover:underline">
-                  {t('auth.signin.link')}
-                </a>
+              <div>
+                <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all bg-gray-50/30"
+                />
+                <div className="mt-2 text-right">
+                  <a href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
+                    Forgot Password?
+                  </a>
+                </div>
+              </div>
+
+              {/* Roles */}
+              <div className="flex justify-center gap-4 text-xs font-semibold text-gray-400">
+                <span>For Educators</span>
+                <span>•</span>
+                <span>For Enterprise</span>
+                <span>•</span>
+                <span>For Students</span>
               </div>
 
               <button

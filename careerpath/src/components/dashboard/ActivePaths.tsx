@@ -1,35 +1,27 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Zap, Clock } from 'lucide-react';
 
-type ActivePath = {
-  id: string;
-  categoryKey: string;
-  title: string;
-  difficulty: 'beginner' | 'intermediate';
-  hours: number;
-  image: string;
+type ActivePathsProps = {
+  activePaths: any[];
 };
 
-export default function ActivePaths() {
+export default function ActivePaths({ activePaths }: ActivePathsProps) {
   const { t } = useTranslation();
 
-  // Toggle between empty and populated for demo
-  const [showPopulated, setShowPopulated] = useState(false);
-
-  const samplePaths: ActivePath[] = [
-    {
-      id: '1',
-      categoryKey: 'electrical',
-      title: 'Residential Wiring Basics',
-      difficulty: 'intermediate',
-      hours: 6,
-      image: '/images/electrical.jpg',
-    },
-  ];
-
-  const paths = showPopulated ? samplePaths : [];
+  // For the purpose of moving from mock data, we will map backend data to the required format
+  // or just use the passed in activePaths directly if it matches.
+  // Assuming activePaths is an array of CareerpathEnrollment objects from prisma.
+  // We'll map them to the UI structure.
+  
+  const paths = activePaths.map(enroll => ({
+    id: enroll.id,
+    categoryKey: enroll.categoryKey,
+    title: t(`trades.${enroll.categoryKey}`),
+    difficulty: 'intermediate', // Example default
+    hours: 10, // Example default
+    image: `/images/${enroll.categoryKey}.jpg`,
+  }));
 
   return (
     <div className="mb-6">
@@ -42,13 +34,6 @@ export default function ActivePaths() {
               {t('dashboard.activePaths.title')}
             </h2>
           </div>
-          {/* Demo toggle */}
-          <button
-            onClick={() => setShowPopulated(!showPopulated)}
-            className="text-xs text-gray-400 border border-gray-200 rounded px-2 py-1 hover:text-gray-600"
-          >
-            {showPopulated ? 'Show empty' : 'Show populated'}
-          </button>
         </div>
 
         {paths.length === 0 ? (

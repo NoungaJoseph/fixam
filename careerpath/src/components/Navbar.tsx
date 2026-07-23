@@ -9,8 +9,8 @@ export default function Navbar() {
   const isFr = i18n.language === 'fr';
 
   const navLinks = [
-    { key: 'careerPaths', href: '#career-paths' },
-    { key: 'howItWorks', href: '#how-it-works' },
+    { key: 'careerPaths', href: '/catalog' },
+    { key: 'howItWorks', href: '/how-it-works' },
     { key: 'forProviders', href: '/for-providers' },
   ];
 

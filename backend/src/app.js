@@ -58,6 +58,7 @@ const allowedOrigins = [
   process.env.WEBSITE_URL,
   'https://dashboard.usefixam.com',
   'https://usefixam.com',
+  'https://career.usefixam.com',
   'https://fixam-website-psi.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
@@ -87,6 +88,10 @@ app.use('/api/payments/webhook/kora', express.raw({ type: 'application/json' }))
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads', {
+  maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
+  fallthrough: false
+}));
+app.use('/public', express.static('public', {
   maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0,
   fallthrough: false
 }));
@@ -139,6 +144,15 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sports', sportsRoutes);
+
+// --- WEB / CAREERPATH EXCLUSIVE ROUTES ---
+const webAuthRoutes = require('./routes/web/web-auth.routes');
+const careerpathRoutes = require('./routes/web/careerpath.routes');
+const analyticsRoutes = require('./routes/web/analytics.routes');
+
+app.use('/api/v1/web-auth', webAuthRoutes);
+app.use('/api/v1/careerpath', careerpathRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 
 // Health Check

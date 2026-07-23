@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { careerpathApi } from '../services/api';
 import DashboardNav from '../components/dashboard/DashboardNav';
+import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import {
   Zap, Droplets, Hammer, Sparkles, Scissors, Paintbrush,
@@ -45,12 +47,7 @@ export default function DetailPage() {
 
   const currentLang = i18n.language || 'en';
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
-      navigate('/login');
-    }
-  }, [isLoggedIn, navigate]);
+  // No auto-redirect here. We want this page to be public.
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'overview' | 'about' | 'tasks' | 'reviews'>('overview');
@@ -464,11 +461,24 @@ export default function DetailPage() {
 
   const currentTask = currentPath.tasks[selectedTaskIdx] || currentPath.tasks[0];
 
-  if (!isLoggedIn) return null;
+  const handleStartPath = async () => {
+    if (isLoggedIn) {
+      try {
+        await careerpathApi.enroll({ categoryKey: categoryKey || 'electrical' });
+        navigate(`/career-paths/${categoryKey || 'electrical'}/flow`);
+      } catch (err) {
+        console.error("Failed to enroll", err);
+        // Navigate anyway for robustness if already enrolled
+        navigate(`/career-paths/${categoryKey || 'electrical'}/flow`);
+      }
+    } else {
+      navigate(`/login?redirect=/career-paths/${categoryKey || 'electrical'}/flow`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans antialiased text-gray-800">
-      <DashboardNav />
+      {isLoggedIn ? <DashboardNav /> : <Navbar />}
 
       {/* Sticky Compact Header (Charcoal top bar + sub tabs) */}
       <div
@@ -480,7 +490,10 @@ export default function DetailPage() {
           <span className="text-sm sm:text-base font-bold text-white truncate mr-4">
             {t(currentPath.titleKey)}
           </span>
-          <button className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-1.5 px-4 rounded-full transition-colors flex-shrink-0">
+          <button 
+            onClick={handleStartPath}
+            className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-1.5 px-4 rounded-full transition-colors flex-shrink-0"
+          >
             {t('detail.stickyHeader.startBtn')}
           </button>
         </div>
@@ -659,7 +672,10 @@ export default function DetailPage() {
                     <span className="leading-relaxed">{t('detail.ctaCard.bullet2')}</span>
                   </li>
                 </ul>
-                <button className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-3 px-4 rounded-lg transition-colors">
+                <button 
+                  onClick={handleStartPath}
+                  className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
                   {t('detail.ctaCard.startBtn')}
                 </button>
               </div>

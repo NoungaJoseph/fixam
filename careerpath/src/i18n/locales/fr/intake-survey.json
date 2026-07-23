@@ -1,0 +1,46 @@
+{
+  "title": "Votre opinion compte",
+  "subtitle": "Nous avons quelques questions importantes pour vous avant de commencer",
+  "q1": {
+    "title": "Comment avez-vous entendu parler de ce programme ?",
+    "options": {
+      "google": "Google",
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "whatsapp": "WhatsApp",
+      "friend": "Un ami ou un membre de la famille",
+      "fixam": "L'application Fixam",
+      "other": "Autre"
+    }
+  },
+  "q2": {
+    "title": "Je m'inscris à ce parcours parce que :",
+    "helper": "Veuillez sélectionner toutes les réponses qui s'appliquent.",
+    "options": {
+      "unsure": "Je ne suis pas vraiment sûr de ce qu'implique ce type de travail",
+      "home": "Je veux apprendre cette compétence pour ma propre maison",
+      "income": "Je veux développer mes compétences pour augmenter mes revenus",
+      "certification": "Je veux obtenir une certification et recevoir plus de réservations sur Fixam"
+    }
+  },
+  "q3": {
+    "title": "J'ai une bonne compréhension de ce qu'implique ce type de travail.",
+    "helper": "Ne vous inquiétez pas si vous ne savez pas encore grand-chose ! Vous apprendrez tout au long du parcours."
+  },
+  "q4": {
+    "title": "D'après ce que je sais actuellement, je suis susceptible de poursuivre une certification dans cette compétence sur Fixam."
+  },
+  "likert": {
+    "1": "Fortement en désaccord",
+    "2": "En désaccord",
+    "3": "Neutre",
+    "4": "D'accord",
+    "5": "Tout à fait d'accord"
+  },
+  "footer": {
+    "privacy": "Veuillez cliquer ici pour plus de détails sur le partage de vos données.",
+    "clickHere": "cliquer ici",
+    "submit": "Soumettre"
+  }
+}

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -7,8 +8,8 @@ export default function Footer() {
     {
       titleKey: 'learners',
       links: [
-        { labelKey: 'explorePaths', href: '#career-paths' },
-        { labelKey: 'faqs', href: '#faqs' },
+        { labelKey: 'explorePaths', href: '/catalog' },
+        { labelKey: 'faqs', href: '/faqs' },
       ],
     },
     {
@@ -21,18 +22,18 @@ export default function Footer() {
     {
       titleKey: 'aboutFixam',
       links: [
-        { labelKey: 'aboutUs', href: 'https://usefixam.com/about' },
-        { labelKey: 'careers', href: 'https://usefixam.com/careers' },
-        { labelKey: 'blog', href: 'https://usefixam.com/blog' },
+        { labelKey: 'aboutUs', href: '/about' },
+        { labelKey: 'careers', href: '/careers' },
+        { labelKey: 'blog', href: '/blog' },
       ],
     },
     {
       titleKey: 'support',
       links: [
-        { labelKey: 'helpCenter', href: 'https://usefixam.com/help' },
-        { labelKey: 'privacy', href: 'https://usefixam.com/privacy' },
-        { labelKey: 'terms', href: 'https://usefixam.com/terms' },
-        { labelKey: 'contact', href: 'https://usefixam.com/contact' },
+        { labelKey: 'helpCenter', href: '/help' },
+        { labelKey: 'privacy', href: '/privacy' },
+        { labelKey: 'terms', href: '/terms' },
+        { labelKey: 'contact', href: '/contact' },
       ],
     },
   ];
@@ -61,12 +62,23 @@ export default function Footer() {
               <ul className="space-y-2 text-sm">
                 {col.links.map((link, linkIdx) => (
                   <li key={linkIdx}>
-                    <a
-                      href={link.href}
-                      className="text-gray-500 hover:text-primary transition-colors duration-200"
-                    >
-                      {t(`footer.${link.labelKey}`)}
-                    </a>
+                    {link.href.startsWith('http') ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-500 hover:text-primary transition-colors duration-200"
+                      >
+                        {t(`footer.${link.labelKey}`)}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="text-gray-500 hover:text-primary transition-colors duration-200"
+                      >
+                        {t(`footer.${link.labelKey}`)}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

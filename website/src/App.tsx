@@ -18,6 +18,7 @@ import Notifications from './pages/Client/Notifications'
 import Messages from './pages/Client/Messages'
 import SavedProviders from './pages/Client/SavedProviders'
 import Settings from './pages/Client/Settings'
+import Support from './pages/Client/Support'
 import Referrals from './pages/Client/Referrals'
 import Reviews from './pages/Client/Reviews'
 import MyProfile from './pages/Client/MyProfile'
@@ -29,7 +30,7 @@ import MyJobs from './pages/Provider/MyJobs'
 import JobLeads from './pages/Provider/JobLeads'
 import ProviderWallet from './pages/Provider/ProviderWallet'
 import ProviderReviews from './pages/Provider/ProviderReviews'
-import ProfileSettings from './pages/Provider/ProfileSettings'
+// Removed ProfileSettings import
 import ProviderSupport from './pages/Provider/ProviderSupport'
 import ProviderDashboard from './pages/Provider/ProviderDashboard'
 
@@ -50,6 +51,8 @@ import SkillDetail from './pages/Resources/SkillDetail'
 import CareerPathways from './pages/Resources/CareerPathways'
 import CareerPathwaysBrowsePage from './pages/Resources/CareerPathwaysBrowsePage'
 import CareerPathwayDetailPage from './pages/Resources/CareerPathwayDetailPage'
+import { useAuth } from './context/AuthContext'
+import { api } from './services/api'
 
 import './App.css'
 import './marketplace.css'
@@ -63,7 +66,7 @@ export type IconName =
   | 'delivery' | 'electrical' | 'filter' | 'home' | 'location' | 'menu' | 'message'
   | 'painting' | 'plumbing' | 'search' | 'shield' | 'star' | 'user' | 'wallet' | 'wrench' | 'x'
   | 'chevron-up' | 'chevron-down'
-  | 'sun' | 'moon' | 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'chart'
+  | 'sun' | 'moon' | 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'chart' | 'phone'
 
 export const asset = (fileName: string) => `/assets/${fileName}`
 
@@ -74,7 +77,7 @@ export const getApiUrl = () => {
     : 'https://api.usefixam.com/api';
 };
 
-const getMediaUrl = (path?: string) => {
+export const getMediaUrl = (path?: string) => {
   if (!path) return 'https://via.placeholder.com/150';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const API_URL = getApiUrl();
@@ -150,16 +153,6 @@ const tasks = [
   { title: 'House deep cleaning', tag: 'Cleaning', price: '20,000 XAF', status: 'Completed', image: images.taskCleaning },
 ]
 
-const leads = [
-  { title: 'Emergency kitchen plumbing fix', tag: 'Plumbing', price: '35,000 XAF', status: 'Active', image: images.taskPlumbing },
-  { title: 'Install ceiling fans & rewiring', tag: 'Electrical', price: '20,000 XAF', status: 'Active', image: images.taskElectrical },
-  { title: 'Move out deep cleaning service', tag: 'Cleaning', price: '25,000 XAF', status: 'Active', image: images.taskCleaning },
-]
-
-const activeProposals = [
-  { name: 'Theresa May', role: 'Plumbing Request', rating: '5.0', distance: '1.2 km away', image: images.proMary },
-  { name: 'John Doe', role: 'Electrical Repair', rating: '4.9', distance: '3.4 km away', image: images.proJeff },
-]
 
 const useMaintenanceCheck = () => {
   const [appReady, setAppReady] = useState(false);
@@ -214,7 +207,25 @@ function App() {
   const [jobId, setJobId] = useState('');
   const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
   const [livePros, setLivePros] = useState<any[]>([]);
-  const [userRole, setUserRole] = useState<'client' | 'pro'>('client');
+  
+  const { isLoggedIn, isLoading, user } = useAuth();
+  
+  const [userRole, setUserRole] = useState<'client' | 'pro'>(user?.role === 'PROVIDER' ? 'pro' : 'client');
+
+  // Enforce auth
+  useEffect(() => {
+    if (!isLoading) {
+      if (page === 'dashboard' && !isLoggedIn) {
+        setPage('login');
+      } else if (isLoggedIn && (page === 'login' || page === 'register' || page === 'otp')) {
+        setPage('dashboard');
+      }
+      if (user) {
+        setUserRole(user.role === 'PROVIDER' ? 'pro' : 'client');
+      }
+    }
+  }, [page, isLoggedIn, isLoading, user]);
+
   const [theme] = useState<'light'>('light');
 
   useEffect(() => {
@@ -339,7 +350,7 @@ function App() {
   return (
     <div className={page === 'dashboard' ? 'app dashboard-shell' : 'app'}>
       {page === 'dashboard' ? (
-        <Dashboard onNavigate={setPage} livePros={livePros} userRole={userRole} />
+        <Dashboard onNavigate={setPage} livePros={livePros} userRole={userRole} onRoleChange={setUserRole} />
       ) : page === 'login' ? (
         <Login onNavigate={setPage} onLogin={(role) => setUserRole(role)} />
       ) : page === 'register' ? (
@@ -942,16 +953,24 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
   );
 }
 
-
-
-
-
-// Removed Login and Register to src/pages/Auth/
-
 function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigate: (page: Page) => void; livePros: any[]; userRole: 'client' | 'pro'; onRoleChange?: (role: 'client' | 'pro') => void }) {
+  const { isLoggedIn, user } = useAuth();
   const { t } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.profile-dropdown-container')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [searchVal, setSearchVal] = useState('');
   const [selectedProvider, setSelectedProvider] = useState<any>(null);
@@ -1021,26 +1040,107 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   }, []);
 
   const catScrollRef = useRef<HTMLDivElement>(null);
-  const displayedPros = livePros && livePros.length > 0 ? livePros : pros;
+  const [localLivePros, setLocalLivePros] = useState<any[]>([]);
+  const displayedPros = localLivePros.length > 0 ? localLivePros : (livePros && livePros.length > 0 ? livePros : pros);
 
+  // Client-specific interactive state hooks
   // Client-specific interactive state hooks
   const [clientTasks, setClientTasks] = useState([
     { id: 1, title: 'Fix leaking pipe in kitchen', tag: 'Plumbing', price: '25,000 XAF', status: 'In Progress', bids: 3 },
     { id: 2, title: 'Installing ceiling fan in bedroom', tag: 'Electrical', price: '15,000 XAF', status: 'Pending Offers', bids: 5 },
     { id: 3, title: 'House deep cleaning', tag: 'Cleaning', price: '20,000 XAF', status: 'Completed', bids: 0 }
   ]);
-  const [clientBookings, setClientBookings] = useState([
-    { id: '1', service: 'Plumbing Service', provider: 'Jeff Thomson', date: 'May 21', time: '9:00 AM', status: 'Confirmed', price: '25,000 XAF', image: images.proJeff },
-    { id: '2', service: 'Electrical Installation', provider: 'Samuel Bright', date: 'May 22', time: '2:30 PM', status: 'Pending', price: '15,000 XAF', image: images.proSamuel },
-    { id: '3', service: 'House deep cleaning', provider: 'Mary Clean', date: 'May 24', time: '11:00 AM', status: 'Confirmed', price: '20,000 XAF', image: images.proMary }
-  ]);
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [activeProposals, setActiveProposals] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const fetchData = async () => {
+        try {
+          // Fetch badge & notification metrics
+          const [convsRes, notifsRes] = await Promise.all([
+            api.get('/chat/conversations').catch(() => null),
+            api.get('/notifications').catch(() => null)
+          ]);
+
+          if (convsRes?.data?.data) {
+            const totalUnread = convsRes.data.data.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
+            setUnreadMessagesCount(totalUnread);
+          }
+          if (notifsRes?.data) {
+            const unreadNotifs = notifsRes.data.unreadCount !== undefined 
+              ? notifsRes.data.unreadCount 
+              : ((notifsRes.data.notifications || notifsRes.data.data || []).filter((n: any) => !n.isRead && !n.read).length);
+            setUnreadNotificationsCount(unreadNotifs);
+          }
+
+          if (userRole === 'client') {
+            const [jobsRes, walletRes, providersRes, bookingsRes] = await Promise.all([
+              api.get('/jobs/client').catch(() => null),
+              api.get('/wallet/balance').catch(() => null),
+              api.get('/providers').catch(() => null),
+              api.get('/bookings/mine').catch(() => null)
+            ]);
+            if (bookingsRes?.data?.bookings) setClientBookings(bookingsRes.data.bookings);
+            if (jobsRes?.data?.jobs) setClientTasks(jobsRes.data.jobs);
+            if (walletRes?.data?.data) {
+              setWalletBalance(walletRes.data.data.balance || 0);
+              if (walletRes.data.data.transactions) setWalletTransactions(walletRes.data.data.transactions);
+            }
+            if (providersRes?.data?.data) {
+              const formattedPros = providersRes.data.data.map((item: any) => {
+                const name = item.user?.fullName || 'Anonymous Provider';
+                const role = item.skills && item.skills.length > 0 ? item.skills.join(', ') : 'Service Provider';
+                const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
+                
+                let image = 'https://via.placeholder.com/150';
+                if (item.user?.avatar) {
+                  image = item.user.avatar.startsWith('http') ? item.user.avatar : `https://api.usefixam.com/api${item.user.avatar}`;
+                }
+                
+                return {
+                  id: item.id,
+                  name,
+                  role,
+                  rating,
+                  image,
+                  originalData: item
+                };
+              });
+              setLocalLivePros(formattedPros);
+            }
+          } else if (userRole === 'pro') {
+            const [leadsRes, proposalsRes, walletRes] = await Promise.all([
+              api.get('/jobs/pro/matches').catch(() => null), 
+              api.get('/jobs/pro/proposals').catch(() => null),
+              api.get('/wallet/balance').catch(() => null)
+            ]);
+            if (leadsRes?.data) setLeads(leadsRes.data.jobs || leadsRes.data.matches || []);
+            if (proposalsRes?.data?.proposals) setActiveProposals(proposalsRes.data.proposals);
+            if (walletRes?.data?.data) {
+              setWalletBalance(walletRes.data.data.balance || 0);
+              if (walletRes.data.data.transactions) setWalletTransactions(walletRes.data.data.transactions);
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch ${userRole} dashboard data`, err);
+        }
+      };
+      fetchData();
+    }
+  }, [isLoggedIn, userRole]);
 
   const [chatMessages, setChatMessages] = useState([
     { id: 1, sender: 'pro', text: 'Hello Nounga, I can come over tomorrow at 9:00 AM. Does that work?', time: 'Yesterday' },
     { id: 2, sender: 'client', text: 'Yes, that works perfectly. Please bring your tools for piping.', time: 'Yesterday' },
     { id: 3, sender: 'pro', text: 'Great, see you then!', time: 'Yesterday' }
   ]);
-  const [activeChatUser, setActiveChatUser] = useState('Jeff Thomson');
+  const [activeChatUser, setActiveChatUser] = useState<string>('');
   
   const [savedProsState, setSavedProsState] = useState([
     { id: 1, name: 'Jeff Thomson', role: 'Plumbing Specialist', rating: '4.8', distance: '4.2 km away', image: images.proJeff },
@@ -1053,21 +1153,19 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
       { name: 'Dashboard', icon: 'home' as IconName },
       { name: 'Find Services', icon: 'search' as IconName },
       { name: 'My Bookings', icon: 'calendar' as IconName },
-      { name: 'Messages', icon: 'chat' as IconName, badge: 3 },
-      { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: '1,250' },
-      { name: 'Reviews', icon: 'star' as IconName },
-      { name: 'Career Pathways', icon: 'briefcase' as IconName },
-      { name: 'Profile Settings', icon: 'user' as IconName },
+      { name: 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
+      { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
+      { name: 'Settings', icon: 'user' as IconName },
       { name: 'Support', icon: 'message' as IconName }
     ];
 
-    const handleNavClick = (itemName: string) => {
+    const handleNavClick = async (itemName: string) => {
       setIsSidebarOpen(false);
       setSelectedProvider(null);
-      if (itemName === 'Support') {
-        alert('Support flow coming soon!');
-      } else if (itemName === 'Career Pathways') {
+      if (itemName === 'Career Pathways') {
         onNavigate('career_pathways');
+      } else if (itemName === 'Log Out') {
+        onNavigate('home');
       } else {
         setActiveTab(itemName);
       }
@@ -1084,34 +1182,41 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
         )}
         {/* Left Sidebar */}
         <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
-          <div className="brand-header">
-            <button className="brand brand-button dash-brand-compact" onClick={() => onNavigate('home')}>
-              <span className="logo-mark-dash">F</span>
-              <span className="logo-text-dash">Fixam</span>
-            </button>
-            <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
-              {isSidebarCollapsed ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-              ) : (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          <div className="brand-header" style={{ justifyContent: 'space-between' }}>
+            <div 
+              className="user-card-new" 
+              style={{ cursor: 'pointer', padding: '0', background: 'transparent', border: 'none' }}
+              onClick={() => {
+                setIsSidebarOpen(false);
+                setActiveTab('My Profile');
+              }}
+            >
+              <img src={user?.image ? getMediaUrl(user.image) : images.proJeff} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
+              {!isSidebarCollapsed && (
+                <div className="user-info-new">
+                  <h3 style={{ fontSize: '14px', margin: 0 }}>{user?.firstName || 'Client'}</h3>
+                  <div className="role-row" style={{ marginTop: '2px' }}>
+                    <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1', fontSize: '10px', padding: '2px 6px' }}>Client</span>
+                    <span className="verified-badge" style={{ fontSize: '10px' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.6rem', height: '0.6rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      Verified
+                    </span>
+                  </div>
+                </div>
               )}
-            </button>
-            <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
-              <Icon name="x" />
-            </button>
-          </div>
+            </div>
 
-          <div className="user-card-new" onClick={() => setActiveTab('My Profile')} style={{ cursor: 'pointer' }}>
-            <img src={images.proJeff} alt="User Avatar" />
-            <div className="user-info-new">
-              <h3>Nounga</h3>
-              <div className="role-row">
-                <span className="role-text">Client</span>
-                <span className="verified-badge">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.7rem', height: '0.7rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  Verified
-                </span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
+                {isSidebarCollapsed ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                )}
+              </button>
+              <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
+                <Icon name="x" />
+              </button>
             </div>
           </div>
 
@@ -1124,17 +1229,12 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
               >
                 <Icon name={item.icon} />
                 <span>{item.name}</span>
-                {item.badge && <span className="badge-count">{item.badge}</span>}
+                {item.badge !== undefined && <span className="badge-count">{item.badge}</span>}
                 {item.walletBadge && <span className="badge-wallet">{item.walletBadge}</span>}
               </button>
             ))}
             
-            {onRoleChange && (
-              <button className="side-link-new" onClick={() => onRoleChange('pro')}>
-                <Icon name="user" />
-                <span>Provider View</span>
-              </button>
-            )}
+
 
             <button className="side-link-new" onClick={() => onNavigate('login')}>
               <Icon name="x" />
@@ -1180,24 +1280,52 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             <div className="actions-right-dash">
               <button className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
                 <Icon name="chat" />
-                <span className="badge-indicator">3</span>
+                {unreadMessagesCount > 0 && <span className="badge-indicator">{unreadMessagesCount}</span>}
               </button>
               <button className="icon-btn-dash" onClick={() => setActiveTab('Notifications')} aria-label="Notifications">
                 <Icon name="bell" />
-                <span className="badge-indicator">8</span>
+                {unreadNotificationsCount > 0 && <span className="badge-indicator">{unreadNotificationsCount}</span>}
               </button>
 
 
-              <button className="profile-chip-dash" onClick={() => setActiveTab('My Profile')}>
-                <img src={images.proJeff} alt="Nounga profile" className="desktop-only" />
-                <div className="profile-details-dash">
-                  <span className="profile-name-dash">
-                    Nounga
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  </span>
-                  <span className="profile-role-dash">Client</span>
-                </div>
-              </button>
+              <div className="relative profile-dropdown-container">
+                <button className="profile-chip-dash" onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}>
+                  <img src={user?.image ? getMediaUrl(user.image) : images.proJeff} alt="User profile" className="desktop-only" />
+                  <div className="profile-details-dash">
+                    <span className="profile-name-dash">
+                      {user?.firstName || 'User'}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem', transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
+                    <span className="profile-role-dash">Client</span>
+                  </div>
+                </button>
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Switch Account</div>
+                    <button 
+                      className="w-full text-left px-4 py-2 text-sm bg-teal-50 text-teal-700 flex items-center justify-between"
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        setActiveTab('My Profile');
+                      }}
+                    >
+                      <div className="flex items-center gap-2"><Icon name="user" /> Client</div>
+                      <Icon name="check" />
+                    </button>
+                    {onRoleChange && (
+                      <button 
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          onRoleChange('pro');
+                        }}
+                      >
+                        <Icon name="briefcase" /> Switch to Provider
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 
@@ -1215,13 +1343,14 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             ) : (
               <>
                 {activeTab === 'Dashboard' && (
-                  <ClientDashboard 
-                    setActiveTab={setActiveTab}
-                    setSelectedProvider={setSelectedProvider}
-                    services={services}
-                    displayedPros={displayedPros}
-                    clientBookings={clientBookings}
-                  />
+                    <ClientDashboard 
+                      setActiveTab={setActiveTab}
+                      setSelectedProvider={setSelectedProvider}
+                      services={services}
+                      displayedPros={displayedPros}
+                      clientBookings={clientBookings}
+                      walletBalance={walletBalance}
+                    />
                 )}
 
                 {activeTab === 'My Bookings' && (
@@ -1239,6 +1368,8 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     clientTasks={clientTasks} 
                     setClientTasks={setClientTasks} 
                     setActiveTab={setActiveTab} 
+                    walletBalance={walletBalance}
+                    clientBookings={clientBookings}
                   />
                 )}
                 {activeTab === 'Saved Providers' && (
@@ -1250,7 +1381,14 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                   />
                 )}
                 {activeTab === 'Stats' && <Stats />}
-                {activeTab === 'Wallet' && <WalletAndCoins setActiveTab={setActiveTab} />}
+                {activeTab === 'Wallet' && (
+                  <WalletAndCoins 
+                    setActiveTab={setActiveTab} 
+                    walletBalance={walletBalance} 
+                    clientBookings={clientBookings}
+                    clientTasks={clientTasks}
+                  />
+                )}
                 {activeTab === 'Coin Purchase' && (
                   <CoinPurchase 
                     setActiveTab={setActiveTab} 
@@ -1267,7 +1405,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 )}
                 {activeTab === 'Reviews' && <Reviews />}
                 {activeTab === 'My Referrals' && <Referrals />}
-                {activeTab === 'Profile Settings' && (
+                {activeTab === 'Settings' && (
                   <Settings 
                     savedProsState={savedProsState} 
                     setSavedProsState={setSavedProsState} 
@@ -1278,6 +1416,8 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 {activeTab === 'My Profile' && (
                   <MyProfile 
                     setActiveTab={setActiveTab} 
+                    onRoleChange={onRoleChange}
+                    userRole={userRole}
                   />
                 )}
                 {activeTab === 'Find Services' && (
@@ -1287,6 +1427,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     clientBookings={clientBookings} 
                     setClientBookings={setClientBookings} 
                     setActiveChatUser={setActiveChatUser}
+                    displayedPros={displayedPros}
+                  />
+                )}
+                {activeTab === 'Support' && (
+                  <Support 
+                    setActiveTab={setActiveTab} 
+                    setActiveChatUser={setActiveChatUser} 
                   />
                 )}
               </>
@@ -1301,12 +1448,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   const providerNavItems = [
     { name: 'Dashboard', icon: 'home' as IconName },
     { name: 'My Jobs', icon: 'briefcase' as IconName },
-    { name: 'Messages', icon: 'chat' as IconName, badge: 2 },
+    { name: 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { name: 'Job Leads', icon: 'search' as IconName },
-    { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: '85K XAF' },
+    { name: 'My Stats', icon: 'chart-bar' as IconName },
+    { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
     { name: 'Reviews', icon: 'star' as IconName },
     { name: 'Career Pathways', icon: 'briefcase' as IconName },
-    { name: 'Profile Settings', icon: 'user' as IconName },
+    { name: 'Settings', icon: 'user' as IconName },
     { name: 'Support', icon: 'message' as IconName }
   ];
 
@@ -1332,34 +1480,40 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
       )}
       {/* Left Sidebar */}
       <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="brand-header">
-          <button className="brand brand-button dash-brand-compact" onClick={() => onNavigate('home')}>
-            <span className="logo-mark-dash">F</span>
-            <span className="logo-text-dash">Fixam</span>
-          </button>
-          <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
-            {isSidebarCollapsed ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <div className="brand-header" style={{ justifyContent: 'space-between' }}>
+          <div 
+            className="user-card-new" 
+            style={{ cursor: 'pointer', padding: '0', background: 'transparent', border: 'none' }}
+            onClick={() => handleNavClick(userRole === 'pro' ? 'Settings' : 'My Profile')}
+          >
+            <img src={user?.image ? getMediaUrl(user.image) : (userRole === 'pro' ? images.proSamuel : images.proJeff)} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
+            {!isSidebarCollapsed && (
+              <div className="user-info-new">
+                <h3 style={{ fontSize: '14px', margin: 0 }}>{user?.firstName || (userRole === 'pro' ? 'Provider' : 'Client')}</h3>
+                <div className="role-row" style={{ marginTop: '2px' }}>
+                  <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1', fontSize: '10px', padding: '2px 6px' }}>
+                    {userRole === 'pro' ? 'Provider' : 'Client'}
+                  </span>
+                  <span className="verified-badge" style={{ fontSize: '10px' }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.6rem', height: '0.6rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Verified
+                  </span>
+                </div>
+              </div>
             )}
-          </button>
-          <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
-            <Icon name="x" />
-          </button>
-        </div>
+          </div>
 
-        <div className="user-card-new" style={{ cursor: 'pointer' }}>
-          <img src={images.proSamuel} alt="User Avatar" />
-          <div className="user-info-new">
-            <h3>Pro Nounga</h3>
-            <div className="role-row">
-              <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1' }}>Provider</span>
-              <span className="verified-badge">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.7rem', height: '0.7rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Verified
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
+              {isSidebarCollapsed ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              )}
+            </button>
+            <button className="hamburger-toggle" onClick={() => setIsSidebarOpen(false)}>
+              <Icon name="x" />
+            </button>
           </div>
         </div>
 
@@ -1377,12 +1531,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             </button>
           ))}
           
-          {onRoleChange && (
-            <button className="side-link-new" onClick={() => onRoleChange('client')}>
-              <Icon name="user" />
-              <span>Client View</span>
-            </button>
-          )}
+
 
           <button className="side-link-new" onClick={() => onNavigate('home')}>
             <Icon name="x" />
@@ -1426,22 +1575,54 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
           <div className="actions-right-dash">
             <button className="icon-btn-dash" onClick={() => setActiveTab('Messages')} aria-label="Messages">
               <Icon name="chat" />
-              <span className="badge-indicator">2</span>
+              {unreadMessagesCount > 0 && <span className="badge-indicator">{unreadMessagesCount}</span>}
+            </button>
+            <button className="icon-btn-dash" onClick={() => setActiveTab('Notifications')} aria-label="Notifications">
+              <Icon name="bell" />
+              {unreadNotificationsCount > 0 && <span className="badge-indicator">{unreadNotificationsCount}</span>}
             </button>
 
 
-            <button className="profile-chip-dash">
-              <img src={images.proSamuel} alt="Nounga profile" />
-              <div className="profile-details-dash">
-                <span className="profile-name-dash">
-                  Pro Nounga
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </span>
-                <span className="profile-role-dash">Provider</span>
+              <div className="relative profile-dropdown-container">
+                <button className="profile-chip-dash" onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}>
+                  <img src={user?.image ? getMediaUrl(user.image) : (userRole === 'pro' ? images.proSamuel : images.proJeff)} alt="Profile" />
+                  <div className="profile-details-dash">
+                    <span className="profile-name-dash">
+                      {user?.firstName || 'User'}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem', transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
+                    <span className="profile-role-dash">{userRole === 'pro' ? 'Provider' : 'Client'}</span>
+                  </div>
+                </button>
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Switch Account</div>
+                    {onRoleChange && (
+                      <button 
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          onRoleChange('client');
+                        }}
+                      >
+                        <Icon name="user" /> Switch to Client
+                      </button>
+                    )}
+                    <button 
+                      className="w-full text-left px-4 py-2 text-sm bg-teal-50 text-teal-700 flex items-center justify-between"
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        setActiveTab('Settings');
+                      }}
+                    >
+                      <div className="flex items-center gap-2"><Icon name="briefcase" /> Provider</div>
+                      <Icon name="check" />
+                    </button>
+                  </div>
+                )}
               </div>
-            </button>
-          </div>
-        </header>
+            </div>
+          </header>
 
         {/* Main Content Area */}
         <div className={`dash-content-premium`}>
@@ -1465,8 +1646,14 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
           {activeTab === 'Job Leads' && <JobLeads />}
           {activeTab === 'Wallet' && <ProviderWallet />}
           {activeTab === 'Reviews' && <ProviderReviews />}
-          {activeTab === 'Profile Settings' && <ProfileSettings />}
-          {activeTab === 'Support' && <ProviderSupport />}
+          {activeTab === 'Settings' && <Settings />}
+          {activeTab === 'My Stats' && <Stats />}
+          {activeTab === 'Support' && (
+            <ProviderSupport 
+              setActiveTab={setActiveTab} 
+              setActiveChatUser={setActiveChatUser} 
+            />
+          )}
           {activeTab === 'Messages' && (
             <Messages 
               chatMessages={chatMessages} 
@@ -1614,7 +1801,11 @@ export function ProCard({ pro, mini = false, onNavigate }: { pro: (typeof pros)[
   return (
     <article className={mini ? 'top-rated-card mini' : 'top-rated-card'}>
       <div className="top-rated-cover">
-        <img src={pro.image} alt={pro.name} className="top-rated-img" />
+        {pro.image ? (
+          <img src={pro.image} alt={pro.name} className="top-rated-img" />
+        ) : (
+          <div className="top-rated-img fallback-cover" style={{ backgroundColor: '#14b8a6', width: '100%', height: '100%' }}></div>
+        )}
         <div className="top-rated-verified"><Icon name="shield" /> Verified</div>
       </div>
       <div className="top-rated-content">
@@ -1887,7 +2078,8 @@ export function Icon({ name }: { name: IconName }) {
     linkedin: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z M2 9h4v12H2z M4 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z',
     chart: 'M4 20h16 M4 20V10 M9 20V6 M14 20V12 M19 20V8',
     'chevron-up': 'M18 15l-6-6-6 6',
-    'chevron-down': 'M6 9l6 6 6-6'
+    'chevron-down': 'M6 9l6 6 6-6',
+    phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z'
   }
 
   return (

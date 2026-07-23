@@ -15,9 +15,9 @@ export default function StatsBar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left: Stats + CTA */}
-          <div className="space-y-10">
+          <div className="grid grid-cols-2 gap-y-10 gap-x-6 sm:grid-cols-2 lg:block lg:space-y-10">
             {stats.map((stat, i) => (
-              <div key={i} className="text-left">
+              <div key={i} className="text-left col-span-1">
                 <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary tracking-tight">
                   {stat.num}
                 </div>
@@ -26,7 +26,7 @@ export default function StatsBar() {
                 </p>
               </div>
             ))}
-            <div className="pt-4">
+            <div className="pt-4 col-span-2 lg:col-span-1">
               <Link
                 to="/signup"
                 className="inline-block text-sm font-semibold text-primary border border-primary px-6 py-3 rounded-full hover:bg-primary hover:text-white transition-colors duration-200"

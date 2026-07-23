@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
@@ -8,7 +8,11 @@ export default function SignupPage() {
   const { t, i18n } = useTranslation();
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isFr = i18n.language === 'fr';
+
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -26,11 +30,16 @@ export default function SignupPage() {
     }
   };
 
-  const handleFinishSignup = (e: React.FormEvent) => {
+  const handleFinishSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (firstName && lastName && password && dob && status) {
-      signup(firstName, lastName, email);
-      navigate('/dashboard');
+      try {
+        await signup(firstName, lastName, email, password);
+        navigate(redirectTo);
+      } catch (error) {
+        console.error("Signup Error:", error);
+        alert("Failed to sign up.");
+      }
     }
   };
 

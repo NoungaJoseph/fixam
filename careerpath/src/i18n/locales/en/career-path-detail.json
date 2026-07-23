@@ -55,5 +55,24 @@
   "closingBanner": {
     "title": "Not the right path for you?",
     "btn": "Browse Other Career Paths →"
+  },
+  "taskFlow": {
+    "overview": "Task Overview",
+    "intro": "Great, now let's get started on your task!",
+    "videoIntro": "Hear from a Fixam trainer introduce this task",
+    "backgroundTitle": "Here is the background information on your task",
+    "instructionsTitle": "Here is your task",
+    "submitHint": "When you have finished your work, click Next to submit.",
+    "resourcesTitle": "Resources",
+    "linkNote": "This link will open in a new tab.",
+    "uploadTitle": "File Upload",
+    "uploadInstruction": "Upload a photo or PDF showing your completed work.",
+    "dragDrop": "Select a file or drag one here",
+    "uploadBtn": "Upload File",
+    "allowedTypes": "PNG, PDF, JPEG, JPG, SVG, GIF, BMP, ICO, AI, PS, PSD, TIF, TIFF, WEBP",
+    "submitFile": "Submit file",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish Path"
   }
 }
