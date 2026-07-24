@@ -23,13 +23,21 @@ export default function FindServices({
   const [findServicesSearch, setFindServicesSearch] = useState('');
   const [findServicesLoc, setFindServicesLoc] = useState('Nearby');
   const [findServicesRating, setFindServicesRating] = useState('All');
-  const [findServicesCat, setFindServicesCat] = useState('All Categories');
+  const [findServicesCat, setFindServicesCat] = useState(() => {
+    const init = localStorage.getItem('fixam_search_cat');
+    if (init) {
+      localStorage.removeItem('fixam_search_cat');
+      return init;
+    }
+    return 'All Categories';
+  });
   const [findServicesPrice, setFindServicesPrice] = useState(50000);
   const [availNow, setAvailNow] = useState(false);
   const [availToday, setAvailToday] = useState(false);
   const [serviceTypeInPerson, setServiceTypeInPerson] = useState(true);
   const [serviceTypeRemote, setServiceTypeRemote] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<'loc' | 'cat' | 'price' | 'rating' | 'avail' | 'type' | null>(null);
+  const [activeDropdown, setActiveDropdown] = useState<'filters' | null>(null);
+  const [sortBy, setSortBy] = useState('Recommended');
 
   const [showAllCategories, setShowAllCategories] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,8 +61,20 @@ export default function FindServices({
       const providerRate = p.originalData?.rate || 0;
       if (providerRate > findServicesPrice) return false;
     }
+    
+    if (findServicesLoc && findServicesLoc !== 'Nearby' && findServicesLoc !== 'Remote') {
+      const city = p.originalData?.city || '';
+      if (city && !city.toLowerCase().includes(findServicesLoc.toLowerCase())) return false;
+    }
 
     return true;
+  });
+
+  const sortedProviders = [...filteredProviders].sort((a, b) => {
+    if (sortBy === 'Rating: High to Low') return Number(b.rating || 0) - Number(a.rating || 0);
+    if (sortBy === 'Price: Low to High') return Number(a.originalData?.rate || 0) - Number(b.originalData?.rate || 0);
+    if (sortBy === 'Nearest') return (parseInt(a.distance) || Infinity) - (parseInt(b.distance) || Infinity);
+    return 0;
   });
 
   const allCategoriesList = [
@@ -143,12 +163,18 @@ export default function FindServices({
         </div>
         <div className="input-wrapper-fs location-input">
           <Icon name="location" />
-          <input 
-            type="text" 
-            placeholder="Location" 
+          <select 
+            className="w-full bg-transparent border-0 outline-none text-gray-700"
             value={findServicesLoc}
             onChange={(e) => setFindServicesLoc(e.target.value)}
-          />
+          >
+            <option value="Nearby">Nearby</option>
+            <option value="Douala">Douala</option>
+            <option value="Yaounde">Yaoundé</option>
+            <option value="Buea">Buea</option>
+            <option value="Limbe">Limbe</option>
+            <option value="Remote">Remote</option>
+          </select>
         </div>
         <button className="btn-search-fs" onClick={() => alert('Search initiated!')}>Search</button>
       </div>
@@ -211,200 +237,92 @@ export default function FindServices({
       </div>
 
       {/* Box-less Horizontal Filter Row */}
-      <div className="fs-horizontal-filters-bar">
-        {/* Location Dropdown */}
+      <div className="fs-horizontal-filters-bar relative" style={{ overflow: 'visible' }}>
+        {/* Filters Dropdown */}
         <div className="fs-filter-dropdown-container">
           <button 
             type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'loc' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'loc' ? null : 'loc')}
+            className={`fs-filter-pill-btn w-full justify-between ${activeDropdown === 'filters' ? 'active' : ''}`}
+            onClick={() => setActiveDropdown(activeDropdown === 'filters' ? null : 'filters')}
+            style={{ width: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
           >
-            📍 Location: {findServicesLoc.split(',')[0]} ▾
+            <Icon name="filter" /> Filters ▾
           </button>
-          {activeDropdown === 'loc' && (
-            <div className="fs-dropdown-menu-card animate-fade-in">
-              <h4>Select Location</h4>
-              <select value={findServicesLoc} onChange={(e) => { setFindServicesLoc(e.target.value); setActiveDropdown(null); }}>
-                <option value="Nearby">Nearby</option>
-                <option value="Remote">Remote</option>
-              </select>
-              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
-            </div>
-          )}
-        </div>
-
-        {/* Category Dropdown */}
-        <div className="fs-filter-dropdown-container">
-          <button 
-            type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'cat' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'cat' ? null : 'cat')}
-          >
-            📂 Category: {findServicesCat} ▾
-          </button>
-          {activeDropdown === 'cat' && (
-            <div className="fs-dropdown-menu-card animate-fade-in">
-              <h4>Select Category</h4>
-              <select value={findServicesCat} onChange={(e) => { setFindServicesCat(e.target.value); setActiveDropdown(null); }}>
-                <option value="All Categories">All Categories</option>
-                <option value="Cleaning Service">Cleaning Service</option>
-                <option value="Plumbing Service">Plumbing Service</option>
-                <option value="Electrical Service">Electrical Service</option>
-                <option value="Painting Service">Painting Service</option>
-                <option value="Carpentry Service">Carpentry Service</option>
-              </select>
-              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
-            </div>
-          )}
-        </div>
-
-        {/* Price Dropdown */}
-        <div className="fs-filter-dropdown-container">
-          <button 
-            type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'price' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
-          >
-            💵 Max Budget: {findServicesPrice === 50000 ? '50,000+ XAF' : `${findServicesPrice} XAF`} ▾
-          </button>
-          {activeDropdown === 'price' && (
-            <div className="fs-dropdown-menu-card animate-fade-in">
-              <h4>Hourly Budget</h4>
-              <input 
-                type="range" 
-                min="0" 
-                max="50000" 
-                step="1000"
-                value={findServicesPrice}
-                onChange={(e) => setFindServicesPrice(Number(e.target.value))}
-                className="price-slider-range"
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)', margin: '0.5rem 0' }}>
-                <span>0 XAF</span>
-                <span>{findServicesPrice === 50000 ? '50,000+ XAF' : `${findServicesPrice} XAF`}</span>
+          
+          {activeDropdown === 'filters' && (
+            <div className="fs-dropdown-menu-card animate-fade-in p-4" style={{ minWidth: '280px', left: 0, zIndex: 50 }}>
+              {/* Category */}
+              <div className="mb-4">
+                <h4 className="font-bold text-sm mb-2 text-gray-700">Category</h4>
+                <select className="w-full p-2 border rounded-md" value={findServicesCat} onChange={(e) => setFindServicesCat(e.target.value)}>
+                  <option value="All Categories">All Categories</option>
+                  <option value="Cleaning Service">Cleaning Service</option>
+                  <option value="Plumbing Service">Plumbing Service</option>
+                  <option value="Electrical Service">Electrical Service</option>
+                  <option value="Painting Service">Painting Service</option>
+                  <option value="Carpentry Service">Carpentry Service</option>
+                </select>
               </div>
-              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
-            </div>
-          )}
-        </div>
 
-        {/* Rating Dropdown */}
-        <div className="fs-filter-dropdown-container">
-          <button 
-            type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'rating' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'rating' ? null : 'rating')}
-          >
-            ⭐ Rating: {findServicesRating} ▾
-          </button>
-          {activeDropdown === 'rating' && (
-            <div className="fs-dropdown-menu-card animate-fade-in" style={{ minWidth: '180px' }}>
-              <h4>Provider Rating</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.5rem 0' }}>
-                {['All', '4.0 & up', '4.5 & up'].map((r) => (
-                  <button 
-                    key={r}
-                    type="button" 
-                    className={`rating-pill-btn ${findServicesRating === r ? 'active' : ''}`}
-                    onClick={() => { setFindServicesRating(r); setActiveDropdown(null); }}
-                    style={{ 
-                      padding: '0.45rem', 
-                      border: '1px solid var(--line)', 
-                      background: findServicesRating === r ? 'var(--teal-light)' : 'var(--soft)', 
-                      color: findServicesRating === r ? 'var(--teal)' : 'var(--ink)', 
-                      borderRadius: '6px', 
-                      fontWeight: 700, 
-                      cursor: 'pointer' 
-                    }}
-                  >
-                    {r === 'All' ? 'All Ratings' : r === '4.0 & up' ? '4★ & up' : '4.5★ & up'}
-                  </button>
-                ))}
+              {/* Price */}
+              <div className="mb-4">
+                <h4 className="font-bold text-sm mb-2 text-gray-700">Max Budget</h4>
+                <input type="range" min="0" max="50000" step="1000" value={findServicesPrice} onChange={(e) => setFindServicesPrice(Number(e.target.value))} className="w-full price-slider-range" />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>0 XAF</span>
+                  <span>{findServicesPrice === 50000 ? '50,000+ XAF' : `${findServicesPrice} XAF`}</span>
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div className="mb-4">
+                <h4 className="font-bold text-sm mb-2 text-gray-700">Provider Rating</h4>
+                <div className="flex flex-col gap-2">
+                  {['All', '4.0 & up', '4.5 & up'].map((r) => (
+                    <button key={r} type="button" className={`p-2 border rounded-md text-sm font-bold ${findServicesRating === r ? 'bg-teal-50 text-teal-600 border-teal-200' : 'bg-gray-50 text-gray-700'}`} onClick={() => setFindServicesRating(r)}>
+                      {r === 'All' ? 'All Ratings' : r === '4.0 & up' ? '4★ & up' : '4.5★ & up'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Availability */}
+              <div className="mb-4">
+                <h4 className="font-bold text-sm mb-2 text-gray-700">Availability</h4>
+                <label className="flex items-center gap-2 text-sm text-gray-700 mb-2 cursor-pointer">
+                  <input type="checkbox" checked={availNow} onChange={(e) => setAvailNow(e.target.checked)} />
+                  <span>Available Now</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" checked={availToday} onChange={(e) => setAvailToday(e.target.checked)} />
+                  <span>Available Today</span>
+                </label>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button type="button" className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-md font-bold text-sm" onClick={() => {
+                  setFindServicesCat('All Categories');
+                  setFindServicesRating('All');
+                  setFindServicesPrice(50000);
+                  setAvailNow(false);
+                  setAvailToday(false);
+                }}>Clear All</button>
+                <button type="button" className="flex-1 bg-teal-500 text-white py-2 rounded-md font-bold text-sm" onClick={() => setActiveDropdown(null)}>Apply</button>
               </div>
             </div>
           )}
         </div>
-
-        {/* Availability Dropdown */}
-        <div className="fs-filter-dropdown-container">
-          <button 
-            type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'avail' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'avail' ? null : 'avail')}
-          >
-            📅 Availability ▾
-          </button>
-          {activeDropdown === 'avail' && (
-            <div className="fs-dropdown-menu-card animate-fade-in">
-              <h4>Availability</h4>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
-                <input type="checkbox" checked={availNow} onChange={(e) => setAvailNow(e.target.checked)} />
-                <span>Available Now</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
-                <input type="checkbox" checked={availToday} onChange={(e) => setAvailToday(e.target.checked)} />
-                <span>Available Today</span>
-              </label>
-              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
-            </div>
-          )}
-        </div>
-
-        {/* Service Type Dropdown */}
-        <div className="fs-filter-dropdown-container">
-          <button 
-            type="button"
-            className={`fs-filter-pill-btn ${activeDropdown === 'type' ? 'active' : ''}`}
-            onClick={() => setActiveDropdown(activeDropdown === 'type' ? null : 'type')}
-          >
-            📍 Service Type ▾
-          </button>
-          {activeDropdown === 'type' && (
-            <div className="fs-dropdown-menu-card animate-fade-in">
-              <h4>Service Type</h4>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
-                <input type="checkbox" checked={serviceTypeInPerson} onChange={(e) => setServiceTypeInPerson(e.target.checked)} />
-                <span>In Person</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--ink)', margin: '0.5rem 0', cursor: 'pointer' }}>
-                <input type="checkbox" checked={serviceTypeRemote} onChange={(e) => setServiceTypeRemote(e.target.checked)} />
-                <span>Remote</span>
-              </label>
-              <button type="button" className="btn-apply-dropdown" onClick={() => setActiveDropdown(null)}>Apply</button>
-            </div>
-          )}
-        </div>
-
-        {/* Clear Filters Button */}
-        {(findServicesSearch || findServicesCat !== 'All Categories' || findServicesRating !== 'All' || findServicesPrice !== 5 || availNow || availToday || !serviceTypeInPerson || serviceTypeRemote) && (
-          <button 
-            type="button"
-            className="fs-clear-filters-btn-inline"
-            onClick={() => {
-              setFindServicesSearch('');
-              setFindServicesCat('All Categories');
-              setFindServicesRating('All');
-              setFindServicesPrice(50000);
-              setAvailNow(false);
-              setAvailToday(false);
-              setServiceTypeInPerson(true);
-              setServiceTypeRemote(false);
-              setActiveDropdown(null);
-            }}
-          >
-            Clear All
-          </button>
-        )}
       </div>
 
       <div className="fs-directory-layout" style={{ display: 'block', width: '100%' }}>
         <div className="fs-directory-main" style={{ width: '100%', maxWidth: '100%' }}>
           <div className="fs-results-header">
-            <span>Showing {filteredProviders.length} providers</span>
+            <span>Showing {sortedProviders.length} providers</span>
             <div className="fs-sort-dropdown">
               <span>Sort by: </span>
-              <select>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 <option>Recommended</option>
+                <option>Nearest</option>
                 <option>Rating: High to Low</option>
                 <option>Price: Low to High</option>
               </select>
@@ -412,7 +330,7 @@ export default function FindServices({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            {filteredProviders.map((p, idx) => {
+            {sortedProviders.map((p, idx) => {
               const fullName = p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Provider';
               const serviceRole = p.services && p.services.length > 0 ? p.services[0] : (p.role || 'Service Professional');
               const displayImage = p.image ? getMediaUrl(p.image) : '';
@@ -490,8 +408,8 @@ export default function FindServices({
           {/* Promo Card Banner at the bottom */}
           <div className="dash-panel-premium promo-card-fs" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', marginTop: '2.5rem', width: '100%', position: 'relative', overflow: 'hidden' }}>
             <div className="promo-text-fs" style={{ flex: 1, maxWidth: '80%' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 800, color: 'var(--ink)' }}>Get the best experience</h4>
-              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>Book your favorite providers faster and manage all your bookings in one place.</p>
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>Get the best experience</h4>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: 'rgba(255, 255, 255, 0.9)' }}>Book your favorite providers faster and manage all your bookings in one place.</p>
             </div>
             <button type="button" className="btn-promo-action-fs" onClick={() => setActiveTab('Dashboard')} style={{ flexShrink: 0, minWidth: '140px' }}>Book a Service</button>
           </div>

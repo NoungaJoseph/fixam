@@ -53,7 +53,7 @@ export default function DashboardNav() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo */}
-          <Link to="/" className="flex items-center gap-1.5 flex-shrink-0">
+          <Link to="/dashboard" className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-xl font-bold tracking-tight text-primary">Fixam</span>
             <span className="text-base font-medium text-gray-800">Pathways</span>
           </Link>

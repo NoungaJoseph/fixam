@@ -10,7 +10,7 @@ import {
   Zap, Droplets, Hammer, Sparkles, Scissors, Paintbrush,
   Wrench, Leaf, Shirt, Utensils, GraduationCap, Construction,
   Clock, Award, HelpCircle, Users, Play, Star, ChevronLeft, ChevronRight,
-  Flag
+  Flag, Bookmark, Loader2
 } from 'lucide-react';
 
 type TaskItem = {
@@ -54,13 +54,12 @@ export default function DetailPage() {
 
   // Sticky Header state
   const [showSticky, setShowSticky] = useState(false);
-
   // Video Playing state
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   // Tasks Tab: Selected Task index state
   const [selectedTaskIdx, setSelectedTaskIdx] = useState(0);
-
+  const [isSaving, setIsSaving] = useState(false);
   // Reviews Carousel state
   const [currentReviewIdx, setCurrentReviewIdx] = useState(0);
 
@@ -76,6 +75,23 @@ export default function DetailPage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const handleToggleBookmark = async () => {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
+    const keyToUse = categoryKey || 'electrical';
+    setIsSaving(true);
+    try {
+      await careerpathApi.toggleBookmark(keyToUse);
+      // We rely on the button's visual state and backend change instead of an alert
+    } catch (err: any) {
+      console.error("Failed to toggle bookmark", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Static Reviews List
   const reviewsList = [
@@ -672,12 +688,26 @@ export default function DetailPage() {
                     <span className="leading-relaxed">{t('detail.ctaCard.bullet2')}</span>
                   </li>
                 </ul>
-                <button 
-                  onClick={handleStartPath}
-                  className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  {t('detail.ctaCard.startBtn')}
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleStartPath}
+                    className="w-full bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-3 px-4 rounded-lg transition-colors"
+                  >
+                    {t('detail.ctaCard.startBtn')}
+                  </button>
+                  <button 
+                    onClick={handleToggleBookmark}
+                    disabled={isSaving}
+                    className="w-full bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold py-3 px-4 rounded-lg border border-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bookmark className="w-4 h-4" />
+                    )}
+                    {isSaving ? "Saving..." : "Save for Later"}
+                  </button>
+                </div>
               </div>
               
               {/* Callout Card */}

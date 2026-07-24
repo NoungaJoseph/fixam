@@ -34,6 +34,23 @@ export default function ProfilePage() {
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email</label>
               <input type="email" className="w-full border border-gray-200 rounded-lg px-4 py-2.5 bg-gray-50 text-gray-500" defaultValue={user?.email || ''} disabled />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Date of Birth</label>
+                <input type="date" className="w-full border border-gray-200 rounded-lg px-4 py-2.5" defaultValue={user?.dob ? new Date(user.dob).toISOString().split('T')[0] : ''} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Career Status</label>
+                <select className="w-full border border-gray-200 rounded-lg px-4 py-2.5 bg-white" defaultValue={user?.careerStatus || ''}>
+                  <option value="">Select Status</option>
+                  <option value="student">Student</option>
+                  <option value="apprentice">Apprentice / Trainee</option>
+                  <option value="professional">Working Professional</option>
+                  <option value="seeking">Seeking Opportunities</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
             <button type="button" className="bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-6 rounded-lg transition-colors">
               Save Changes
             </button>

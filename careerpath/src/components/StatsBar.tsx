@@ -39,9 +39,9 @@ export default function StatsBar() {
           {/* Right: Person photo */}
           <div className="hidden lg:block">
             <img
-              src="/images/stats-person.png"
-              alt="Fixam professional"
-              className="w-full max-w-md ml-auto rounded-lg object-cover"
+              src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800"
+              alt="Career Pathways and Professional Growth"
+              className="w-full max-w-md ml-auto rounded-lg object-cover shadow-xl"
             />
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
@@ -15,16 +16,23 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (email && password) {
+      setIsLoading(true);
+      setLoginError('');
       try {
         await login(email, password);
         navigate(redirectTo);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Login Error:", error);
-        alert("Invalid login credentials. Ensure your backend is running!");
+        setLoginError(error?.response?.data?.message || "Invalid login credentials. Ensure your backend is running!");
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -38,18 +46,7 @@ export default function LoginPage() {
           <span className="text-base font-medium text-gray-800">Pathways</span>
         </a>
 
-        {/* Links matching image 3 ( educators, enterprise, students ) */}
         <div className="flex items-center gap-6 text-sm font-semibold text-gray-650">
-          <a href="#" className="hidden sm:inline hover:text-primary transition-colors">
-            For Educators
-          </a>
-          <a href="#" className="hidden sm:inline hover:text-primary transition-colors">
-            For Enterprise
-          </a>
-          <a href="#" className="border-b-2 border-primary pb-1 text-primary">
-            For Students
-          </a>
-
           <button
             onClick={() => i18n.changeLanguage(isFr ? 'en' : 'fr')}
             className="text-xs font-medium text-gray-500 hover:text-gray-800 ml-2"
@@ -142,20 +139,36 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
-                  id="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all bg-gray-50/30"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary transition-all bg-gray-50/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 flex items-center justify-center p-1 rounded-md"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 <div className="mt-2 text-right">
                   <a href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
                     Forgot Password?
                   </a>
                 </div>
               </div>
+
+              {loginError && (
+                <div className="bg-red-50 text-red-500 text-sm font-medium px-4 py-3 rounded-lg flex items-center justify-center">
+                  {loginError}
+                </div>
+              )}
 
               {/* Roles */}
               <div className="flex justify-center gap-4 text-xs font-semibold text-gray-400">
@@ -168,10 +181,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={!email}
-                className="w-full bg-primary hover:bg-primary-hover disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 text-white border border-transparent font-semibold py-3 px-6 rounded-lg text-sm transition-all duration-200"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary-hover flex justify-center items-center gap-2 text-white font-semibold py-3 px-6 rounded-lg text-sm transition-all duration-200 mt-2 disabled:bg-gray-100 disabled:text-gray-400"
               >
-                {t('auth.signin.signInBtn')}
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('auth.signin.signInBtn')}
               </button>
             </form>
 

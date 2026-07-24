@@ -96,6 +96,27 @@ export default function TaskFlowSidebar({
             </button>
           );
         })}
+
+        {/* FINISH LINE */}
+        <div className={`w-full text-left p-4 flex gap-4 transition-colors ${
+          activeTaskIndex >= tasks.length ? 'bg-primary/5' : 'opacity-50'
+        }`}>
+          <div className="mt-0.5 flex-shrink-0">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              activeTaskIndex >= tasks.length ? 'bg-primary text-white' : 'border border-gray-400 text-gray-500'
+            }`}>
+              <Check className="w-3.5 h-3.5" strokeWidth={3} />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className={`font-bold text-sm mb-1 ${activeTaskIndex >= tasks.length ? 'text-primary' : 'text-gray-900'}`}>
+              Finish Line
+            </h3>
+            <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed mb-2">
+              Course completed. Congratulations!
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

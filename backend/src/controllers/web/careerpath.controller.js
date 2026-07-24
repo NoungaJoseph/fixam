@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 // Careerpath Onboarding: Select Skills
 exports.onboardSkills = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { selectedSkills } = req.body;
     
     // Save selected skills to user profile
@@ -23,7 +23,7 @@ exports.onboardSkills = async (req, res) => {
 // Enroll in a career path
 exports.enroll = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { categoryKey } = req.body;
     
     const enrollment = await prisma.careerpathEnrollment.create({
@@ -41,7 +41,7 @@ const { sendModuleCompletionEmail } = require('../../services/email.service');
 // Complete a module & handle smart exam
 exports.completeModuleWithExam = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { categoryKey, moduleId, examScore } = req.body;
     
     // Require minimum score to progress
@@ -79,7 +79,7 @@ exports.completeModuleWithExam = async (req, res) => {
 // Generate certificate upon completion
 exports.generateCertificate = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     const { categoryKey } = req.body;
     
     // Check if the certificate already exists
@@ -136,7 +136,7 @@ exports.generateCertificate = async (req, res) => {
 // Get Dashboard Data for user
 exports.getUserDashboard = async (req, res) => {
   try {
-    const { userId } = req.user;
+    const userId = req.user.id;
     
     const enrollments = await prisma.careerpathEnrollment.findMany({
       where: { userId },
@@ -146,10 +146,15 @@ exports.getUserDashboard = async (req, res) => {
       where: { userId }
     });
 
+    // Fetch bookmarks using raw SQL to bypass prisma client cache
+    const rawBookmarks = await prisma.$queryRaw`SELECT "categoryKey" FROM "CareerpathBookmark" WHERE "userId" = ${userId}`;
+    const savedPrograms = rawBookmarks.map(b => ({ categoryKey: b.categoryKey }));
+
     res.status(200).json({ 
       success: true, 
       activePaths: enrollments,
       achievements: certificates,
+      savedPrograms,
       recommended: [] // In a real app, this would be computed based on profile skills
     });
   } catch (error) {
@@ -157,3 +162,25 @@ exports.getUserDashboard = async (req, res) => {
   }
 };
 
+// Toggle Bookmark
+exports.toggleBookmark = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { categoryKey } = req.params;
+    
+    // Check if it exists
+    const existing = await prisma.$queryRaw`SELECT id FROM "CareerpathBookmark" WHERE "userId" = ${userId} AND "categoryKey" = ${categoryKey}`;
+    
+    if (existing && existing.length > 0) {
+      await prisma.$executeRaw`DELETE FROM "CareerpathBookmark" WHERE id = ${existing[0].id}`;
+      return res.status(200).json({ success: true, saved: false });
+    } else {
+      const crypto = require('crypto');
+      const uuid = crypto.randomUUID();
+      await prisma.$executeRaw`INSERT INTO "CareerpathBookmark" (id, "userId", "categoryKey", "createdAt") VALUES (${uuid}, ${userId}, ${categoryKey}, NOW())`;
+      return res.status(200).json({ success: true, saved: true });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

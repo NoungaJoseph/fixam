@@ -1,7 +1,9 @@
 import './ProviderProfileDetail.css';
 import { Icon } from '../../App';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BookingFormModal from '../../components/BookingFormModal';
+import { api } from '../../services/api';
+import { getMediaUrl } from '../../App';
 
 interface ProviderProfileDetailProps {
   selectedProvider: any;
@@ -10,6 +12,8 @@ interface ProviderProfileDetailProps {
   setClientBookings: (bookings: any[]) => void;
   setActiveTab: (tab: string) => void;
   setActiveChatUser: (user: string) => void;
+  savedProsState?: any[];
+  setSavedProsState?: (pros: any[]) => void;
 }
 
 export default function ProviderProfileDetail({
@@ -18,15 +22,24 @@ export default function ProviderProfileDetail({
   clientBookings,
   setClientBookings,
   setActiveTab,
-  setActiveChatUser
+  setActiveChatUser,
+  savedProsState = [],
+  setSavedProsState
 }: ProviderProfileDetailProps) {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<'Overview' | 'Reviews' | 'Projects' | 'Certificates'>('Overview');
-  const [isSaved, setIsSaved] = useState(false);
+  
+  const original = selectedProvider?.originalData || {};
+  const providerId = original._id || original.id;
+  const initialSaved = savedProsState.some((p: any) => p._id === providerId || (p.provider && p.provider._id === providerId));
+  const [isSaved, setIsSaved] = useState(initialSaved);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   if (!selectedProvider) return null;
 
-  const original = selectedProvider.originalData || {};
   const portfolio = original.portfolio || [];
   const certificates = original.certificates || [];
   
@@ -42,12 +55,15 @@ export default function ProviderProfileDetail({
     reviews: original.reviews || []
   };
 
+  const fullName = selectedProvider.name || `${selectedProvider.firstName || ''} ${selectedProvider.lastName || ''}`.trim() || 'Provider';
+  const displayImage = selectedProvider.image ? getMediaUrl(selectedProvider.image) : '';
+
   const handleShare = async () => {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Fixam Provider: ${selectedProvider.name}`,
-          text: `Check out ${selectedProvider.name}'s profile on Fixam!`,
+          title: `Fixam Provider: ${fullName}`,
+          text: `Check out ${fullName}'s profile on Fixam!`,
           url: window.location.href,
         });
       } else {
@@ -59,14 +75,31 @@ export default function ProviderProfileDetail({
     }
   };
 
-  const handleSave = () => {
-    setIsSaved(!isSaved);
-    alert(isSaved ? 'Provider removed from favorites.' : 'Provider saved to favorites!');
+  const handleSave = async () => {
+    if (!providerId) return;
+    try {
+      if (isSaved) {
+        await api.delete(`/providers/${providerId}/favorite`);
+        setIsSaved(false);
+        if (setSavedProsState) {
+          setSavedProsState(savedProsState.filter((p: any) => p._id !== providerId && p.provider?._id !== providerId));
+        }
+      } else {
+        await api.post(`/providers/${providerId}/favorite`);
+        setIsSaved(true);
+        if (setSavedProsState) {
+          setSavedProsState([...savedProsState, original]);
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling favorite:', err);
+      alert('Failed to update favorites. Please try again.');
+    }
   };
 
   return (
     <div className="provider-profile-detail-page animate-fade-in">
-      <button className="btn-profile-back" onClick={() => setSelectedProvider(null)}>
+      <button className="btn-profile-back" onClick={() => { setSelectedProvider(null); setActiveTab('Dashboard'); }}>
         <span>&larr;</span> Back to Dashboard
       </button>
 
@@ -74,17 +107,25 @@ export default function ProviderProfileDetail({
       <div className="profile-banner-card-centered">
         <div className="profile-banner-bg-centered"></div>
         <div className="profile-header-main-centered">
-          {selectedProvider.image ? (
-            <img src={selectedProvider.image} alt={selectedProvider.name} className="profile-avatar-xl" />
+          {displayImage ? (
+            <img 
+              src={displayImage} 
+              alt={fullName} 
+              className="profile-avatar-xl" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).onerror = null;
+                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=14B8A6&color=fff&size=120&rounded=true`;
+              }}
+            />
           ) : (
-            <div className="profile-avatar-xl fallback-avatar-centered">
-              {selectedProvider.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+            <div className="profile-avatar-xl fallback-avatar-centered flex items-center justify-center font-bold text-3xl bg-teal-500 text-white">
+              {fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
             </div>
           )}
           
           <div className="profile-header-info-centered">
             <h1 className="profile-name-centered">
-              {selectedProvider.name}
+              {fullName}
               <span className="badge-verified-pro-centered">
                 <Icon name="check" /> Verified Pro
               </span>
@@ -244,9 +285,9 @@ export default function ProviderProfileDetail({
       <BookingFormModal 
         isOpen={isBookingModalOpen}
         onClose={() => setIsBookingModalOpen(false)}
-        providerName={selectedProvider.name}
-        providerService={selectedProvider.role}
-        providerImage={selectedProvider.image}
+        providerName={fullName}
+        providerService={selectedProvider.role || 'Service'}
+        providerImage={displayImage}
         onSubmit={(bookingData) => {
           const newBooking = {
             id: Date.now(),

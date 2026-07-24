@@ -108,8 +108,8 @@ export default function TaskFlowPage() {
     } else {
       // Task completed
       try {
-        // Random score between 50 and 100 to simulate an exam result
-        const simulatedScore = Math.floor(Math.random() * 51) + 50; 
+        // Set score to 100 for now to ensure they pass
+        const simulatedScore = 100; 
         
         await careerpathApi.completeModule({
           categoryKey: categoryKey || 'electrical',
@@ -181,15 +181,17 @@ export default function TaskFlowPage() {
           </div>
         ) : (
           <div className="w-full h-full flex flex-col md:flex-row">
-            <TaskFlowSidebar
-              categoryTitle={pathTitle}
-              Icon={Icon}
-              tasks={tasks}
-              activeTaskIndex={activeTaskIndex}
-              completedTaskIndexes={completedTaskIndexes}
-              onSelectTask={handleSelectTask}
-            />
-            <div className="flex-1 h-full relative overflow-hidden">
+            <div className="hidden md:block md:w-80 flex-shrink-0 h-full border-r border-gray-200 bg-white overflow-y-auto">
+              <TaskFlowSidebar
+                categoryTitle={pathTitle}
+                Icon={Icon}
+                tasks={tasks}
+                activeTaskIndex={activeTaskIndex}
+                completedTaskIndexes={completedTaskIndexes}
+                onSelectTask={handleSelectTask}
+              />
+            </div>
+            <div className="flex-1 h-full relative overflow-hidden flex flex-col">
               {activeTaskIndex >= tasks.length ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/50">
                   <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mb-6">

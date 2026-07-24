@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff } from 'lucide-react';
+import { api } from '../services/api';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function SignupPage() {
   const { t, i18n } = useTranslation();
@@ -22,11 +23,42 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [dob, setDob] = useState('');
   const [status, setStatus] = useState('');
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
-  const handleNextStep = (e: React.FormEvent) => {
+  const getPasswordStrength = (pass: string) => {
+    let score = 0;
+    if (!pass) return 0;
+    if (pass.length > 5) score += 1;
+    if (pass.length > 8) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    return score;
+  };
+
+  const strengthScore = getPasswordStrength(password);
+  const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-400', 'bg-teal-500', 'bg-teal-600'];
+
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email) {
-      setStep(2);
+      setEmailChecking(true);
+      setEmailError('');
+      try {
+        const response = await api.post('/v1/web-auth/check-email', { email });
+        if (response.data.exists) {
+          setEmailError('An account with this email is already registered. Please go to the Login page.');
+        } else {
+          setStep(2);
+        }
+      } catch (err: any) {
+        console.error("Error checking email", err);
+        setEmailError('Network Error: Could not check email. Ensure your backend is running!');
+      } finally {
+        setEmailChecking(false);
+      }
     }
   };
 
@@ -34,7 +66,7 @@ export default function SignupPage() {
     e.preventDefault();
     if (firstName && lastName && password && dob && status) {
       try {
-        await signup(firstName, lastName, email, password);
+        await signup(firstName, lastName, email, password, dob, status);
         navigate(redirectTo);
       } catch (error) {
         console.error("Signup Error:", error);
@@ -60,10 +92,10 @@ export default function SignupPage() {
           </button>
           {step === 2 && (
             <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((s) => (
+              {[1, 2].map((s) => (
                 <span
                   key={s}
-                  className={`w-2 h-2 rounded-full ${s === 2 ? 'bg-primary' : 'bg-gray-200'}`}
+                  className={`w-2 h-2 rounded-full ${s === step ? 'bg-primary' : 'bg-gray-200'}`}
                 />
               ))}
             </div>
@@ -157,9 +189,15 @@ export default function SignupPage() {
                       id="email"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all bg-gray-50/30"
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError('');
+                      }}
+                      className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all bg-gray-50/30 ${emailError ? 'border-red-500' : 'border-gray-200'}`}
                     />
+                    {emailError && (
+                      <p className="text-red-500 text-xs font-semibold mt-2">{emailError}</p>
+                    )}
                   </div>
 
                   <div className="border-t border-gray-150 pt-5 flex items-center justify-between gap-4">
@@ -171,10 +209,10 @@ export default function SignupPage() {
                     </span>
                     <button
                       type="submit"
-                      disabled={!email}
-                      className="bg-primary hover:bg-primary-hover disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 text-white border border-transparent font-semibold py-2.5 px-6 rounded-lg text-sm transition-all duration-200"
+                      disabled={!email || emailChecking}
+                      className="bg-primary hover:bg-primary-hover flex items-center justify-center min-w-[120px] disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 text-white border border-transparent font-semibold py-2.5 px-6 rounded-lg text-sm transition-all duration-200"
                     >
-                      {t('auth.signup.createBtn')}
+                      {emailChecking ? <Loader2 className="w-5 h-5 animate-spin" /> : t('auth.signup.createBtn')}
                     </button>
                   </div>
                 </form>
@@ -262,12 +300,33 @@ export default function SignupPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 flex items-center justify-center p-1 rounded-md"
+                        title={showPassword ? "Hide password" : "Show password"}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                    
+                    {password && (
+                      <div className="mt-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-medium text-gray-500">Password Strength:</span>
+                          <span className={`text-xs font-bold ${strengthScore > 2 ? 'text-teal-600' : 'text-orange-500'}`}>
+                            {strengthLabels[strengthScore]}
+                          </span>
+                        </div>
+                        <div className="flex gap-1 h-1.5 w-full">
+                          {[1, 2, 3, 4, 5].map(level => (
+                            <div 
+                              key={level} 
+                              className={`flex-1 rounded-full ${strengthScore >= level ? strengthColors[strengthScore] : 'bg-gray-200'}`} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">
                       {t('auth.signup.passwordHint')}
                     </p>
                   </div>
