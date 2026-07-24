@@ -60,6 +60,7 @@ export default function DetailPage() {
   // Tasks Tab: Selected Task index state
   const [selectedTaskIdx, setSelectedTaskIdx] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   // Reviews Carousel state
   const [currentReviewIdx, setCurrentReviewIdx] = useState(0);
 
@@ -76,16 +77,35 @@ export default function DetailPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch initial bookmark status
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const checkBookmarkStatus = async () => {
+      try {
+        const response = await careerpathApi.getUserDashboard();
+        const saved = response.data?.savedPrograms || [];
+        const keyToUse = categoryKey || 'electrical';
+        const hasBookmark = saved.some((p: any) => p.categoryKey === keyToUse || p.categorykey === keyToUse);
+        setIsBookmarked(hasBookmark);
+      } catch (err) {
+        console.error("Failed to fetch bookmark status", err);
+      }
+    };
+    checkBookmarkStatus();
+  }, [isLoggedIn, categoryKey]);
+
   const handleToggleBookmark = async () => {
     if (!isLoggedIn) {
-      navigate('/login');
+      navigate(`/login?redirect=/career-paths/${categoryKey || 'electrical'}`);
       return;
     }
     const keyToUse = categoryKey || 'electrical';
     setIsSaving(true);
     try {
-      await careerpathApi.toggleBookmark(keyToUse);
-      // We rely on the button's visual state and backend change instead of an alert
+      const response = await careerpathApi.toggleBookmark(keyToUse);
+      if (response.data.success) {
+        setIsBookmarked(response.data.saved);
+      }
     } catch (err: any) {
       console.error("Failed to toggle bookmark", err);
     } finally {
@@ -698,14 +718,18 @@ export default function DetailPage() {
                   <button 
                     onClick={handleToggleBookmark}
                     disabled={isSaving}
-                    className="w-full bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold py-3 px-4 rounded-lg border border-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`w-full text-xs font-semibold py-3 px-4 rounded-lg border transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      isBookmarked 
+                        ? 'bg-yellow-50/50 hover:bg-yellow-50 text-yellow-750 border-yellow-300' 
+                        : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
+                    }`}
                   >
                     {isSaving ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Bookmark className="w-4 h-4" />
+                      <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-yellow-500 text-yellow-600' : 'text-gray-400'}`} />
                     )}
-                    {isSaving ? "Saving..." : "Save for Later"}
+                    {isSaving ? "Saving..." : isBookmarked ? "Saved" : "Save for Later"}
                   </button>
                 </div>
               </div>
