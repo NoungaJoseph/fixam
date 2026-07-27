@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { careerpathApi } from '../services/api';
 import DashboardNav from '../components/dashboard/DashboardNav';
 import Footer from '../components/Footer';
 import {
   Zap, Droplets, Hammer, Sparkles, Scissors, Paintbrush,
-  Clock, Download, Share2, CheckCircle
+  Clock, Download, Share2, CheckCircle, Award
 } from 'lucide-react';
 
 type CertificateItem = {
@@ -16,6 +17,7 @@ type CertificateItem = {
   icon: any;
   date: string;
   image: string;
+  certificateUrl?: string;
 };
 
 type AvailableItem = {
@@ -26,20 +28,67 @@ type AvailableItem = {
   hours: number;
 };
 
+const categoryInfoMap: Record<string, { titleKey: string, icon: any, image: string }> = {
+  cleaning: { titleKey: 'trades.cleaning', icon: Sparkles, image: '/images/cleaning.jpg' },
+  painting: { titleKey: 'trades.painting', icon: Paintbrush, image: '/images/painting.jpg' },
+  electrical: { titleKey: 'dashboard.recommended.card1.title', icon: Zap, image: '/images/electrical.jpg' },
+  plumbing: { titleKey: 'dashboard.recommended.card2.title', icon: Droplets, image: '/images/plumbing.jpg' },
+  carpentry: { titleKey: 'trades.carpentry', icon: Hammer, image: '/images/carpentry.jpg' },
+  beauty: { titleKey: 'trades.beauty', icon: Scissors, image: '/images/beauty.jpg' },
+};
+
 export default function CertificatesPage() {
   const { t } = useTranslation();
   const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
 
+  const [earned, setEarned] = useState<CertificateItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
+
   // Redirect if not logged in
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
+      return;
     }
-  }, [isLoggedIn, navigate]);
 
-  // Alert/Notification State for actions
-  const [alertMsg, setAlertMsg] = useState<string | null>(null);
+    const fetchCertificates = async () => {
+      try {
+        const response = await careerpathApi.getUserDashboard();
+        if (response.data && response.data.achievements) {
+          const mapped = response.data.achievements.map((cert: any) => {
+            const info = categoryInfoMap[cert.categoryKey] || {
+              titleKey: `trades.${cert.categoryKey}`,
+              icon: Award,
+              image: `/images/${cert.categoryKey}.jpg`
+            };
+            
+            const dateStr = cert.createdAt 
+              ? new Date(cert.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : 'N/A';
+
+            return {
+              id: cert.id,
+              categoryKey: cert.categoryKey,
+              titleKey: info.titleKey,
+              icon: info.icon,
+              date: dateStr,
+              image: info.image,
+              certificateUrl: cert.certificateUrl,
+            };
+          });
+          setEarned(mapped);
+        }
+      } catch (error) {
+        console.error("Failed to load certificates:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCertificates();
+  }, [isLoggedIn, navigate]);
 
   const triggerAlert = (msg: string) => {
     setAlertMsg(msg);
@@ -48,21 +97,30 @@ export default function CertificatesPage() {
     }, 3000);
   };
 
-  // Mock Earned Certificates Data
-  const earned: CertificateItem[] = [
-    { id: '1', categoryKey: 'cleaning', titleKey: 'trades.cleaning', icon: Sparkles, date: 'Jul 18, 2026', image: '/images/cleaning.jpg' },
-    { id: '2', categoryKey: 'painting', titleKey: 'trades.painting', icon: Paintbrush, date: 'Jul 20, 2026', image: '/images/painting.jpg' }
-  ];
-
   // Mock Available Certificates Data
-  const available: AvailableItem[] = [
+  const availableRaw: AvailableItem[] = [
     { id: '3', categoryKey: 'electrical', titleKey: 'dashboard.recommended.card1.title', icon: Zap, hours: 6 },
     { id: '4', categoryKey: 'plumbing', titleKey: 'dashboard.recommended.card2.title', icon: Droplets, hours: 5 },
     { id: '5', categoryKey: 'carpentry', titleKey: 'trades.carpentry', icon: Hammer, hours: 7 },
     { id: '6', categoryKey: 'beauty', titleKey: 'trades.beauty', icon: Scissors, hours: 4 }
   ];
 
+  // Filter out certificates the user has already earned
+  const earnedKeys = earned.map(item => item.categoryKey);
+  const available = availableRaw.filter(item => !earnedKeys.includes(item.categoryKey));
+
   if (!isLoggedIn) return null;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white font-sans antialiased text-gray-800">
+        <div className="flex flex-col items-center">
+          <div className="w-10 h-10 border-4 border-[#14B8A6] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading certificates...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans antialiased text-gray-800">
@@ -135,13 +193,26 @@ export default function CertificatesPage() {
 
                     {/* Action buttons */}
                     <div className="p-4 bg-white border-t border-gray-100 flex gap-3">
-                      <button
-                        onClick={() => triggerAlert("Downloading PDF Certificate...")}
-                        className="flex-1 border border-gray-250 hover:border-primary text-gray-700 hover:text-primary text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-white"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>{t('certificates.download')}</span>
-                      </button>
+                      {item.certificateUrl ? (
+                        <a
+                          href={item.certificateUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => triggerAlert("Opening PDF Certificate...")}
+                          className="flex-1 border border-gray-250 hover:border-primary text-gray-700 hover:text-primary text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-white text-center"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{t('certificates.download')}</span>
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => triggerAlert("Downloading PDF Certificate...")}
+                          className="flex-1 border border-gray-250 hover:border-primary text-gray-700 hover:text-primary text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors bg-white"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>{t('certificates.download')}</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => triggerAlert("Certificate successfully added to your Fixam Profile!")}
                         className="flex-1 bg-primary hover:bg-primary-hover text-white text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
