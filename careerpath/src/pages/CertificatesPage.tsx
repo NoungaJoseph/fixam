@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { careerpathApi } from '../services/api';
 import DashboardNav from '../components/dashboard/DashboardNav';
 import Footer from '../components/Footer';
 import {
@@ -39,55 +38,47 @@ const categoryInfoMap: Record<string, { titleKey: string, icon: any, image: stri
 
 export default function CertificatesPage() {
   const { t } = useTranslation();
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, dashboardData, dashboardLoading, refreshDashboard } = useAuth();
   const navigate = useNavigate();
 
   const [earned, setEarned] = useState<CertificateItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
-  // Redirect if not logged in
+  // Sync earned certificates from dashboardData
+  useEffect(() => {
+    if (dashboardData && dashboardData.achievements) {
+      const mapped = dashboardData.achievements.map((cert: any) => {
+        const info = categoryInfoMap[cert.categoryKey] || {
+          titleKey: `trades.${cert.categoryKey}`,
+          icon: Award,
+          image: `/images/${cert.categoryKey}.jpg`
+        };
+        
+        const dateStr = cert.createdAt 
+          ? new Date(cert.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'N/A';
+
+        return {
+          id: cert.id,
+          categoryKey: cert.categoryKey,
+          titleKey: info.titleKey,
+          icon: info.icon,
+          date: dateStr,
+          image: info.image,
+          certificateUrl: cert.certificateUrl,
+        };
+      });
+      setEarned(mapped);
+    }
+  }, [dashboardData]);
+
+  // Redirect and silent background refresh on mount
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
       return;
     }
-
-    const fetchCertificates = async () => {
-      try {
-        const response = await careerpathApi.getUserDashboard();
-        if (response.data && response.data.achievements) {
-          const mapped = response.data.achievements.map((cert: any) => {
-            const info = categoryInfoMap[cert.categoryKey] || {
-              titleKey: `trades.${cert.categoryKey}`,
-              icon: Award,
-              image: `/images/${cert.categoryKey}.jpg`
-            };
-            
-            const dateStr = cert.createdAt 
-              ? new Date(cert.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-              : 'N/A';
-
-            return {
-              id: cert.id,
-              categoryKey: cert.categoryKey,
-              titleKey: info.titleKey,
-              icon: info.icon,
-              date: dateStr,
-              image: info.image,
-              certificateUrl: cert.certificateUrl,
-            };
-          });
-          setEarned(mapped);
-        }
-      } catch (error) {
-        console.error("Failed to load certificates:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCertificates();
+    refreshDashboard(true); // Silent background refresh
   }, [isLoggedIn, navigate]);
 
   const triggerAlert = (msg: string) => {
@@ -111,7 +102,7 @@ export default function CertificatesPage() {
 
   if (!isLoggedIn) return null;
 
-  if (loading) {
+  if (dashboardLoading && !dashboardData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white font-sans antialiased text-gray-800">
         <div className="flex flex-col items-center">

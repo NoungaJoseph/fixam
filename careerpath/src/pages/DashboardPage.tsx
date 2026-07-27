@@ -1,26 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { careerpathApi } from '../services/api';
 import DashboardNav from '../components/dashboard/DashboardNav';
 import Greeting from '../components/dashboard/Greeting';
 import RecommendedCards from '../components/dashboard/RecommendedCards';
 import ActivePaths from '../components/dashboard/ActivePaths';
 import Achievements from '../components/dashboard/Achievements';
 import Opportunities from '../components/dashboard/Opportunities';
+import SavedPrograms from '../components/dashboard/SavedPrograms';
 import Footer from '../components/Footer';
 
-// Simple memory cache for dashboard to avoid loading spinners on navigation
-let cachedDashboardData: any = null;
-
-import SavedPrograms from '../components/dashboard/SavedPrograms';
-
 export default function DashboardPage() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, dashboardData, dashboardLoading, refreshDashboard } = useAuth();
   const navigate = useNavigate();
-
-  const [dashboardData, setDashboardData] = useState<any>(cachedDashboardData);
-  const [loading, setLoading] = useState(!cachedDashboardData);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -28,23 +20,7 @@ export default function DashboardPage() {
       return;
     }
 
-    const fetchDashboard = async () => {
-      try {
-        const response = await careerpathApi.getUserDashboard();
-        cachedDashboardData = response.data;
-        setDashboardData(response.data);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (!cachedDashboardData) {
-      fetchDashboard();
-    } else {
-      fetchDashboard();
-    }
+    refreshDashboard(true); // Silent background refresh
   }, [isLoggedIn, navigate]);
 
   if (!isLoggedIn) return (
@@ -55,7 +31,8 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-  if (loading) return (
+
+  if (dashboardLoading && !dashboardData) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="flex flex-col items-center">
         <div className="w-10 h-10 border-4 border-[#14B8A6] border-t-transparent rounded-full animate-spin mb-4"></div>

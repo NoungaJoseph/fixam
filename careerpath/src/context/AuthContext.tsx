@@ -28,6 +28,9 @@ type AuthContextType = {
   logout: () => void;
   completeSurvey: (pathId: string) => void;
   updateActivePath: (categoryKey: string | null, taskIndex?: number, stepIndex?: number) => void;
+  dashboardData: any | null;
+  dashboardLoading: boolean;
+  refreshDashboard: (silent?: boolean) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -38,6 +41,9 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   completeSurvey: () => {},
   updateActivePath: () => {},
+  dashboardData: null,
+  dashboardLoading: true,
+  refreshDashboard: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,6 +55,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
   });
+
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+
+  const refreshDashboard = async (silent = false) => {
+    const token = localStorage.getItem('careerpath_token');
+    if (!token) {
+      setDashboardLoading(false);
+      return;
+    }
+    if (!silent) {
+      setDashboardLoading(true);
+    }
+    try {
+      const response = await api.get('/v1/careerpath/dashboard');
+      setDashboardData(response.data);
+    } catch (error) {
+      console.error("Failed to fetch dashboard data in context:", error);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
 
   const login = async (email: string, password?: string) => {
     try {
@@ -81,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('careerpath_token', token);
       localStorage.setItem('careerpath_user', JSON.stringify(userData));
       setUser(userData);
+      await refreshDashboard(false);
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -112,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('careerpath_token', token);
       localStorage.setItem('careerpath_user', JSON.stringify(userData));
       setUser(userData);
+      await refreshDashboard(false);
     } catch (error) {
       console.error("Signup failed:", error);
       throw error;
@@ -148,7 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const refreshUser = async () => {
       const token = localStorage.getItem('careerpath_token');
-      if (!token) return;
+      if (!token) {
+        setDashboardLoading(false);
+        return;
+      }
       try {
         const response = await api.get('/auth/me');
         if (response.data.success && response.data.user) {
@@ -175,10 +208,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
           localStorage.setItem('careerpath_user', JSON.stringify(userData));
           setUser(userData);
+          refreshDashboard(true);
         } else {
           setUser(null);
           localStorage.removeItem('careerpath_token');
           localStorage.removeItem('careerpath_user');
+          setDashboardLoading(false);
         }
       } catch (error: any) {
         console.error("Failed to refresh user", error);
@@ -187,13 +222,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('careerpath_token');
           localStorage.removeItem('careerpath_user');
         }
+        setDashboardLoading(false);
       }
     };
     refreshUser();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, signup, logout, completeSurvey, updateActivePath }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoggedIn: !!user, 
+      login, 
+      signup, 
+      logout, 
+      completeSurvey, 
+      updateActivePath,
+      dashboardData,
+      dashboardLoading,
+      refreshDashboard
+    }}>
       {children}
     </AuthContext.Provider>
   );
