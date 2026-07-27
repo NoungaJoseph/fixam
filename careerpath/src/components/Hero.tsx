@@ -17,7 +17,7 @@ export default function Hero() {
 
         <div className="mt-10">
           <Link
-            to="/login?redirect=catalog"
+            to="/login?redirect=/catalog"
             className="inline-block font-semibold bg-primary hover:bg-primary-hover text-white text-base px-8 py-3.5 rounded-full transition-colors duration-200"
           >
             {t('hero.cta')}

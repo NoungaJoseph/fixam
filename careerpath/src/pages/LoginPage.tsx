@@ -12,7 +12,10 @@ export default function LoginPage() {
   const isFr = i18n.language === 'fr';
 
   const searchParams = new URLSearchParams(location.search);
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  let redirectTo = searchParams.get('redirect') || '/dashboard';
+  if (redirectTo && !redirectTo.startsWith('/') && !redirectTo.startsWith('http://') && !redirectTo.startsWith('https://')) {
+    redirectTo = '/' + redirectTo;
+  }
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
