@@ -22,8 +22,10 @@ import Support from './pages/Client/Support'
 import Referrals from './pages/Client/Referrals'
 import Reviews from './pages/Client/Reviews'
 import MyProfile from './pages/Client/MyProfile'
+import VerificationPage from './pages/Client/VerificationPage'
 import ClientDashboard from './pages/Client/ClientDashboard'
 import ProviderProfileDetail from './pages/Client/ProviderProfileDetail'
+import ProjectDetail from './pages/Client/ProjectDetail'
 
 // Provider Subpages
 import MyJobs from './pages/Provider/MyJobs'
@@ -79,8 +81,21 @@ export const getApiUrl = () => {
     : 'https://api.usefixam.com/api';
 };
 
-export const getMediaUrl = (path?: string) => {
-  if (!path) return 'https://via.placeholder.com/150';
+export const getMediaUrl = (path?: string, type?: 'image' | 'video') => {
+  if (!path) {
+    return type === 'video'
+      ? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
+      : 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
+  }
+
+  // Intercept local device files uploaded from mobile app emulators/devices
+  if (path.startsWith('file://') || path.startsWith('content://') || path.includes('/ImagePicker/') || path.includes('/cache/')) {
+    if (type === 'video' || path.toLowerCase().endsWith('.mp4') || path.toLowerCase().endsWith('.mov') || path.toLowerCase().endsWith('.m4v') || path.toLowerCase().endsWith('.3gp')) {
+      return 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+    }
+    return 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
+  }
+
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const API_URL = getApiUrl();
   const origin = API_URL.replace(/\/api\/?$/, '');
@@ -94,6 +109,8 @@ const hashCode = (str: string) => {
   }
   return hash;
 };
+
+export const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23CBD5E1'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M12 14c-6.1 0-10 4-10 10h20c0-6-3.9-10-10-10z'/%3E%3C/svg%3E";
 
 export const images = {
   landingHero: asset('landing-hero-composite.png'),
@@ -136,12 +153,7 @@ export const services: Array<{ id: string; title: string; icon: IconName; color:
   { id: 'cctv', title: 'CCTV Installation', icon: 'shield' as IconName, color: 'orange', image: asset('cctv-installation.jpg') },
 ]
 
-export const pros = [
-  { name: 'Jeff Thomson', role: 'Plumbing Specialist', rating: '4.8', distance: '4.2 km away', image: images.proJeff },
-  { name: 'Samuel Bright', role: 'Electrician', rating: '4.7', distance: '3.6 km away', image: images.proSamuel },
-  { name: 'Mary Clean', role: 'Cleaning Expert', rating: '4.9', distance: '2.1 km away', image: images.proMary },
-  { name: 'Peter Wood', role: 'Carpenter', rating: '4.6', distance: '5.3 km away', image: images.proPeter },
-]
+export const pros: any[] = [];
 
 const blogPosts = [
   { tag: 'Plumbing', title: '5 Signs You Need to Call a Professional Plumber', image: images.blogPlumbing },
@@ -200,7 +212,10 @@ function MaintenanceScreen({ message }: { message: string }) {
 }
 
 function App() {
-  const [page, setPage] = useState<Page>('home')
+  const [page, setPage] = useState<Page>(() => {
+    const token = localStorage.getItem('fixam_token');
+    return token ? 'dashboard' : 'home';
+  });
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const { i18n } = useTranslation();
   const [selectedSkill, setSelectedSkill] = useState('')
@@ -209,10 +224,49 @@ function App() {
   const [jobId, setJobId] = useState('');
   const { appReady, maintenance, maintenanceMsg } = useMaintenanceCheck();
   const [livePros, setLivePros] = useState<any[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingSlide, setOnboardingSlide] = useState(0);
+
+  const { isLoggedIn, isLoading, user, refreshUser } = useAuth();
+
+  useEffect(() => {
+    if (isLoggedIn && page === 'dashboard') {
+      const isNewReg = localStorage.getItem('fixam_new_registration_welcome');
+      if (isNewReg === 'true') {
+        setShowOnboarding(true);
+        localStorage.removeItem('fixam_new_registration_welcome');
+      }
+    }
+  }, [isLoggedIn, page]);
+
+  useEffect(() => {
+    if (user?.preferredLanguage) {
+      i18n.changeLanguage(user.preferredLanguage.toLowerCase());
+    }
+  }, [user?.preferredLanguage]);
+
+  const completeOnboarding = () => {
+    localStorage.setItem('fixam_onboarded', 'true');
+    setShowOnboarding(false);
+  };
   
-  const { isLoggedIn, isLoading, user } = useAuth();
-  
-  const [userRole, setUserRole] = useState<'client' | 'pro'>(user?.role === 'PROVIDER' ? 'pro' : 'client');
+  const [userRole, setUserRole] = useState<'client' | 'pro'>(
+    user?.providerProfile?.profileMode === 'WORK' ? 'pro' : 'client'
+  );
+
+  const handleRoleSwitch = async (newRole: 'client' | 'pro') => {
+    try {
+      const mode = newRole === 'pro' ? 'WORK' : 'PERSONAL';
+      const response = await api.put('/users/profile', { profileMode: mode });
+      if (response.data.success) {
+        setUserRole(newRole);
+        await refreshUser();
+      }
+    } catch (err: any) {
+      console.error('Failed to switch role', err);
+      alert(err.response?.data?.message || 'Could not switch role. Please try again.');
+    }
+  };
 
   // Enforce auth
   useEffect(() => {
@@ -223,7 +277,7 @@ function App() {
         setPage('dashboard');
       }
       if (user) {
-        setUserRole(user.role === 'PROVIDER' ? 'pro' : 'client');
+        setUserRole(user.providerProfile?.profileMode === 'WORK' ? 'pro' : 'client');
       }
     }
   }, [page, isLoggedIn, isLoading, user]);
@@ -267,7 +321,8 @@ function App() {
       } else if (validPages.includes(pathPage as Page)) {
         setPage(pathPage as Page);
       } else if (!hash) {
-        setPage('home');
+        const token = localStorage.getItem('fixam_token');
+        setPage(token ? 'dashboard' : 'home');
       }
 
       // If the URL pathname is invalid, reset it to / to clean up browser URL
@@ -324,13 +379,9 @@ function App() {
             const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
             const distance = item.serviceArea || 'Nearby';
             
-            let image = images.proJeff;
+            let image = DEFAULT_AVATAR;
             if (item.user?.avatar) {
               image = getMediaUrl(item.user.avatar);
-            } else {
-              const placeholders = [images.proJeff, images.proSamuel, images.proMary, images.proPeter];
-              const idx = Math.abs(hashCode(item.id || name)) % placeholders.length;
-              image = placeholders[idx];
             }
 
             return {
@@ -361,7 +412,7 @@ function App() {
   return (
     <div className={page === 'dashboard' ? 'app dashboard-shell' : 'app'}>
       {page === 'dashboard' ? (
-        <Dashboard onNavigate={setPage} livePros={livePros} userRole={userRole} onRoleChange={setUserRole} />
+        <Dashboard onNavigate={setPage} livePros={livePros} userRole={userRole} onRoleChange={handleRoleSwitch} />
       ) : page === 'login' ? (
         <Login onNavigate={setPage} onLogin={(role) => setUserRole(role)} />
       ) : page === 'register' ? (
@@ -415,6 +466,133 @@ function App() {
       )}
 
       <CookieBanner />
+
+      {/* Onboarding Slider Deck Modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-[3px] z-[9999] flex items-center justify-center p-4 animate-fade-in text-slate-800 font-sans">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 flex flex-col relative">
+            
+            {/* Close Button */}
+            <button 
+              onClick={completeOnboarding} 
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition font-bold z-10"
+            >
+              ✕
+            </button>
+
+            {/* Slide Content */}
+            <div className="p-8 text-center flex flex-col items-center">
+              {onboardingSlide === 0 && (
+                <div className="animate-fade-in">
+                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                    👋
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 mb-3">
+                    {i18n.language === 'fr' ? 'Bienvenue sur Fixam' : 'Welcome to Fixam'}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    {i18n.language === 'fr' 
+                      ? 'Votre plateforme de confiance pour trouver et réserver instantanément des prestataires de services qualifiés à domicile (plomberie, électricité, ménage).' 
+                      : 'Your premium hub for on-demand home and expert professional services. Instantly book verified plumbing, electrical, and cleaning specialists.'}
+                  </p>
+                </div>
+              )}
+
+              {onboardingSlide === 1 && (
+                <div className="animate-fade-in">
+                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">
+                    🛡️
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 mb-3">
+                    {i18n.language === 'fr' ? 'Profils 100% Vérifiés' : '100% Verified Profiles'}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    {i18n.language === 'fr' 
+                      ? 'Tous nos experts passent par une vérification d\'identité rigoureuse avec selfie vidéo et validation de document officiel.' 
+                      : 'All service providers undergo strict background checks, including official document verification and live webcam selfie checks.'}
+                  </p>
+                </div>
+              )}
+
+              {onboardingSlide === 2 && (
+                <div className="animate-fade-in">
+                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                    💳
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 mb-3">
+                    {i18n.language === 'fr' ? 'Paiement Mobile Sécurisé' : 'Secure Mobile Payments'}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    {i18n.language === 'fr' 
+                      ? 'Rechargez votre portefeuille avec MTN MoMo, Orange Money ou M-Pesa. Suivez la confirmation de transaction en direct.' 
+                      : 'Top up your wallet instantly using MTN MoMo, Orange Money, or M-Pesa. Poll for automated transaction updates in 3 seconds.'}
+                  </p>
+                </div>
+              )}
+
+              {onboardingSlide === 3 && (
+                <div className="animate-fade-in">
+                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce">
+                    📍
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 mb-3">
+                    {i18n.language === 'fr' ? 'Suivi en Direct & Vocal' : 'Live Tracking & Chat'}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    {i18n.language === 'fr' 
+                      ? 'Suivez le trajet de votre prestataire sur une carte interactive, partagez votre position GPS et envoyez des notes vocales.' 
+                      : 'Track your provider\'s arrival on a live interactive map, share your GPS location, and send voice notes in the chat area.'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Slider Navigation Bar */}
+            <div className="bg-slate-50 px-8 py-5 border-t border-slate-100 flex items-center justify-between">
+              {/* Dots */}
+              <div className="flex gap-2">
+                {[0, 1, 2, 3].map((idx) => (
+                  <button
+                    type="button"
+                    key={idx}
+                    onClick={() => setOnboardingSlide(idx)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${onboardingSlide === idx ? 'bg-teal-500 w-6' : 'bg-slate-300'}`}
+                    aria-label={`Slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                {onboardingSlide < 3 ? (
+                  <>
+                    <button 
+                      onClick={completeOnboarding} 
+                      className="text-xs font-bold text-slate-500 hover:text-slate-800 px-3 py-2"
+                    >
+                      {i18n.language === 'fr' ? 'Passer' : 'Skip'}
+                    </button>
+                    <button 
+                      onClick={() => setOnboardingSlide(prev => prev + 1)}
+                      className="bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition"
+                    >
+                      {i18n.language === 'fr' ? 'Suivant' : 'Next'}
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={completeOnboarding}
+                    className="bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow transition"
+                  >
+                    {i18n.language === 'fr' ? 'Commencer' : 'Get Started'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -562,6 +740,7 @@ export const translateServiceHelper = (name: string, desc: string, lang: string)
 
 function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page; onNavigate: (page: Page) => void; onSearch: (query: string) => void; setSelectedPathway: (pathway: string) => void }) {
   const { t, i18n } = useTranslation();
+  const { isLoggedIn, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'services' | 'guide' | 'pathways' | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('Home Services');
@@ -698,12 +877,21 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 
             {/* Mobile Header Right */}
             <div className="mobile-header-right mobile-only">
-              <button 
-                className="mobile-header-signup" 
-                onClick={() => handleNavigate('login')}
-              >
-                {t('nav.signin') || 'Sign In'}
-              </button>
+              {isLoggedIn ? (
+                <button 
+                  className="mobile-header-signup" 
+                  onClick={() => handleNavigate('dashboard')}
+                >
+                  Dashboard
+                </button>
+              ) : (
+                <button 
+                  className="mobile-header-signup" 
+                  onClick={() => handleNavigate('login')}
+                >
+                  {t('nav.signin') || 'Sign In'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -842,8 +1030,17 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
           </nav>
           
           <div className="auth-buttons-desktop" style={{ display: 'flex', gap: '1rem', alignItems: 'center', position: 'absolute', right: 0 }}>
-             <button className="nav-link-new" onClick={() => handleNavigate('login')} style={{ fontWeight: '600' }}>{t('nav.signin') || 'SIGN IN'}</button>
-             <button onClick={() => handleNavigate('register')} style={{ backgroundColor: '#14B8A6', color: '#FFF', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>GET STARTED</button>
+            {isLoggedIn ? (
+              <>
+                <button className="nav-link-new" onClick={() => handleNavigate('dashboard')} style={{ fontWeight: '600' }}>DASHBOARD</button>
+                <button onClick={async () => { await logout(); handleNavigate('home'); }} style={{ backgroundColor: '#EF4444', color: '#FFF', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>LOG OUT</button>
+              </>
+            ) : (
+              <>
+                <button className="nav-link-new" onClick={() => handleNavigate('login')} style={{ fontWeight: '600' }}>{t('nav.signin') || 'SIGN IN'}</button>
+                <button onClick={() => handleNavigate('register')} style={{ backgroundColor: '#14B8A6', color: '#FFF', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>GET STARTED</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -952,12 +1149,25 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
           </div>
 
           <div className="mobile-menu-bottom-bar">
-            <a href="#" className="login-link" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleNavigate('login'); }}>
-              {t('nav.signin') || 'Log In'}
-            </a>
-            <button className="signup-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('register'); }}>
-              Sign Up
-            </button>
+            {isLoggedIn ? (
+              <>
+                <a href="#" className="login-link" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleNavigate('dashboard'); }}>
+                  Dashboard
+                </a>
+                <button className="signup-btn" style={{ backgroundColor: '#EF4444' }} onClick={async () => { setIsMobileMenuOpen(false); await logout(); handleNavigate('home'); }}>
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <>
+                <a href="#" className="login-link" onClick={(e) => { e.preventDefault(); setIsMobileMenuOpen(false); handleNavigate('login'); }}>
+                  {t('nav.signin') || 'Log In'}
+                </a>
+                <button className="signup-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('register'); }}>
+                  Sign Up
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -967,7 +1177,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 
 function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigate: (page: Page) => void; livePros: any[]; userRole: 'client' | 'pro'; onRoleChange?: (role: 'client' | 'pro') => void }) {
   const { isLoggedIn, user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -987,6 +1197,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     const [activeTab, setActiveTab] = useState('Dashboard')
     const [selectedProvider, setSelectedProvider] = useState<any>(null)
     const [selectedBooking, setSelectedBooking] = useState<any>(null)
+    const [selectedProject, setSelectedProject] = useState<any>(null)
 
   const [searchVal, setSearchVal] = useState('');
   
@@ -1002,6 +1213,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     const hash = window.location.hash.replace('#', '');
     if (!hash) setActiveTab('Dashboard');
     setSelectedProvider(null);
+    setSelectedProject(null);
   }, [userRole]);
 
   const [tickerItems, setTickerItems] = useState<Array<{ isNews: boolean; badgeText: string; text: string }>>([
@@ -1014,33 +1226,36 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
   useEffect(() => {
     let isMounted = true;
+    const lang = i18n.language || 'en';
+    const country = (user as any)?.country || 'Cameroon';
     const fetchTickerData = async () => {
       try {
-        const response = await fetch(`${getApiUrl()}/sports/ticker?lang=en&country=Cameroon`);
+        const response = await fetch(`${getApiUrl()}/sports/ticker?lang=${lang}&country=${encodeURIComponent(country)}`);
         const result = await response.json();
         if (isMounted && result?.data?.items) {
           const items = result.data.items;
           if (items.length > 0) {
             const processed = items.map((item: any) => {
               if (item.type === 'MATCH') {
-                const liveStatus = item.status === 'LIVE' ? ' (LIVE)' : '';
+                const liveStatus = item.status === 'LIVE' ? ` (${lang === 'fr' ? 'EN DIRECT' : 'LIVE'})` : '';
                 return {
                   isNews: false,
-                  badgeText: 'SPORTS',
+                  badgeText: lang === 'fr' ? 'SPORTS' : 'SPORTS',
                   text: `⚽ ${item.home} ${item.homeScore} - ${item.awayScore} ${item.away}${liveStatus}`
                 };
               } else if (item.type === 'UPCOMING') {
-                const time = new Date(item.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                const time = new Date(item.time).toLocaleTimeString(lang === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
                 return {
                   isNews: false,
-                  badgeText: 'SPORTS',
-                  text: `📅 Upcoming: ${item.home} vs ${item.away} (${time})`
+                  badgeText: lang === 'fr' ? 'SPORTS' : 'SPORTS',
+                  text: `📅 ${lang === 'fr' ? 'À venir' : 'Upcoming'}: ${item.home} vs ${item.away} (${time})`
                 };
               } else if (item.type === 'NEWS') {
+                const prefix = item.prefix || '📰';
                 return {
                   isNews: true,
-                  badgeText: 'NEWS',
-                  text: `${item.prefix || '📰'} ${item.title}`
+                  badgeText: lang === 'fr' ? 'ACTU' : 'NEWS',
+                  text: `${prefix} ${item.title}`
                 };
               }
               return null;
@@ -1056,24 +1271,20 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     };
     
     fetchTickerData();
-    const interval = setInterval(fetchTickerData, 60 * 1000);
+    const interval = setInterval(fetchTickerData, 2 * 60 * 1000);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [i18n.language, (user as any)?.country]);
 
   const catScrollRef = useRef<HTMLDivElement>(null);
   const [localLivePros, setLocalLivePros] = useState<any[]>([]);
-  const displayedPros = localLivePros.length > 0 ? localLivePros : (livePros && livePros.length > 0 ? livePros : pros);
+  const displayedPros = localLivePros.length > 0 ? localLivePros : (livePros && livePros.length > 0 ? livePros : []);
 
   // Client-specific interactive state hooks
   // Client-specific interactive state hooks
-  const [clientTasks, setClientTasks] = useState([
-    { id: 1, title: 'Fix leaking pipe in kitchen', tag: 'Plumbing', price: '25,000 XAF', status: 'In Progress', bids: 3 },
-    { id: 2, title: 'Installing ceiling fan in bedroom', tag: 'Electrical', price: '15,000 XAF', status: 'Pending Offers', bids: 5 },
-    { id: 3, title: 'House deep cleaning', tag: 'Cleaning', price: '20,000 XAF', status: 'Completed', bids: 0 }
-  ]);
+  const [clientTasks, setClientTasks] = useState<any[]>([]);
   const [clientBookings, setClientBookings] = useState<any[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
@@ -1159,18 +1370,10 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     }
   }, [isLoggedIn, userRole]);
 
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, sender: 'pro', text: 'Hello Nounga, I can come over tomorrow at 9:00 AM. Does that work?', time: 'Yesterday' },
-    { id: 2, sender: 'client', text: 'Yes, that works perfectly. Please bring your tools for piping.', time: 'Yesterday' },
-    { id: 3, sender: 'pro', text: 'Great, see you then!', time: 'Yesterday' }
-  ]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [activeChatUser, setActiveChatUser] = useState<string>('');
   
-  const [savedProsState, setSavedProsState] = useState([
-    { id: 1, name: 'Jeff Thomson', role: 'Plumbing Specialist', rating: '4.8', distance: '4.2 km away', image: images.proJeff },
-    { id: 2, name: 'Samuel Bright', role: 'Electrician', rating: '4.7', distance: '3.6 km away', image: images.proSamuel },
-    { id: 3, name: 'Mary Clean', role: 'Cleaning Expert', rating: '4.9', distance: '2.1 km away', image: images.proMary }
-  ]);
+  const [savedProsState, setSavedProsState] = useState<any[]>([]);
 
   if (userRole === 'client') {
     const clientNavItems = [
@@ -1187,6 +1390,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     const handleNavClick = async (itemName: string) => {
       setIsSidebarOpen(false);
       setSelectedProvider(null);
+      setSelectedProject(null);
       if (itemName === 'Career Pathways') {
         onNavigate('career_pathways');
       } else if (itemName === 'Log Out') {
@@ -1242,7 +1446,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 setActiveTab('My Profile');
               }}
             >
-              <img src={user?.image ? getMediaUrl(user.image) : images.proJeff} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
+              <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
               {!isSidebarCollapsed && (
                 <div className="user-info-new">
                   <h3 style={{ fontSize: '14px', margin: 0 }}>{user?.firstName || 'Client'}</h3>
@@ -1333,7 +1537,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
               <div className="relative profile-dropdown-container">
                 <button className="profile-chip-dash" onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}>
-                  <img src={user?.image ? getMediaUrl(user.image) : images.proJeff} alt="User profile" className="desktop-only" />
+                  <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt="User profile" className="desktop-only" />
                   <div className="profile-details-dash">
                     <span className="profile-name-dash">
                       {user?.firstName || 'User'}
@@ -1374,7 +1578,17 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
           {/* Main Content Columns */}
           <div className={`dash-content-premium`}>
-            {selectedProvider ? (
+            {selectedProject ? (
+              <ProjectDetail
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
+                setSelectedProvider={setSelectedProvider}
+                setActiveTab={setActiveTab}
+                clientBookings={clientBookings}
+                setClientBookings={setClientBookings}
+                displayedPros={displayedPros}
+              />
+            ) : selectedProvider ? (
               <ProviderProfileDetail
                 selectedProvider={selectedProvider}
                 setSelectedProvider={setSelectedProvider}
@@ -1389,10 +1603,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     <ClientDashboard 
                       setActiveTab={setActiveTab}
                       setSelectedProvider={setSelectedProvider}
+                      setSelectedProject={setSelectedProject}
                       services={services}
                       displayedPros={displayedPros}
                       clientBookings={clientBookings}
                       walletBalance={walletBalance}
+                      clientTasks={clientTasks}
+                      setClientTasks={setClientTasks}
                     />
                 )}
 
@@ -1463,6 +1680,11 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     userRole={userRole}
                   />
                 )}
+                {activeTab === 'Verification' && (
+                  <VerificationPage 
+                    setActiveTab={setActiveTab} 
+                  />
+                )}
                 {activeTab === 'Find Services' && (
                   <FindServices 
                     setSelectedProvider={setSelectedProvider} 
@@ -1529,7 +1751,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             style={{ cursor: 'pointer', padding: '0', background: 'transparent', border: 'none' }}
             onClick={() => handleNavClick(userRole === 'pro' ? 'Settings' : 'My Profile')}
           >
-            <img src={user?.image ? getMediaUrl(user.image) : (userRole === 'pro' ? images.proSamuel : images.proJeff)} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
+            <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt="User Avatar" style={{ width: '40px', height: '40px' }} />
             {!isSidebarCollapsed && (
               <div className="user-info-new">
                 <h3 style={{ fontSize: '14px', margin: 0 }}>{user?.firstName || (userRole === 'pro' ? 'Provider' : 'Client')}</h3>
@@ -1628,7 +1850,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
               <div className="relative profile-dropdown-container">
                 <button className="profile-chip-dash" onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}>
-                  <img src={user?.image ? getMediaUrl(user.image) : (userRole === 'pro' ? images.proSamuel : images.proJeff)} alt="Profile" />
+                  <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt="Profile" />
                   <div className="profile-details-dash">
                     <span className="profile-name-dash">
                       {user?.firstName || 'User'}
@@ -1673,10 +1895,6 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             <ProviderDashboard 
               setActiveTab={setActiveTab}
               onRoleChange={onRoleChange}
-              leads={leads}
-              activeProposals={activeProposals}
-              ActivityCard={ActivityCard}
-              ImageSlot={ImageSlot}
             />
           )}
 
@@ -1838,7 +2056,7 @@ function ServiceCard(service: (typeof services)[number]) {
   )
 }
 
-export function ProCard({ pro, mini = false, onNavigate }: { pro: (typeof pros)[number]; mini?: boolean; onNavigate?: (page: Page) => void }) {
+export function ProCard({ pro, mini = false, onNavigate }: { pro: any; mini?: boolean; onNavigate?: (page: Page) => void }) {
   const { t } = useTranslation();
 
   return (
@@ -1853,7 +2071,7 @@ export function ProCard({ pro, mini = false, onNavigate }: { pro: (typeof pros)[
       </div>
       <div className="top-rated-content">
         <div className="top-rated-avatar">
-          {pro.name.split(' ').map(n => n[0]).join('')}
+          {(pro.name || '').split(' ').map((n: string) => n[0]).join('')}
         </div>
         <div className="top-rated-header">
           <h3>{pro.name}</h3>

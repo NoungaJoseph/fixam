@@ -470,6 +470,7 @@ export default function Home({ onNavigate, livePros, onSelectSkill, setSearchQue
               </button>
             ))}
           </div>
+
         </div>
       </section>
 

@@ -36,6 +36,20 @@ export default function OTPVerification({ onNavigate }: { onNavigate: (page: Pag
 
   const { login, refreshUser } = useAuth();
 
+  const handleResendCode = async () => {
+    const email = sessionStorage.getItem('pendingOTPEmail') || sessionStorage.getItem('pendingOTPIdentifier');
+    if (!email) {
+      alert(isFr ? 'Erreur : Aucune adresse e-mail trouvée.' : 'Error: No pending email found.');
+      return;
+    }
+    try {
+      await api.post('/auth/request-otp', { email, language: isFr ? 'fr' : 'en' });
+      alert(isFr ? 'Code de vérification renvoyé avec succès !' : 'Verification code resent successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || (isFr ? 'Erreur lors du renvoi du code.' : 'Failed to resend code.'));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const otp = code.join('');
@@ -45,18 +59,21 @@ export default function OTPVerification({ onNavigate }: { onNavigate: (page: Pag
     setErrorText('');
 
     try {
-      const identifier = sessionStorage.getItem('pendingOTPIdentifier');
-      if (!identifier) {
+      const email = sessionStorage.getItem('pendingOTPEmail') || sessionStorage.getItem('pendingOTPIdentifier');
+      if (!email) {
         throw new Error('No pending registration found. Please try registering again.');
       }
       
-      const response = await api.post('/auth/verify-otp', { identifier, otp });
+      const response = await api.post('/auth/verify-email-otp', { email, otp });
       
+      localStorage.setItem('fixam_new_registration_welcome', 'true');
       login(response.data.token, response.data.user);
       await refreshUser();
+      sessionStorage.removeItem('pendingOTPEmail');
+      sessionStorage.removeItem('pendingOTPIdentifier');
       
       setIsLoading(false);
-      onNavigate('login'); // or navigate to 'dashboard' if we auto login
+      onNavigate('dashboard');
     } catch (error: any) {
       setIsLoading(false);
       setErrorText(error.response?.data?.message || 'Invalid or expired OTP. Please try again.');
@@ -67,8 +84,8 @@ export default function OTPVerification({ onNavigate }: { onNavigate: (page: Pag
     backToSign: isFr ? 'Retour à la connexion' : 'Back to Sign In',
     verifyTitle: isFr ? 'Vérifier le compte' : 'Verify Account',
     verifySub: isFr 
-      ? 'Nous avons envoyé un code de vérification à 6 chiffres sur votre téléphone.' 
-      : 'We\'ve sent a 6-digit verification code to your phone.',
+      ? 'Nous avons envoyé un code de vérification à 6 chiffres à votre adresse e-mail.' 
+      : 'We\'ve sent a 6-digit verification code to your email.',
     verifyBtn: isFr ? 'Vérifier le Code' : 'Verify Code',
     verifying: isFr ? 'Vérification...' : 'Verifying...',
     noCode: isFr ? 'Vous n\'avez pas reçu le code ?' : 'Didn\'t receive the code?',
@@ -147,9 +164,7 @@ export default function OTPVerification({ onNavigate }: { onNavigate: (page: Pag
             <button
               type="button"
               className="auth-bottom-switch-link"
-              onClick={() => {
-                alert(isFr ? 'Code renvoyé avec succès!' : 'Code resent successfully!');
-              }}
+              onClick={handleResendCode}
             >
               {t.resend}
             </button>

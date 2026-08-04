@@ -1,8 +1,44 @@
 import './Messages.css';
 import React, { useState, useEffect, useRef } from 'react';
-import { images, getMediaUrl } from '../../App';
+import { images, getMediaUrl, DEFAULT_AVATAR } from '../../App';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+
+// ─── External Contact Detection ──────────────────────────────────────────────
+// Matches phone numbers (Cameroon +237 and local formats), WhatsApp/Telegram
+// links, email addresses, and common off-platform phrases (EN + FR).
+const EXTERNAL_CONTACT_PATTERNS: RegExp[] = [
+  // Cameroon numbers: +237 or 00237 followed by a 6/7/9 digit number
+  /(?:\+237|00237)[\s\-.]?[679]\d{7,8}/,
+  /\b[679]\d{7}\b/,
+  // Generic international numbers  (+XX ...)
+  /\+\d{1,3}[\s\-.][\d\s\-.]{7,}/,
+  // WhatsApp / Telegram links
+  /wa\.me\//i,
+  /t\.me\//i,
+  /whatsapp\.com/i,
+  // Email addresses
+  /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/,
+  // Common off-platform phrases (English & French)
+  /\b(call me|whatsapp me|text me|dm me|reach me|contact me|here(?:'s| is) my number|mon num[eé]ro|appelle.?moi|écris.?moi sur|rejoins.?moi sur)\b/i,
+];
+
+/** Returns the first matching excerpt, or null if no pattern matches. */
+const detectExternalContact = (text: string): string | null => {
+  for (const pattern of EXTERNAL_CONTACT_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+// Disclosure copy (EN / FR based on browser/app language)
+const DISCLOSURE_EN = 'Messages in this chat may be reviewed by Fixam support in case of a dispute.';
+const DISCLOSURE_FR = 'Les messages de cette conversation peuvent être examinés par le support Fixam en cas de litige.';
+const WARNING_TITLE_EN = 'Keep your conversation safe';
+const WARNING_BODY_EN = "Moving this conversation outside Fixam means we can't help resolve disputes if something goes wrong.";
+const WARNING_TITLE_FR = 'Protégez votre conversation';
+const WARNING_BODY_FR = "Déplacer cette conversation hors de Fixam nous empêche de résoudre tout litige si quelque chose ne va pas.";
 
 interface MessagesProps {
   chatMessages: any[];
@@ -24,6 +60,25 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [recordDuration, setRecordDuration] = useState(0);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordTimerIdRef = useRef<any>(null);
+  const isRecordingCancelledRef = useRef(false);
+
+  // Feature 2: tracks whether we are waiting for the user's answer on the
+  // external-contact-sharing confirmation dialog.
+  const [contactWarning, setContactWarning] = useState<{
+    detectedPattern: string;
+    pendingContent: string;
+    pendingType: string;
+    pendingMediaUrl?: string;
+  } | null>(null);
+
+  // Detect browser/app language for bilingual copy
+  const isFr = typeof navigator !== 'undefined' && navigator.language.startsWith('fr');
+
   useEffect(() => {
     const loadConvs = async () => {
       try {
@@ -41,12 +96,12 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
   }, []);
 
   const getParticipantDetails = (c: any) => {
-    if (!c) return { name: 'Support', avatar: images.proJeff, other: null };
+    if (!c) return { name: 'Support', avatar: DEFAULT_AVATAR, other: null };
     const other = c.participants?.find((p: any) => p.id !== user?.id) || c.participants?.[0];
     const name = other?.fullName || 
       (other?.firstName ? `${other.firstName} ${other.lastName || ''}`.trim() : '') || 
       (c.isSystem ? 'Fixam Support' : 'User');
-    const avatar = other?.avatar ? getMediaUrl(other.avatar) : images.proJeff;
+    const avatar = other?.avatar ? getMediaUrl(other.avatar) : DEFAULT_AVATAR;
     return { other, name, avatar };
   };
 
@@ -56,7 +111,7 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
     return name === activeChatUser || other?.id === activeChatUser;
   });
 
-  const activeDetails = activeConv ? getParticipantDetails(activeConv) : { name: activeChatUser || 'Chat', avatar: images.proJeff, other: null };
+  const activeDetails = activeConv ? getParticipantDetails(activeConv) : { name: activeChatUser || 'Chat', avatar: DEFAULT_AVATAR, other: null };
 
   useEffect(() => {
     if (activeConv) {
@@ -84,13 +139,13 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
     }
   }, [messages]);
 
-  const handleSendMsg = async (e?: React.FormEvent, customContent?: string, customType: string = 'TEXT', mediaUrl?: string) => {
-    if (e) e.preventDefault();
-    const contentToSend = customContent || newMsgText;
-    if ((!contentToSend.trim() && !mediaUrl && selectedImages.length === 0) || !activeConv) return;
-    
-    setNewMsgText('');
-    
+  /**
+   * Core send dispatcher — called only after all safety checks have passed.
+   * Do not invoke directly for TEXT messages; use handleSendMsg() instead.
+   */
+  const _dispatchSendMsg = async (contentToSend: string, customType: string, mediaUrl?: string) => {
+    if (!activeConv) return;
+
     // Send images if attached
     if (selectedImages.length > 0) {
       const imagesToSend = [...selectedImages];
@@ -113,7 +168,7 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
             type: 'IMAGE'
           });
         } catch (err) {
-          console.error("Failed to send image", err);
+          console.error('Failed to send image', err);
         }
       }
     }
@@ -139,9 +194,61 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
         const res = await api.get(`/chat/${activeConv.id}/messages`);
         setMessages(res.data.data || []);
       } catch (err) {
-        console.error("Failed to send msg", err);
+        console.error('Failed to send msg', err);
       }
     }
+  };
+
+  /**
+   * Main send handler.
+   * For TEXT messages, scans for external-contact patterns before sending.
+   * If found, surfaces an inline confirmation dialog instead of sending immediately.
+   */
+  const handleSendMsg = async (e?: React.FormEvent, customContent?: string, customType: string = 'TEXT', mediaUrl?: string) => {
+    if (e) e.preventDefault();
+    const contentToSend = customContent || newMsgText;
+    if ((!contentToSend.trim() && !mediaUrl && selectedImages.length === 0) || !activeConv) return;
+
+    // ── Feature 2: External contact detection (TEXT only) ─────────────────────
+    if (customType === 'TEXT' && contentToSend.trim()) {
+      const detectedPattern = detectExternalContact(contentToSend);
+      if (detectedPattern) {
+        // Log warning event immediately (fire-and-forget)
+        api.post(`/chat/${activeConv.id}/log-contact-warning`, {
+          detectedPattern,
+          sentAnyway: false,
+          platform: 'web',
+        }).catch(() => {});
+
+        // Surface the inline confirmation dialog — do NOT send yet
+        setContactWarning({
+          detectedPattern,
+          pendingContent: contentToSend,
+          pendingType: customType,
+          pendingMediaUrl: mediaUrl,
+        });
+        return;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    setNewMsgText('');
+    await _dispatchSendMsg(contentToSend, customType, mediaUrl);
+  };
+
+  /** Called when the user clicks "Send Anyway" in the contact-warning dialog. */
+  const handleSendAnyway = async () => {
+    if (!contactWarning || !activeConv) return;
+    // Log that the user chose to send
+    api.post(`/chat/${activeConv.id}/log-contact-warning`, {
+      detectedPattern: contactWarning.detectedPattern,
+      sentAnyway: true,
+      platform: 'web',
+    }).catch(() => {});
+    const { pendingContent, pendingType, pendingMediaUrl } = contactWarning;
+    setContactWarning(null);
+    setNewMsgText('');
+    await _dispatchSendMsg(pendingContent, pendingType, pendingMediaUrl);
   };
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,15 +282,91 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
     }
   };
 
-  const handleVoiceRecord = () => {
-    if (!isRecording) {
+  const formatRecordTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioChunksRef.current.length > 0 && !isRecordingCancelledRef.current) {
+          setIsUploadingAudio(true);
+          try {
+            const file = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'generic');
+            const uploadRes = await api.post('/upload', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const url = uploadRes.data.url;
+            await handleSendMsg(undefined, `🎤 Voice Note (${formatRecordTime(recordDuration)})`, 'AUDIO', url);
+          } catch (err) {
+            console.error("Failed to upload audio message", err);
+            alert("Failed to send voice note.");
+          } finally {
+            setIsUploadingAudio(false);
+          }
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      isRecordingCancelledRef.current = false;
+      mediaRecorder.start();
       setIsRecording(true);
-      alert('🎤 Recording voice note... Click again to send.');
-    } else {
-      setIsRecording(false);
-      handleSendMsg(undefined, '🎤 Voice note (0:15)', 'AUDIO');
+      setRecordDuration(0);
+      
+      if (recordTimerIdRef.current) clearInterval(recordTimerIdRef.current);
+      recordTimerIdRef.current = setInterval(() => {
+        setRecordDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Audio recording failed to start", err);
+      alert("Could not access microphone.");
     }
   };
+
+  const stopAudioRecording = (shouldCancel = false) => {
+    if (recordTimerIdRef.current) {
+      clearInterval(recordTimerIdRef.current);
+      recordTimerIdRef.current = null;
+    }
+    isRecordingCancelledRef.current = shouldCancel;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const handleVoiceRecord = () => {
+    if (!isRecording) {
+      startAudioRecording();
+    } else {
+      stopAudioRecording(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recordTimerIdRef.current) {
+        clearInterval(recordTimerIdRef.current);
+      }
+    };
+  }, []);
 
   const isMobileDetailView = activeConv ? 'viewing-chat' : 'viewing-list';
 
@@ -234,6 +417,74 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
                 <span className="online-badge">• Active</span>
               </div>
 
+              {/* ── Feature 1: Chat Disclosure Notice ────────────────────────────
+                  Persistent, non-dismissable info strip. Shown every time a
+                  conversation is opened on both client and provider views. ── */}
+
+            </div>
+
+            {/* Disclosure banner — always visible, no interaction required */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              background: '#F9FAFB',
+              borderBottom: '1px solid #E5E7EB',
+              fontSize: '11px',
+              color: '#6B7280',
+              lineHeight: '1.4',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>{isFr ? DISCLOSURE_FR : DISCLOSURE_EN}</span>
+            </div>
+
+            {/* ── Feature 2: External-contact-sharing inline warning dialog ───
+                Shown in-place (not a modal) when a potential off-platform
+                contact is detected before the message is sent. ────────── */}
+            {contactWarning && (
+              <div style={{
+                margin: '8px 12px 0',
+                background: '#FFFBEB',
+                border: '1px solid #FCD34D',
+                borderRadius: '10px',
+                padding: '12px 14px',
+              }}>
+                <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: '13px', color: '#92400E' }}>
+                  ⚠️ {isFr ? WARNING_TITLE_FR : WARNING_TITLE_EN}
+                </p>
+                <p style={{ margin: '0 0 10px', fontSize: '12px', color: '#78350F', lineHeight: '1.5' }}>
+                  {isFr ? WARNING_BODY_FR : WARNING_BODY_EN}
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setContactWarning(null)}
+                    style={{
+                      flex: 1, padding: '7px', border: '1px solid #D1D5DB',
+                      borderRadius: '8px', background: '#fff', fontSize: '12px',
+                      fontWeight: 600, cursor: 'pointer', color: '#374151',
+                    }}
+                  >
+                    {isFr ? 'Annuler' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleSendAnyway}
+                    style={{
+                      flex: 1, padding: '7px', border: 'none',
+                      borderRadius: '8px', background: '#F59E0B', fontSize: '12px',
+                      fontWeight: 700, cursor: 'pointer', color: '#fff',
+                    }}
+                  >
+                    {isFr ? 'Envoyer quand même' : 'Send Anyway'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Tracking button (existing) ─────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
               {!activeConv.isSystem && (
                 <div style={{ marginLeft: 'auto' }}>
                   <button 
@@ -329,17 +580,16 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
                     </div>
 
                     {/* Simulated Live Map Container */}
-                    <div style={{ height: '180px', background: '#E2E8F0', borderRadius: '12px', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', backgroundSize: 'cover', backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundColor: '#f1f5f9' }}>
-                      <span style={{ fontSize: '2.5rem', marginBottom: '0.4rem' }}>🗺️</span>
-                      <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Tracking Live Location in Real-time</span>
-                      <a 
-                        href="https://maps.google.com" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        style={{ marginTop: '8px', color: '#0D9488', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'underline' }}
-                      >
-                        Open Full Live Map ↗
-                      </a>
+                    <div style={{ height: '180px', borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
+                      <iframe 
+                        title="Live Provider Location"
+                        width="100%" 
+                        height="180" 
+                        frameBorder="0" 
+                        scrolling="no" 
+                        src="https://maps.google.com/maps?width=100%25&amp;height=180&amp;hl=en&amp;q=4.0503,9.7679&amp;t=&amp;z=14&amp;ie=UTF8&amp;iwloc=B&amp;output=embed"
+                        style={{ border: 0 }}
+                      />
                     </div>
 
                     {/* Progress Timeline */}
@@ -394,8 +644,15 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
                           />
                         )}
                         {isAudio && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                            🎵 <span>{msg.content}</span>
+                          <div className="w-[240px] py-1">
+                            <div className="flex items-center gap-2 mb-1.5 font-semibold text-xs opacity-90">
+                              <span>🎤 Voice Note</span>
+                            </div>
+                            <audio 
+                              src={msg.mediaUrl || msg.content} 
+                              controls 
+                              className="w-full h-8 outline-none rounded-lg text-teal-600"
+                            />
                           </div>
                         )}
                         {isLocation ? (
@@ -445,39 +702,63 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
               </div>
             )}
 
-            <div className="chat-input-area" style={{ flexDirection: 'row', alignItems: 'flex-end', padding: '10px 15px', background: '#f0f2f5', gap: '8px' }}>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                multiple 
-                accept="image/*" 
-                style={{ display: 'none' }} 
-                onChange={handleImagePick} 
-              />
-              
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '24px', padding: '5px 10px', minHeight: '44px' }}>
-                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: '#8696a0', fontSize: '1.2rem', padding: '0 8px', cursor: 'pointer' }}>
-                  📎
-                </button>
-                <input 
-                  type="text" 
-                  placeholder="Type a message" 
-                  value={newMsgText}
-                  onChange={(e) => setNewMsgText(e.target.value)}
-                  onKeyDown={(e) => { if(e.key === 'Enter') handleSendMsg(); }}
-                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '1rem', padding: '8px', color: '#111b21' }}
-                />
-                <button type="button" title="Share Location" onClick={handleLocationShare} style={{ background: 'none', border: 'none', color: '#8696a0', fontSize: '1.2rem', padding: '0 8px', cursor: 'pointer' }}>
-                  📍
-                </button>
-              </div>
+            <div className="chat-input-area" style={{ flexDirection: 'row', alignItems: 'center', padding: '10px 15px', background: '#f0f2f5', gap: '8px' }}>
+              {isRecording ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '24px', padding: '10px 20px', minHeight: '44px', justifyContent: 'space-between' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span className="text-red-500 font-bold text-sm tracking-wider">
+                      Recording voice note: {formatRecordTime(recordDuration)}
+                    </span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => stopAudioRecording(true)} 
+                    className="text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    multiple 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                    onChange={handleImagePick} 
+                  />
+                  
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '24px', padding: '5px 10px', minHeight: '44px' }}>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: '#8696a0', fontSize: '1.2rem', padding: '0 8px', cursor: 'pointer' }}>
+                      📎
+                    </button>
+                    <input 
+                      type="text" 
+                      placeholder="Type a message" 
+                      value={newMsgText}
+                      onChange={(e) => setNewMsgText(e.target.value)}
+                      onKeyDown={(e) => { if(e.key === 'Enter') handleSendMsg(); }}
+                      style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '1rem', padding: '8px', color: '#111b21' }}
+                    />
+                    <button type="button" title="Share Location" onClick={handleLocationShare} style={{ background: 'none', border: 'none', color: '#8696a0', fontSize: '1.2rem', padding: '0 8px', cursor: 'pointer' }}>
+                      📍
+                    </button>
+                  </div>
+                </>
+              )}
 
-              {newMsgText.trim() || selectedImages.length > 0 ? (
+              {isUploadingAudio ? (
+                <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : (newMsgText.trim() || selectedImages.length > 0) && !isRecording ? (
                 <button type="button" onClick={(e) => handleSendMsg(e)} style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#00a884', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
                   ➤
                 </button>
               ) : (
-                <button type="button" title="Send Voice Note" onClick={handleVoiceRecord} style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#00a884', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+                <button type="button" title={isRecording ? "Stop & Send" : "Send Voice Note"} onClick={handleVoiceRecord} style={{ width: '48px', height: '48px', borderRadius: '50%', background: isRecording ? '#ef4444' : '#00a884', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.2rem', flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
                   {isRecording ? '⏹️' : '🎤'}
                 </button>
               )}

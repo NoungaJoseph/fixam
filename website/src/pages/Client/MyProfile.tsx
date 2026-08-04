@@ -1,8 +1,9 @@
 import './MyProfile.css';
 import { useState, useRef, useEffect } from 'react';
-import { Icon, images, getMediaUrl } from '../../App';
+import { Icon, images, getMediaUrl, DEFAULT_AVATAR } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { useTranslation } from 'react-i18next';
 
 interface MyProfileProps {
   setActiveTab: (tab: string) => void;
@@ -12,6 +13,7 @@ interface MyProfileProps {
 
 export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyProfileProps) {
   const { user, refreshUser } = useAuth();
+  const { t, i18n } = useTranslation();
   const [profileActiveSubTab, setProfileActiveSubTab] = useState('Overview');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preferences, setPreferences] = useState({ providerType: 'all' });
@@ -29,6 +31,109 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
   });
   const [isSaving, setIsSaving] = useState(false);
   const [accountStatusActive, setAccountStatusActive] = useState(true);
+
+  // Verification Wizard States
+  const [wizardStep, setWizardStep] = useState(1);
+  const [docType, setDocType] = useState<{ id: 'id' | 'passport' | 'license'; titleEn: string; titleFr: string; sides: number } | null>(null);
+  const [docFrontFile, setDocFrontFile] = useState<File | null>(null);
+  const [docBackFile, setDocBackFile] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
+  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const startWebcam = async () => {
+    try {
+      setIsWebcamActive(true);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.error("Failed to access camera:", err);
+      alert("Could not access camera. Please upload a selfie manually.");
+      setIsWebcamActive(false);
+    }
+  };
+
+  const stopWebcam = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsWebcamActive(false);
+  };
+
+  const dataURLtoFile = (dataurl: string, filename: string) => {
+    const arr = dataurl.split(',');
+    const match = arr[0].match(/:(.*?);/);
+    const mime = match ? match[1] : 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  const captureSelfie = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 640;
+      canvas.height = videoRef.current.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        setSelfiePreview(dataUrl);
+        const file = dataURLtoFile(dataUrl, 'selfie.png');
+        setSelfieFile(file);
+      }
+      stopWebcam();
+    }
+  };
+
+  const uploadOne = async (file: File, label: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'verification');
+    const res = await api.post('/upload/verification', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data.url;
+  };
+
+  const handleSubmitVerification = async () => {
+    if (!selfieFile) {
+      alert("Selfie image is required to complete verification.");
+      return;
+    }
+    setIsSubmittingVerification(true);
+    try {
+      const uploads = [
+        { type: `${docType?.id || 'document'}_front`, file: docFrontFile },
+        docBackFile ? { type: `${docType?.id || 'document'}_back`, file: docBackFile } : null,
+        { type: 'selfie', file: selfieFile }
+      ].filter((item): item is { type: string; file: File } => item !== null && item.file !== null);
+
+      for (const item of uploads) {
+        const url = await uploadOne(item.file, item.type);
+        await api.post('/providers/verify', { type: item.type, url });
+      }
+
+      await refreshUser();
+      setWizardStep(4);
+    } catch (error: any) {
+      console.error(error);
+      alert("Verification submission failed: " + (error.response?.data?.message || error.message));
+    } finally {
+      setIsSubmittingVerification(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -113,7 +218,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
       <div className="mb-8 relative bg-transparent">
         <div className="flex flex-col md:flex-row items-center md:items-end text-center md:text-left gap-6 relative">
           <div className="relative flex-shrink-0">
-            <img src={user?.image ? getMediaUrl(user.image) : images.proJeff} alt={fullName} className="w-28 h-28 rounded-full shadow-md object-cover bg-gray-100" />
+            <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt={fullName} className="w-28 h-28 rounded-full shadow-md object-cover bg-gray-100" />
             <button 
               className="absolute bottom-0 right-0 bg-[#14B8A6] text-white p-1.5 rounded-full shadow-sm hover:bg-[#0F9788] transition" 
               aria-label="Change Avatar" 
@@ -132,9 +237,14 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
           <div className="flex-1 pb-1 w-full">
             <div className="flex flex-col md:flex-row items-center gap-3 mb-1">
               <h2 className="text-2xl font-bold text-gray-900">{fullName}</h2>
-              {(user as any)?.isVerified && (
+              {(user?.providerProfile?.verification === 'VERIFIED' || (user as any)?.isVerified) && (
                 <span className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold">
                   <Icon name="shield" /> Verified
+                </span>
+              )}
+              {user?.providerProfile?.verification === 'PENDING' && (
+                <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                  ⏰ Pending Review
                 </span>
               )}
             </div>
@@ -152,6 +262,14 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
                 onClick={toggleRole}
               >
                 <Icon name="user" /> Switch to {userRole === 'client' ? 'Provider' : 'Client'}
+              </button>
+            )}
+            {!(user?.providerProfile?.verification === 'VERIFIED' || user?.providerProfile?.verification === 'PENDING' || (user as any)?.isVerified) && (
+              <button 
+                className="bg-[#14B8A6] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0F9788] transition flex items-center justify-center gap-2 shadow-sm" 
+                onClick={() => setActiveTab('Verification')}
+              >
+                <Icon name="shield" /> Get Verified
               </button>
             )}
             <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition flex items-center justify-center gap-2" onClick={() => setIsEditModalOpen(true)}>
@@ -189,7 +307,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
 
       {/* Profile Navigation */}
       <div className="flex overflow-x-auto gap-2 border-b border-gray-200 mb-8 no-scrollbar pb-1">
-        {['Overview', 'Reviews', 'Saved Providers', 'Verification', 'Preferences'].map((subTab) => (
+        {['Overview', 'Reviews', 'Saved Providers', 'Preferences'].map((subTab) => (
           <button 
             key={subTab} 
             className={`whitespace-nowrap px-4 py-2 font-medium text-sm rounded-t-lg border-b-2 transition-colors ${profileActiveSubTab === subTab ? 'border-[#14B8A6] text-[#14B8A6]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
@@ -232,59 +350,6 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
               </div>
             </div>
           </section>
-        </div>
-      )}
-
-      {profileActiveSubTab === 'Verification' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm animate-fade-in max-w-2xl">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">Identity Verification</h3>
-          
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-lg">
-                  <Icon name="message" />
-                </div>
-                <div>
-                  <span className="block text-base font-bold text-gray-800">Email Address</span>
-                  <span className="block text-sm text-gray-500">Verified</span>
-                </div>
-              </div>
-              <Icon name="check" />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-lg">
-                  <Icon name="bell" />
-                </div>
-                <div>
-                  <span className="block text-base font-bold text-gray-800">Phone Number</span>
-                  <span className="block text-sm text-gray-500">Verified</span>
-                </div>
-              </div>
-              <Icon name="check" />
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${(user as any)?.isVerified ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
-                  <Icon name="shield" />
-                </div>
-                <div>
-                  <span className="block text-base font-bold text-gray-800">ID Document</span>
-                  <span className="block text-sm text-gray-500">{(user as any)?.isVerified ? 'Verified' : 'Not Verified'}</span>
-                </div>
-              </div>
-              {!(user as any)?.isVerified ? (
-                <a href="https://fixam.verify.usefixam.com" target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-[#14B8A6] hover:text-[#0F9788] px-4 py-2 border border-[#14B8A6] rounded hover:bg-teal-50 transition whitespace-nowrap">
-                  Verify Now
-                </a>
-              ) : (
-                <Icon name="check" />
-              )}
-            </div>
-          </div>
         </div>
       )}
 

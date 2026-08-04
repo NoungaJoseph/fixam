@@ -108,10 +108,16 @@ export default function Login({ onNavigate, onLogin }: { onNavigate: (page: Page
       login(response.data.token, response.data.user);
       await refreshUser();
       
+      // Successful login, invoke role callback; navigation handled by auth enforcement
       onLogin?.(role);
-      onNavigate('dashboard');
     } catch (error: any) {
       setIsLoading(false);
+      if (error.response?.data?.requiresEmailVerification && error.response?.data?.email) {
+        sessionStorage.setItem('pendingOTPEmail', error.response.data.email);
+        sessionStorage.setItem('pendingOTPIdentifier', error.response.data.email);
+        onNavigate('otp');
+        return;
+      }
       setApiError(
         error.response?.data?.message || (isFr ? 'Téléphone ou mot de passe incorrect. Veuillez réessayer.' : 'Incorrect credentials. Please try again.')
       );
