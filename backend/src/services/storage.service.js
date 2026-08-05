@@ -40,14 +40,36 @@ const uploadFile = async (file, bucket, options = {}) => {
   }
 
   try {
-    const { data, error } = await supabase.storage
+    let uploadRes = await supabase.storage
       .from(bucket)
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
         upsert: true
       });
 
-    if (error) throw error;
+    // If bucket doesn't exist, create it dynamically and retry
+    if (uploadRes.error && (uploadRes.error.message?.includes('not found') || uploadRes.error.statusCode === '404' || uploadRes.error.statusCode === 404)) {
+      console.log(`Bucket '${bucket}' not found. Attempting to create it dynamically...`);
+      const { error: createError } = await supabase.storage.createBucket(bucket, {
+        public: true,
+        allowedMimeTypes: null,
+        fileSizeLimit: null
+      });
+
+      if (!createError) {
+        console.log(`Bucket '${bucket}' created successfully. Retrying upload...`);
+        uploadRes = await supabase.storage
+          .from(bucket)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: true
+          });
+      } else {
+        console.error(`Failed to create bucket '${bucket}':`, createError);
+      }
+    }
+
+    if (uploadRes.error) throw uploadRes.error;
 
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
