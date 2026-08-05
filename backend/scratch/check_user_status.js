@@ -1,23 +1,21 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-async function checkUserDetail() {
+async function check() {
   try {
     const user = await prisma.user.findFirst({
-      where: {
-        email: 'noungajoseph58@gmail.com'
-      },
-      include: {
-        providerProfile: true
-      }
+      where: { email: 'noungajoseph58@gmail.com' },
+      include: { providerProfile: true }
     });
-    console.log('User fullName:', user?.fullName);
-    console.log('User isOnline:', user?.isOnline);
-    console.log('Provider Profile profileMode:', user?.providerProfile?.profileMode);
+    console.log('--- User Status ---');
+    console.log('ID:', user?.id);
+    console.log('Full Name:', user?.fullName);
+    console.log('Avatar URL in DB:', user?.avatar);
+    console.log('Provider Profile Mode:', user?.providerProfile?.profileMode);
   } catch (err) {
-    console.error(err);
+    console.error('Error querying database:', err.message);
   } finally {
     await prisma.$disconnect();
   }
 }
-checkUserDetail();
+check();
