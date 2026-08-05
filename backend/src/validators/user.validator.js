@@ -5,7 +5,7 @@ const updateProfileSchema = z.object({
   email: z.string().email().optional(),
   currentPassword: z.string().optional(),
   password: z.string().min(6).optional(),
-  avatar: z.string().url().optional(),
+  avatar: z.string().optional(),
   fcmToken: z.string().optional(),
   dob: z.string().optional(),
   location: z.string().optional(),
