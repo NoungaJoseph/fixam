@@ -4,7 +4,7 @@ const uploadProfileImage = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
-    const url = await uploadFile(req.file, 'profile-images', { requireCloud: false });
+    const url = await uploadFile(req.file, 'profile-images', { requireCloud: false, req });
     res.status(200).json({ success: true, url, path: req.file.originalname });
   } catch (error) {
     next(error);
@@ -15,7 +15,7 @@ const uploadVerificationDoc = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
-    const url = await uploadFile(req.file, 'verification-documents');
+    const url = await uploadFile(req.file, 'verification-documents', { req });
     res.status(200).json({ success: true, url });
   } catch (error) {
     next(error);
@@ -26,7 +26,7 @@ const uploadPaymentProof = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
-    const url = await uploadFile(req.file, 'payment-proofs');
+    const url = await uploadFile(req.file, 'payment-proofs', { req });
     res.status(200).json({ success: true, url });
   } catch (error) {
     next(error);
@@ -37,7 +37,7 @@ const uploadGeneric = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
-    const url = await uploadFile(req.file, 'chat-media');
+    const url = await uploadFile(req.file, 'chat-media', { req });
     res.status(200).json({ success: true, url });
   } catch (error) {
     next(error);

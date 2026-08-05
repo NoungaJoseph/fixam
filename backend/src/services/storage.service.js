@@ -12,16 +12,23 @@ const supabase = hasSupabase ? createClient(
   supabaseServiceKey
 ) : null;
 
-const uploadLocal = async (file, bucket, fileName) => {
+const uploadLocal = async (file, bucket, fileName, req) => {
   const dir = path.join(process.cwd(), 'uploads', bucket);
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), file.buffer);
-  const baseUrl = process.env.PUBLIC_URL || 'https://api.usefixam.com';
+  
+  let baseUrl = process.env.PUBLIC_URL;
+  if (!baseUrl && req) {
+    baseUrl = `${req.protocol}://${req.get('host')}`;
+  }
+  if (!baseUrl) {
+    baseUrl = 'https://api.usefixam.com';
+  }
   return `${baseUrl}/uploads/${bucket}/${fileName}`;
 };
 
 const uploadFile = async (file, bucket, options = {}) => {
-  const { requireCloud = false } = options;
+  const { requireCloud = false, req } = options;
   const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
   const fileName = `${Date.now()}-${safeName}`;
 
@@ -29,7 +36,7 @@ const uploadFile = async (file, bucket, options = {}) => {
     if (requireCloud) {
       throw new Error('Supabase Storage is not configured for persistent profile uploads.');
     }
-    return uploadLocal(file, bucket, fileName);
+    return uploadLocal(file, bucket, fileName, req);
   }
 
   try {
@@ -52,7 +59,7 @@ const uploadFile = async (file, bucket, options = {}) => {
     if (requireCloud) {
       throw error;
     }
-    return uploadLocal(file, bucket, fileName);
+    return uploadLocal(file, bucket, fileName, req);
   }
 };
 

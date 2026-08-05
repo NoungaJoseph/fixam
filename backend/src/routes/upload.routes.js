@@ -7,8 +7,15 @@ const { protect } = require('../middlewares/auth.middleware');
 const storage = multer.memoryStorage();
 const allowedMimeTypes = new Set([
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
+  'image/gif',
+  'image/heic',
+  'image/heif',
+  'image/svg+xml',
+  'image/bmp',
+  'image/x-icon',
   'application/pdf',
   'audio/mpeg',
   'audio/mp4',
