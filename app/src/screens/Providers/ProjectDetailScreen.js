@@ -143,6 +143,27 @@ const ProjectDetailScreen = ({ route, navigation }) => {
   const expressDays = Number(activeTier.expressDeliveryDays || 4);
   const finalPrice = activeTier.price + (expressAddon ? expressAddonPrice : 0);
 
+  const getTranslatedTierName = (tier) => {
+    if (!tier?.name) return '';
+    const key = String(tier.id || tier.name).toLowerCase();
+    if (key.includes('basic')) return t('project.basic', 'BASIC');
+    if (key.includes('standard')) return t('project.standard', 'STANDARD');
+    if (key.includes('premium')) return t('project.premium', 'PREMIUM');
+    return tier.name;
+  };
+
+  const getTranslatedTierLabel = (tier) => {
+    if (!tier?.label) return '';
+    const key = String(tier.id || tier.name).toLowerCase();
+    if (key.includes('basic')) return t('project.basicPackage', tier.label);
+    if (key.includes('standard')) return t('project.standardPackage', tier.label);
+    if (key.includes('premium')) return t('project.premiumPackage', tier.label);
+    return tier.label;
+  };
+
+  const tierNameTranslated = getTranslatedTierName(activeTier);
+  const tierLabelTranslated = getTranslatedTierLabel(activeTier);
+
   // Share project handler
   const handleShare = async () => {
     try {
@@ -360,12 +381,12 @@ const ProjectDetailScreen = ({ route, navigation }) => {
           {/* Active Tier Details Card */}
           <View style={[styles.tierDetailCard, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderColor: isDarkMode ? '#1F2937' : '#E2E8F0' }]}>
             <Text style={[styles.tierTitleText, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>
-              {activeTier.name}
+              {tierNameTranslated}
             </Text>
 
             {activeTier.label ? (
               <Text style={[styles.tierSubtitleText, { color: isDarkMode ? '#CBD5E1' : '#475569', marginTop: 4, fontWeight: '700' }]}>
-                {activeTier.label}
+                {tierLabelTranslated}
               </Text>
             ) : null}
 
@@ -494,7 +515,9 @@ const ProjectDetailScreen = ({ route, navigation }) => {
         <View style={styles.contentSection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionHeadingText, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>
-              {provider.reviewCount || (provider.reviews?.length || 0)} {t('profile.reviews', 'reviews')}
+              {(provider.reviewCount > 0 || (provider.reviews?.length > 0))
+                ? `${provider.reviewCount || provider.reviews?.length} ${t('profile.reviews', 'reviews')}`
+                : t('project.noReviewsYet', 'No reviews yet')}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Reviews', { userId: providerUserId, role: 'PROVIDER' })}>
               <Text style={styles.seeAllLink}>{t('common.seeAll', 'See All')}</Text>
