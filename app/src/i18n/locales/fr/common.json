@@ -634,7 +634,11 @@
     "markCompleted": "Marquer comme terminée",
     "applicationSent": "Candidature envoyée",
     "offer": "Offre",
-    "yourOffer": "Votre offre"
+    "yourOffer": "Votre offre",
+    "proposalSent": "Proposition envoyée ! 🚀",
+    "proposalSentBody": "Votre proposition a été soumise. Les pièces de base de la tâche ne sont déduites que si vous êtes sélectionné.",
+    "boostedProposalSent": "Proposition boostée et envoyée ! 🚀",
+    "boostedProposalSentBody": "Vos {{coins}} pièces de boost ont été déduites pour placer votre offre au sommet ! Si vous n'êtes pas sélectionné par le client, vos pièces de boost vous seront intégralement remboursées."
   },
   "forgotPassword": {
     "title": "Mot de passe oublié ?",

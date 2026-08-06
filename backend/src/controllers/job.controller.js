@@ -467,13 +467,30 @@ const applyForJob = async (req, res, next) => {
     });
     if (existing) {
       if (boostCoinsAmount > (existing.boostCoins || 0)) {
-        if (!wallet || wallet.balance < (job.coinCost + boostCoinsAmount)) {
+        const extraBoostCoins = boostCoinsAmount - (existing.boostCoins || 0);
+        if (!wallet || wallet.balance < extraBoostCoins) {
           return res.status(403).json({ 
             success: false, 
-            message: `You need at least ${job.coinCost + boostCoinsAmount} coin${(job.coinCost + boostCoinsAmount) > 1 ? 's' : ''} in your balance to boost this proposal.`, 
+            message: `You need at least ${extraBoostCoins} coin${extraBoostCoins > 1 ? 's' : ''} in your balance to boost this proposal.`, 
             code: 'INSUFFICIENT_COINS' 
           });
         }
+        await prisma.$transaction([
+          prisma.wallet.update({
+            where: { id: wallet.id },
+            data: { balance: { decrement: extraBoostCoins } }
+          }),
+          prisma.transaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: -extraBoostCoins,
+              type: 'DEDUCTION',
+              status: 'SUCCESS',
+              reference: `BID_BOOST-${Date.now()}`,
+              description: `Bid boost for task: ${job.title}`
+            }
+          })
+        ]);
         const updatedAssignment = await prisma.jobAssignment.update({
           where: { id: existing.id },
           data: { boostCoins: boostCoinsAmount }
@@ -481,7 +498,7 @@ const applyForJob = async (req, res, next) => {
         return res.status(200).json({
           success: true,
           data: updatedAssignment,
-          message: `Proposal boosted successfully to ${boostCoinsAmount} coins! Coins will be deducted when accepted by the client.`
+          message: `Proposal boosted successfully to ${boostCoinsAmount} coins! If not selected, boost coins will be refunded.`
         });
       }
       return res.status(409).json({ success: false, data: existing, message: 'You have already applied for this task.', code: 'ALREADY_APPLIED' });
@@ -491,14 +508,30 @@ const applyForJob = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'You must be available for work to apply for tasks.', code: 'PROVIDER_OFFLINE' });
     }
 
-    // Providers can apply for free, but must have enough coins for the task and boost before applying.
-    // The coins (both task coins and boost coins) are deducted only if the client selects/accepts this provider.
-    if (!wallet || wallet.balance < (job.coinCost + boostCoinsAmount)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: `You need at least ${job.coinCost + boostCoinsAmount} coin${(job.coinCost + boostCoinsAmount) > 1 ? 's' : ''} in your balance to apply and boost this task.`, 
-        code: 'INSUFFICIENT_COINS' 
-      });
+    if (boostCoinsAmount > 0) {
+      if (!wallet || wallet.balance < boostCoinsAmount) {
+        return res.status(403).json({ 
+          success: false, 
+          message: `You need at least ${boostCoinsAmount} coin${boostCoinsAmount > 1 ? 's' : ''} in your balance to boost this task.`, 
+          code: 'INSUFFICIENT_COINS' 
+        });
+      }
+      await prisma.$transaction([
+        prisma.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { decrement: boostCoinsAmount } }
+        }),
+        prisma.transaction.create({
+          data: {
+            walletId: wallet.id,
+            amount: -boostCoinsAmount,
+            type: 'DEDUCTION',
+            status: 'SUCCESS',
+            reference: `BID_BOOST-${Date.now()}`,
+            description: `Bid boost for task: ${job.title}`
+          }
+        })
+      ]);
     }
 
     const assignment = await prisma.jobAssignment.create({
@@ -577,30 +610,26 @@ const selectProviderForJob = async (req, res, next) => {
     const updated = await prisma.$transaction(async (tx) => {
       const selectedUserId = selected.provider?.userId;
       const providerWallet = selectedUserId ? await tx.wallet.findUnique({ where: { userId: selectedUserId } }) : null;
-      const boostAmount = Number(selected.boostCoins || 0);
-      const totalCoinsRequired = job.coinCost + boostAmount;
-
-      if (!providerWallet || providerWallet.balance < totalCoinsRequired) {
-        const error = new Error(`This provider does not have the ${totalCoinsRequired} coin${totalCoinsRequired > 1 ? 's' : ''} required for this task.`);
+      if (!providerWallet || providerWallet.balance < job.coinCost) {
+        const error = new Error(`This provider does not have the ${job.coinCost} coin${job.coinCost > 1 ? 's' : ''} required for this task.`);
         error.statusCode = 403;
         throw error;
       }
 
+      // Deduct base task coin cost from selected provider
       await tx.wallet.update({
         where: { id: providerWallet.id },
-        data: { balance: { decrement: totalCoinsRequired } }
+        data: { balance: { decrement: job.coinCost } }
       });
 
       await tx.transaction.create({
         data: {
           walletId: providerWallet.id,
-          amount: -totalCoinsRequired,
+          amount: -job.coinCost,
           type: 'DEDUCTION',
           status: 'SUCCESS',
           jobId,
-          description: boostAmount > 0
-            ? `Selected for task: ${job.title} (${job.coinCost} task coins + ${boostAmount} boost coins)`
-            : `Selected for task: ${job.title}`
+          description: `Selected for task: ${job.title}`
         }
       });
 
@@ -610,12 +639,47 @@ const selectProviderForJob = async (req, res, next) => {
         include: { provider: { include: { user: true } } }
       });
 
+      // Find all unselected pending assignments for this task that spent boost coins
+      const unselectedAssignments = await tx.jobAssignment.findMany({
+        where: { jobId, status: 'PENDING', id: { not: assignmentId } },
+        include: { provider: true }
+      });
+
+      const refundedProviders: Array<{ userId: string; coins: number }> = [];
+
       const newAcceptedCount = acceptedCount + 1;
       if (newAcceptedCount >= (job.providersNeeded || 1)) {
         await tx.job.update({
           where: { id: jobId },
           data: { status: 'IN_PROGRESS', selectedAssignmentId: assignmentId }
         });
+
+        // Refund boost coins to all unselected providers
+        for (const unselected of unselectedAssignments) {
+          const unselectedBoost = Number(unselected.boostCoins || 0);
+          const unselectedUserId = unselected.provider?.userId;
+          if (unselectedBoost > 0 && unselectedUserId) {
+            const uWallet = await tx.wallet.findUnique({ where: { userId: unselectedUserId } });
+            if (uWallet) {
+              await tx.wallet.update({
+                where: { id: uWallet.id },
+                data: { balance: { increment: unselectedBoost } }
+              });
+              await tx.transaction.create({
+                data: {
+                  walletId: uWallet.id,
+                  amount: unselectedBoost,
+                  type: 'REFUND',
+                  status: 'SUCCESS',
+                  jobId,
+                  reference: `BID_BOOST_REFUND-${Date.now()}`,
+                  description: `Refund for unselected boost bid: ${job.title}`
+                }
+              });
+              refundedProviders.push({ userId: unselectedUserId, coins: unselectedBoost });
+            }
+          }
+        }
 
         await tx.jobAssignment.updateMany({
           where: { jobId, status: 'PENDING' },
@@ -636,7 +700,7 @@ const selectProviderForJob = async (req, res, next) => {
         }
       });
 
-      return { assignment, job: selectedJob };
+      return { assignment, job: selectedJob, refundedProviders };
     }, { maxWait: 10000, timeout: 20000 });
 
     const notification = await prisma.notification.create({
@@ -670,6 +734,37 @@ const selectProviderForJob = async (req, res, next) => {
       );
     } catch (pushErr) {
       console.error('[Push Error] Selection push failed:', pushErr.message);
+    }
+
+    // Send notifications & update wallet balance for refunded unselected providers
+    if (Array.isArray(updated.refundedProviders) && updated.refundedProviders.length > 0) {
+      for (const item of updated.refundedProviders) {
+        try {
+          const refundNotif = await prisma.notification.create({
+            data: {
+              userId: item.userId,
+              title: 'Boost Coins Refunded 🪙',
+              body: `Your ${item.coins} boost coins have been refunded because another provider was selected for "${job.title}".`,
+              data: { type: 'BOOST_REFUND', jobId, coins: item.coins }
+            }
+          });
+          const { getIO } = require('../services/socket.service');
+          const io = getIO();
+          io.to(item.userId).emit('notification:new', refundNotif);
+          const rWallet = await prisma.wallet.findUnique({ where: { userId: item.userId } });
+          if (rWallet) io.to(item.userId).emit('wallet:update', { balance: rWallet.balance });
+
+          const { sendPushNotification } = require('../services/notification.service');
+          await sendPushNotification(
+            item.userId,
+            'Boost Coins Refunded 🪙',
+            `Your ${item.coins} boost coins have been refunded because another provider was selected for "${job.title}".`,
+            { type: 'BOOST_REFUND', jobId, coins: item.coins }
+          );
+        } catch (rErr) {
+          console.error('[Refund Notification Error]:', rErr.message);
+        }
+      }
     }
 
     res.status(200).json({ success: true, data: updated.job, message: 'Provider selected successfully. Provider coins were deducted.' });
