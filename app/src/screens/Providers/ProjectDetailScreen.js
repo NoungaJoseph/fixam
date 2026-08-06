@@ -372,13 +372,13 @@ const ProjectDetailScreen = ({ route, navigation }) => {
             {/* Package Details Table Rows */}
             <View style={{ marginTop: 12, marginBottom: 8, gap: 10 }}>
               <View style={styles.tableRowItem}>
-                <Text style={[styles.tableRowLabel, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>Delivery days</Text>
-                <Text style={[styles.tableRowValue, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>{activeTier.deliveryDays} Days</Text>
+                <Text style={[styles.tableRowLabel, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>{t('project.deliveryDays', 'Delivery days')}</Text>
+                <Text style={[styles.tableRowValue, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>{activeTier.deliveryDays} {t('project.days', 'Days')}</Text>
               </View>
 
               <View style={styles.tableRowItem}>
-                <Text style={[styles.tableRowLabel, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>Revisions</Text>
-                <Text style={[styles.tableRowValue, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>{activeTier.revisions}</Text>
+                <Text style={[styles.tableRowLabel, { color: isDarkMode ? '#94A3B8' : '#475569' }]}>{t('project.revisions', 'Revisions')}</Text>
+                <Text style={[styles.tableRowValue, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>{activeTier.revisions || t('project.unlimited', 'Unlimited')}</Text>
               </View>
             </View>
 
@@ -407,7 +407,7 @@ const ProjectDetailScreen = ({ route, navigation }) => {
                   color={expressAddon ? colors.accent : '#94A3B8'}
                 />
                 <Text style={[styles.addonText, { color: isDarkMode ? '#E2E8F0' : '#334155' }]}>
-                  Express delivery in {expressDays} days
+                  {t('project.expressDelivery', 'Express delivery in {{days}} days', { days: expressDays })}
                 </Text>
                 <Text style={styles.addonPriceText}>+{currencyStr} {expressAddonPrice}</Text>
               </TouchableOpacity>
