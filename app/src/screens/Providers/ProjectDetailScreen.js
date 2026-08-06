@@ -434,7 +434,7 @@ const ProjectDetailScreen = ({ route, navigation }) => {
               <Text style={[styles.sectionHeadingText, { color: isDarkMode ? '#FFFFFF' : '#0F172A' }]}>
                 {t('profileDetail.portfolio', 'My portfolio')}
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('PortfolioDetails', { items: project.images || [], type: 'projects' })}>
+              <TouchableOpacity onPress={() => navigation.navigate('PortfolioDetails', { items: images, type: 'projects' })}>
                 <Text style={styles.seeAllLink}>{t('common.seeAll', 'See All')}</Text>
               </TouchableOpacity>
             </View>
