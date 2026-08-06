@@ -459,10 +459,31 @@ const applyForJob = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Job not available' });
     }
 
+    const wallet = await prisma.wallet.findUnique({ where: { userId: req.user.id } });
+    const boostCoinsAmount = Math.max(0, Number(req.body.boostCoins || 0));
+
     const existing = await prisma.jobAssignment.findUnique({
       where: { jobId_providerId: { jobId, providerId } }
     });
     if (existing) {
+      if (boostCoinsAmount > (existing.boostCoins || 0)) {
+        if (!wallet || wallet.balance < (job.coinCost + boostCoinsAmount)) {
+          return res.status(403).json({ 
+            success: false, 
+            message: `You need at least ${job.coinCost + boostCoinsAmount} coin${(job.coinCost + boostCoinsAmount) > 1 ? 's' : ''} in your balance to boost this proposal.`, 
+            code: 'INSUFFICIENT_COINS' 
+          });
+        }
+        const updatedAssignment = await prisma.jobAssignment.update({
+          where: { id: existing.id },
+          data: { boostCoins: boostCoinsAmount }
+        });
+        return res.status(200).json({
+          success: true,
+          data: updatedAssignment,
+          message: `Proposal boosted successfully to ${boostCoinsAmount} coins! Coins will be deducted when accepted by the client.`
+        });
+      }
       return res.status(409).json({ success: false, data: existing, message: 'You have already applied for this task.', code: 'ALREADY_APPLIED' });
     }
 
@@ -472,9 +493,6 @@ const applyForJob = async (req, res, next) => {
 
     // Providers can apply for free, but must have enough coins for the task and boost before applying.
     // The coins (both task coins and boost coins) are deducted only if the client selects/accepts this provider.
-    const wallet = await prisma.wallet.findUnique({ where: { userId: req.user.id } });
-    const boostCoinsAmount = Math.max(0, Number(req.body.boostCoins || 0));
-
     if (!wallet || wallet.balance < (job.coinCost + boostCoinsAmount)) {
       return res.status(403).json({ 
         success: false, 
