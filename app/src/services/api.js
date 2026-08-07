@@ -53,11 +53,34 @@ api.interceptors.response.use(response => {
 export const SOCKET_URL = API_ORIGIN;
 
 export const getMediaUrl = (value) => {
-  if (!value || typeof value !== 'string') return null;
-  if (value.startsWith('file:') || value.startsWith('content:') || value.startsWith('data:') || /^(https?:)?\/\//i.test(value)) {
-    return value;
+  if (!value) return null;
+  if (typeof value === 'object' && value?.uri) value = value.uri;
+  if (typeof value !== 'string') return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  // Handles relative paths
+  if (trimmed.startsWith('/') || trimmed.startsWith('uploads/')) {
+    return `${API_ORIGIN}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
   }
-  return `${API_ORIGIN}${value.startsWith('/') ? '' : '/'}${value}`;
+
+  // Handle standard http/https/data URLs
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:')) {
+    if (trimmed.startsWith('//')) return `https:${trimmed}`;
+    return trimmed;
+  }
+
+  // Handle local Android file URIs on iOS devices
+  if (trimmed.startsWith('file:///data/') || trimmed.startsWith('file:///user/') || trimmed.startsWith('content://')) {
+    return 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
+  }
+
+  if (trimmed.startsWith('file:')) {
+    return trimmed;
+  }
+
+  return `${API_ORIGIN}/${trimmed}`;
 };
 
 export const setAuthToken = (token) => {

@@ -75,13 +75,31 @@ const ProjectDetailScreen = ({ route, navigation }) => {
   const fullScreenScrollRef = useRef(null);
 
   // Media list for carousel (Multiple Videos + Images)
-  const images = (Array.isArray(project.images) && project.images.length > 0)
-    ? project.images
-    : (project.imageUrl ? [project.imageUrl] : []);
+  const images = (() => {
+    let imgs = [];
+    if (Array.isArray(project.images) && project.images.length > 0) {
+      imgs = project.images;
+    } else if (project.imageUrl) {
+      imgs = [project.imageUrl];
+    } else if (project.image) {
+      imgs = [project.image];
+    } else if (project.url) {
+      imgs = [project.url];
+    }
+    return imgs.map(getMediaUrl).filter(Boolean);
+  })();
 
-  const videoList = Array.isArray(project.videos) && project.videos.length > 0
-    ? project.videos
-    : (project.video ? [project.video] : []);
+  const videoList = (() => {
+    let vids = [];
+    if (Array.isArray(project.videos) && project.videos.length > 0) {
+      vids = project.videos;
+    } else if (project.video) {
+      vids = Array.isArray(project.video) ? project.video : [project.video];
+    } else if (project.videoUrl) {
+      vids = [project.videoUrl];
+    }
+    return vids.map(getMediaUrl).filter(Boolean);
+  })();
 
   const mediaList = [
     ...videoList.map(v => ({ type: 'video', uri: v })),
@@ -89,7 +107,8 @@ const ProjectDetailScreen = ({ route, navigation }) => {
   ];
 
   if (mediaList.length === 0) {
-    mediaList.push({ type: 'image', uri: provider?.user?.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' });
+    const avatarUri = getMediaUrl(provider?.user?.avatar || provider?.avatar) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+    mediaList.push({ type: 'image', uri: avatarUri });
   }
 
   const isFavorite = favoriteProviderIds?.includes(provider?.id);
@@ -98,10 +117,16 @@ const ProjectDetailScreen = ({ route, navigation }) => {
 
   // Resolve Real Pricing Tiers from project.packages
   const resolveTiers = () => {
-    if (project.packages) {
+    let packagesObj = project.packages;
+    if (typeof packagesObj === 'string') {
+      try {
+        packagesObj = JSON.parse(packagesObj);
+      } catch (_) {}
+    }
+    if (packagesObj && typeof packagesObj === 'object') {
       const parsed = [];
       ['basic', 'standard', 'premium'].forEach((key) => {
-        const pkg = project.packages[key];
+        const pkg = packagesObj[key];
         if (pkg && (pkg.enabled || pkg.price)) {
           parsed.push({
             id: key,
@@ -114,7 +139,7 @@ const ProjectDetailScreen = ({ route, navigation }) => {
             expressDeliveryDays: pkg.expressDeliveryDays ? Number(pkg.expressDeliveryDays) : 4,
             expressDeliveryPrice: pkg.expressDeliveryPrice ? Number(pkg.expressDeliveryPrice) : Math.round(Number(pkg.price || 0) * 0.3),
             features: Array.isArray(pkg.features) && pkg.features.length > 0
-              ? pkg.features.filter(f => f && f.trim())
+              ? pkg.features.filter(f => f && typeof f === 'string' && f.trim())
               : []
           });
         }
