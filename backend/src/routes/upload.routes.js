@@ -60,6 +60,7 @@ const normalizeFile = (req, res, next) => {
 router.post('/profile', protect, acceptFile, normalizeFile, uploadController.uploadProfileImage);
 router.post('/verification', protect, acceptFile, normalizeFile, uploadController.uploadVerificationDoc);
 router.post('/payment', protect, acceptFile, normalizeFile, uploadController.uploadPaymentProof);
+router.post('/portfolio', protect, acceptFile, normalizeFile, uploadController.uploadPortfolioMedia);
 router.post('/', protect, acceptFile, normalizeFile, uploadController.uploadGeneric);
 
 module.exports = router;

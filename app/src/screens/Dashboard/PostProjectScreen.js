@@ -177,13 +177,17 @@ const PostProjectScreen = ({ navigation, route }) => {
         type: mimeType,
       });
 
-      const res = await api.post('/upload', formData, {
+      const res = await api.post('/upload/portfolio', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      return res.data?.url || res.data?.data?.url || uri;
+      const serverUrl = res.data?.url || res.data?.data?.url;
+      if (!serverUrl) {
+        throw new Error('Server did not return a valid media URL.');
+      }
+      return serverUrl;
     } catch (err) {
-      console.log('Media upload error:', err?.response?.data || err.message);
-      return uri; // Fallback to original URI if network upload fails
+      console.log('[Media Upload Error]:', err?.response?.data || err.message);
+      throw new Error(`Failed to upload ${type}: ${err?.response?.data?.message || err.message}`);
     }
   };
 

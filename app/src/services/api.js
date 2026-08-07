@@ -71,12 +71,7 @@ export const getMediaUrl = (value) => {
     return trimmed;
   }
 
-  // Handle local Android file URIs on iOS devices
-  if (trimmed.startsWith('file:///data/') || trimmed.startsWith('file:///user/') || trimmed.startsWith('content://')) {
-    return 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
-  }
-
-  if (trimmed.startsWith('file:')) {
+  if (trimmed.startsWith('file:') || trimmed.startsWith('content:')) {
     return trimmed;
   }
 

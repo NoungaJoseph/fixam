@@ -5,7 +5,7 @@ const uploadProfileImage = async (req, res, next) => {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
     const url = await uploadFile(req.file, 'profile-images', { requireCloud: false, req });
-    res.status(200).json({ success: true, url, path: req.file.originalname });
+    res.status(200).json({ success: true, url, data: { url }, path: req.file.originalname });
   } catch (error) {
     next(error);
   }
@@ -16,7 +16,7 @@ const uploadVerificationDoc = async (req, res, next) => {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
     const url = await uploadFile(req.file, 'verification-documents', { req });
-    res.status(200).json({ success: true, url });
+    res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
   }
@@ -27,7 +27,18 @@ const uploadPaymentProof = async (req, res, next) => {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     
     const url = await uploadFile(req.file, 'payment-proofs', { req });
-    res.status(200).json({ success: true, url });
+    res.status(200).json({ success: true, url, data: { url } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const uploadPortfolioMedia = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+    const bucket = req.file?.mimetype?.startsWith('video/') ? 'portfolio-videos' : 'portfolio-images';
+    const url = await uploadFile(req.file, bucket, { req });
+    res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
   }
@@ -36,9 +47,9 @@ const uploadPaymentProof = async (req, res, next) => {
 const uploadGeneric = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    
-    const url = await uploadFile(req.file, 'chat-media', { req });
-    res.status(200).json({ success: true, url });
+    const bucket = req.body?.type === 'video' || req.file?.mimetype?.startsWith('video/') ? 'portfolio-videos' : 'chat-media';
+    const url = await uploadFile(req.file, bucket, { req });
+    res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
   }
@@ -48,5 +59,6 @@ module.exports = {
   uploadProfileImage,
   uploadVerificationDoc,
   uploadPaymentProof,
+  uploadPortfolioMedia,
   uploadGeneric
 };

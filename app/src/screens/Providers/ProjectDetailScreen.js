@@ -115,22 +115,57 @@ const ProjectDetailScreen = ({ route, navigation }) => {
   const currencyStr = getCurrencyForUser(provider.user?.country || user?.country || 'Cameroon');
   const baseRate = Number(project.price || provider.rate || 40);
 
-  // Resolve Real Pricing Tiers from project.packages
+  // Resolve Real Pricing Tiers from project.packages or project.tiers
   const resolveTiers = () => {
+    // 1. Check if project.tiers array exists
+    let tiersArr = project.tiers;
+    if (typeof tiersArr === 'string') {
+      try { tiersArr = JSON.parse(tiersArr); } catch (_) {}
+    }
+    if (Array.isArray(tiersArr) && tiersArr.length > 0) {
+      return tiersArr.map((pkg, idx) => ({
+        id: pkg.id || `tier_${idx}`,
+        name: (pkg.name || `TIER ${idx + 1}`).toUpperCase(),
+        label: pkg.label || pkg.summary || '',
+        price: Number(pkg.price || 0),
+        deliveryDays: Number(pkg.deliveryDays || 1),
+        revisions: Number(pkg.revisions || 0),
+        expressDeliveryEnabled: pkg.expressDeliveryEnabled !== undefined ? Boolean(pkg.expressDeliveryEnabled) : true,
+        expressDeliveryDays: pkg.expressDeliveryDays ? Number(pkg.expressDeliveryDays) : 4,
+        expressDeliveryPrice: pkg.expressDeliveryPrice ? Number(pkg.expressDeliveryPrice) : Math.round(Number(pkg.price || 0) * 0.3),
+        features: Array.isArray(pkg.features) ? pkg.features.filter(f => f && typeof f === 'string' && f.trim()) : []
+      }));
+    }
+
+    // 2. Check project.packages object or array
     let packagesObj = project.packages;
     if (typeof packagesObj === 'string') {
-      try {
-        packagesObj = JSON.parse(packagesObj);
-      } catch (_) {}
+      try { packagesObj = JSON.parse(packagesObj); } catch (_) {}
     }
+
+    if (Array.isArray(packagesObj) && packagesObj.length > 0) {
+      return packagesObj.map((pkg, idx) => ({
+        id: pkg.id || `tier_${idx}`,
+        name: (pkg.name || `TIER ${idx + 1}`).toUpperCase(),
+        label: pkg.label || pkg.summary || '',
+        price: Number(pkg.price || 0),
+        deliveryDays: Number(pkg.deliveryDays || 1),
+        revisions: Number(pkg.revisions || 0),
+        expressDeliveryEnabled: pkg.expressDeliveryEnabled !== undefined ? Boolean(pkg.expressDeliveryEnabled) : true,
+        expressDeliveryDays: pkg.expressDeliveryDays ? Number(pkg.expressDeliveryDays) : 4,
+        expressDeliveryPrice: pkg.expressDeliveryPrice ? Number(pkg.expressDeliveryPrice) : Math.round(Number(pkg.price || 0) * 0.3),
+        features: Array.isArray(pkg.features) ? pkg.features.filter(f => f && typeof f === 'string' && f.trim()) : []
+      }));
+    }
+
     if (packagesObj && typeof packagesObj === 'object') {
       const parsed = [];
-      ['basic', 'standard', 'premium'].forEach((key) => {
+      Object.keys(packagesObj).forEach((key) => {
         const pkg = packagesObj[key];
         if (pkg && (pkg.enabled || pkg.price)) {
           parsed.push({
             id: key,
-            name: key.toUpperCase(),
+            name: (pkg.name || key).toUpperCase(),
             label: pkg.summary || pkg.label || '',
             price: Number(pkg.price || 0),
             deliveryDays: Number(pkg.deliveryDays || 1),
@@ -138,14 +173,13 @@ const ProjectDetailScreen = ({ route, navigation }) => {
             expressDeliveryEnabled: pkg.expressDeliveryEnabled !== undefined ? Boolean(pkg.expressDeliveryEnabled) : true,
             expressDeliveryDays: pkg.expressDeliveryDays ? Number(pkg.expressDeliveryDays) : 4,
             expressDeliveryPrice: pkg.expressDeliveryPrice ? Number(pkg.expressDeliveryPrice) : Math.round(Number(pkg.price || 0) * 0.3),
-            features: Array.isArray(pkg.features) && pkg.features.length > 0
-              ? pkg.features.filter(f => f && typeof f === 'string' && f.trim())
-              : []
+            features: Array.isArray(pkg.features) ? pkg.features.filter(f => f && typeof f === 'string' && f.trim()) : []
           });
         }
       });
       if (parsed.length > 0) return parsed;
     }
+
     return [
       {
         id: 'standard',
