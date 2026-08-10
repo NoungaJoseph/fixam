@@ -289,7 +289,7 @@ const getJobById = async (req, res, next) => {
 
 const getAvailableJobsForProvider = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = '', location = '', sortBy = 'newest', budgetMin, budgetMax } = req.query;
+    const { page = 1, limit = 10, search = '', location = '', sortBy = 'newest', budgetMin, budgetMax, jobType = '' } = req.query;
     const skip = (page - 1) * limit;
 
     // Build where clause for filtering
@@ -310,15 +310,22 @@ const getAvailableJobsForProvider = async (req, res, next) => {
     // Filter by provider's country and location for local jobs, or show remote jobs from any country
     const providerCountry = req.user.country || 'Cameroon';
 
-    whereClause.OR = [
-      // 1. Remote jobs from any country
-      { isRemote: true },
-      // 2. Local jobs in provider's country (nationwide)
-      {
-        isRemote: false,
-        country: providerCountry
-      }
-    ];
+    if (jobType === 'remote') {
+      // Only remote jobs
+      whereClause.isRemote = true;
+    } else if (jobType === 'physical') {
+      // Only local/physical jobs in provider's country
+      whereClause.OR = [
+        { isRemote: false, country: providerCountry },
+        { isRemote: false }
+      ];
+    } else {
+      // Default: show both remote and local jobs
+      whereClause.OR = [
+        { isRemote: true },
+        { isRemote: false, country: providerCountry }
+      ];
+    }
 
     // Add search filter (nested inside AND to work with OR)
     if (search) {
@@ -369,7 +376,23 @@ const getAvailableJobsForProvider = async (req, res, next) => {
             providerProfile: { select: { verification: true } }
           }
         },
-        assignments: { select: { id: true, providerId: true, status: true } }
+        assignments: { 
+          select: { 
+            id: true, 
+            providerId: true, 
+            status: true, 
+            boostCoins: true, 
+            assignedAt: true,
+            provider: {
+              select: {
+                id: true,
+                user: {
+                  select: { id: true, fullName: true, firstName: true, lastName: true, avatar: true }
+                }
+              }
+            }
+          } 
+        }
       },
       orderBy,
       skip,

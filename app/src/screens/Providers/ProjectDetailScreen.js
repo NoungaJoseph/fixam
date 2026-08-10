@@ -102,8 +102,8 @@ const ProjectDetailScreen = ({ route, navigation }) => {
   })();
 
   const mediaList = [
-    ...videoList.map(v => ({ type: 'video', uri: v })),
-    ...images.map(img => ({ type: 'image', uri: img }))
+    ...images.map(img => ({ type: 'image', uri: img })),
+    ...videoList.map(v => ({ type: 'video', uri: v }))
   ];
 
   if (mediaList.length === 0) {
