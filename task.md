@@ -40,4 +40,12 @@
     - [x] Created `PendingVerification` model & indexes in Prisma schema
     - [x] Added `tokenVersion` to `User` model in Prisma schema
     - [x] Executed SQL migration live on Supabase database (`bvzebfcjirnrcjxxdjrt`) via Supabase MCP
+- [x] Provider Booking & Website Profile Picture Fixes
+  - [x] Fixed `createBooking` backend controller:
+    - [x] Supported `providerId` lookup by `User.id` or `ProviderProfile.id` (`targetProviderId`)
+    - [x] Restricted verification check strictly to `PROVIDER` role accounts (enabling `CLIENT` role accounts to book providers seamlessly)
+  - [x] Added **Service Duration** dropdown and **Proposed Budget (FCFA / XAF)** input field to `BookingFormModal.tsx`
+  - [x] Fixed Provider Profile Avatar URLs by stripping broken `/api` prefix in `App.tsx` and adding robust `getMediaUrl()` resolution across `ProviderProfileDetail.tsx` and `FindServices.tsx`
+  - [x] Connected **Book now** actions on provider cards to open the booking modal directly
+
 
