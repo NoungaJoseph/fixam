@@ -41,10 +41,12 @@
     - [x] Added `tokenVersion` to `User` model in Prisma schema
     - [x] Executed SQL migration live on Supabase database (`bvzebfcjirnrcjxxdjrt`) via Supabase MCP
 - [x] Provider Profile Picture & Favorites Synchronization Fixes
-  - [x] **Normalized `/uploads/` Media URLs**: Updated `getMediaUrl()` in `App.tsx` so all image paths (including Nounga's avatar stored in DB) dynamically map to the active backend API origin across local and production environments.
+  - [x] **Mobile App Discover Pros Avatars**: Updated `getMediaUrl()` in `app/src/services/api.js` to normalize `/uploads/` paths against active `API_ORIGIN` and updated `ProviderListScreen.js` to extract provider avatars directly via `<UserAvatar />`.
+  - [x] **Website Landing Page Verified Pros**: Added a public provider fetch hook on initial app mount in `App.tsx` and updated `ProCard` so verified providers and their profile pictures display on the landing page for all visitors.
   - [x] **Backend Favorite Providers API**: Added missing implementations for `getFavoriteProviders`, `addFavoriteProvider`, and `removeFavoriteProvider` in `provider.controller.js` and declared `ClientFavoriteProvider` model in `schema.prisma`.
   - [x] **Cross-Platform Favorites Sync**: Connected website heart toggle buttons & `SavedProviders.tsx` directly to `/api/providers/favorites` (enabling seamless sync between Website, Mobile App, and Database).
   - [x] **Instant Data Loading on Login**: Initialized wallet balance from session auth state immediately on login, combined dashboard data requests into a single parallel `Promise.all` batch, and added **Saved Providers** to the website navigation menu.
+
 
 
 
