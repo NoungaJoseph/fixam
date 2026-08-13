@@ -40,12 +40,12 @@
     - [x] Created `PendingVerification` model & indexes in Prisma schema
     - [x] Added `tokenVersion` to `User` model in Prisma schema
     - [x] Executed SQL migration live on Supabase database (`bvzebfcjirnrcjxxdjrt`) via Supabase MCP
-- [x] Provider Profile Picture & Favorites Synchronization Fixes
-  - [x] **Mobile App Discover Pros Avatars**: Updated `getMediaUrl()` in `app/src/services/api.js` to normalize `/uploads/` paths against active `API_ORIGIN` and updated `ProviderListScreen.js` to extract provider avatars directly via `<UserAvatar />`.
-  - [x] **Website Landing Page Verified Pros**: Added a public provider fetch hook on initial app mount in `App.tsx` and updated `ProCard` so verified providers and their profile pictures display on the landing page for all visitors.
-  - [x] **Backend Favorite Providers API**: Added missing implementations for `getFavoriteProviders`, `addFavoriteProvider`, and `removeFavoriteProvider` in `provider.controller.js` and declared `ClientFavoriteProvider` model in `schema.prisma`.
-  - [x] **Cross-Platform Favorites Sync**: Connected website heart toggle buttons & `SavedProviders.tsx` directly to `/api/providers/favorites` (enabling seamless sync between Website, Mobile App, and Database).
-  - [x] **Instant Data Loading on Login**: Initialized wallet balance from session auth state immediately on login, combined dashboard data requests into a single parallel `Promise.all` batch, and added **Saved Providers** to the website navigation menu.
+- [x] Booking System & Cross-Platform Management Fixes
+  - [x] **Website Booking Creation Fix**: Resolved Prisma Foreign Key error in backend `createBooking` where notification creation referenced raw `providerId` instead of verified `targetProviderId` (User ID). Auto-created wallet balance on initial booking so new clients can book instantly without "Insufficient coins" errors.
+  - [x] **Mobile App Service Duration Chips**: Added interactive Service Duration selector chips (`1 Hour`, `2-3 Hours`, `Half Day (4h)`, `Full Day (8h)`, `Multi-Day`, `Flexible`) matching the website options in `BookingFormScreen.js`.
+  - [x] **Cross-Platform Provider Booking Management**: Added a dedicated **Direct Bookings** tab to `ProviderDashboard.tsx` on the website where providers can view incoming direct client bookings, Accept, Reject, Mark Completed, or Chat directly with clients.
+  - [x] **Booking Detail & Action Resolution**: Fixed booking ID extraction in `MyBookings.tsx` cancellation handler and updated `BookingDetail.tsx` drawer to display proposed budget, service duration, urgency level, and scheduled date/time.
+
 
 
 
