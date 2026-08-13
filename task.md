@@ -20,6 +20,24 @@
 - [x] Website changes
   - [x] Modify `website/src/pages/Auth/Login.tsx`
   - [x] Modify `website/src/pages/Auth/Register.tsx`
-- [x] Verification
-  - [x] Verify database schema and migration success
-  - [x] Run test queries or check API server status
+- [x] Security Audit & Enterprise-Grade Hardening
+  - [x] Critical Vulnerability Patching
+    - [x] Block test OTP backdoor (`123456`) in production
+    - [x] Remove `image/svg+xml` upload support (Stored XSS vector)
+    - [x] Remove `application/octet-stream` upload support (MIME spoofing vector)
+    - [x] Replace in-memory OTP cache with DB-backed `PendingVerification` table (Bcrypt hashed OTPs)
+  - [x] Session & Authentication Security
+    - [x] Implement DB-backed `tokenVersion` for instant JWT session revocation on logout
+    - [x] Enforce dedicated `otpLimiter` (5 attempts / 15 min) on all OTP endpoints
+    - [x] Reduce general API rate limiter from 2,000 to 300 requests / 15 min
+    - [x] Gate localhost CORS policies strictly behind non-production `NODE_ENV`
+  - [x] Data Privacy & Public Asset Hardening
+    - [x] Restrict `/uploads` static file serving to public asset buckets only
+    - [x] Create authenticated `ADMIN` API route for sensitive files (`verification-documents`, `payment-proofs`)
+    - [x] Strip sensitive internal fields (`password`, `twoFactorCode`, `lastIpAddress`) from auth responses
+    - [x] Enforce HTTPS and IPv4 address validation for IP geolocation requests (SSRF defense)
+  - [x] Database Schema & Supabase Live Execution
+    - [x] Created `PendingVerification` model & indexes in Prisma schema
+    - [x] Added `tokenVersion` to `User` model in Prisma schema
+    - [x] Executed SQL migration live on Supabase database (`bvzebfcjirnrcjxxdjrt`) via Supabase MCP
+
