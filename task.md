@@ -40,11 +40,11 @@
     - [x] Created `PendingVerification` model & indexes in Prisma schema
     - [x] Added `tokenVersion` to `User` model in Prisma schema
     - [x] Executed SQL migration live on Supabase database (`bvzebfcjirnrcjxxdjrt`) via Supabase MCP
-- [x] Booking System & Cross-Platform Management Fixes
-  - [x] **Website Booking Creation Fix**: Resolved Prisma Foreign Key error in backend `createBooking` where notification creation referenced raw `providerId` instead of verified `targetProviderId` (User ID). Auto-created wallet balance on initial booking so new clients can book instantly without "Insufficient coins" errors.
-  - [x] **Mobile App Service Duration Chips**: Added interactive Service Duration selector chips (`1 Hour`, `2-3 Hours`, `Half Day (4h)`, `Full Day (8h)`, `Multi-Day`, `Flexible`) matching the website options in `BookingFormScreen.js`.
-  - [x] **Cross-Platform Provider Booking Management**: Added a dedicated **Direct Bookings** tab to `ProviderDashboard.tsx` on the website where providers can view incoming direct client bookings, Accept, Reject, Mark Completed, or Chat directly with clients.
-  - [x] **Booking Detail & Action Resolution**: Fixed booking ID extraction in `MyBookings.tsx` cancellation handler and updated `BookingDetail.tsx` drawer to display proposed budget, service duration, urgency level, and scheduled date/time.
+- [x] Booking System & Review Management Updates
+  - [x] **Strict Insufficient Coins Error**: Reverted wallet auto-creation in `createBooking`. If a client has insufficient coins, backend returns a 400 response with `code: 'INSUFFICIENT_COINS'` and message `"Insufficient coins to make this request. You need X coins."`.
+  - [x] **Comprehensive Booking & Contract Details**: Upgraded `BookingDetail.tsx` to handle both direct bookings and posted jobs for Client & Provider, rendering party profiles, proposed budget, service duration, urgency level, location, and description.
+  - [x] **Full 1-5 Star Review System**: Created `ReviewModal.tsx` in `website/src/components/ReviewModal.tsx` connected to `POST /api/reviews`. Integrated **"⭐ Review"** action buttons on completed cards across `BookingDetail.tsx`, `MyBookings.tsx`, `MyTasks.tsx`, and `MyJobs.tsx`.
+
 
 
 
