@@ -15,6 +15,8 @@ const protect = async (req, res, next) => {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.cookies) {
     token = req.cookies.jwt || req.cookies.token;
+  } else if (req.query?.token) {
+    token = req.query.token;
   }
 
   if (token) {
@@ -44,6 +46,13 @@ const protect = async (req, res, next) => {
           debugLog('User from token not found in DB:', userId);
           userCache.delete(userId);
           return res.status(401).json({ success: false, message: 'User not found' });
+        }
+
+        // JWT revocation check: tokenVersion in token must match DB
+        const tokenVersion = decoded.tokenVersion ?? 0;
+        if ((req.user.tokenVersion ?? 0) !== tokenVersion) {
+          userCache.delete(userId);
+          return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
         }
 
         if (req.user.isBlocked) {

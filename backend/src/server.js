@@ -6,6 +6,7 @@ const prisma = require('./config/prisma');
 const { connectWithRetry } = require('./config/prisma');
 const { initSocket } = require('./services/socket.service');
 const { startStatusUpdater } = require('./jobs/statusUpdater');
+const { startMarketingNotificationEngine } = require('./jobs/marketingNotificationEngine');
 
 const PORT = process.env.PORT || 8080;
 
@@ -13,6 +14,7 @@ const server = http.createServer(app);
 
 initSocket(server);
 startStatusUpdater();
+startMarketingNotificationEngine();
 
 async function startServer() {
   try {
@@ -41,6 +43,8 @@ async function startServer() {
       await prisma.$executeRawUnsafe(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "country" TEXT DEFAULT 'Cameroon'`);
       await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "country" TEXT DEFAULT 'Cameroon'`);
       await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "isRemote" BOOLEAN NOT NULL DEFAULT false`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "PageView" ADD COLUMN IF NOT EXISTS "cookieConsent" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "PageView" ADD COLUMN IF NOT EXISTS "isLoggedIn" BOOLEAN DEFAULT false`);
 
       try {
         await prisma.$executeRawUnsafe(`ALTER TYPE "BookingStatus" ADD VALUE 'COUNTER_PROPOSED'`);
@@ -52,7 +56,99 @@ async function startServer() {
       await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "counterBudget" DOUBLE PRECISION`);
       await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "counterNotes" TEXT`);
 
-      console.log('Multi-country DB columns & enums verified successfully');
+      // Materials & Requirements columns
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "requiresDiagnosis" BOOLEAN DEFAULT false`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "diagnosisStatus" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "materialsList" JSONB`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "materialsStatus" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "materialsVersion" INTEGER DEFAULT 1`);
+
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "requiresDiagnosis" BOOLEAN DEFAULT false`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "diagnosisStatus" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "materialsList" JSONB`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "materialsStatus" TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "materialsVersion" INTEGER DEFAULT 1`);
+
+      await prisma.$executeRawUnsafe(`ALTER TABLE "JobAssignment" ADD COLUMN IF NOT EXISTS "materialsList" JSONB`);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "AgreementAmendment" (
+          "id" TEXT PRIMARY KEY,
+          "bookingId" TEXT,
+          "jobId" TEXT,
+          "type" TEXT DEFAULT 'MATERIALS',
+          "version" INTEGER DEFAULT 1,
+          "status" TEXT DEFAULT 'AGREED',
+          "proposedByUserId" TEXT NOT NULL,
+          "acceptedByUserId" TEXT,
+          "materials" JSONB,
+          "price" DOUBLE PRECISION,
+          "notes" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Dispute" (
+          "id" TEXT PRIMARY KEY,
+          "bookingId" TEXT NOT NULL,
+          "clientId" TEXT NOT NULL,
+          "providerId" TEXT NOT NULL,
+          "category" TEXT NOT NULL,
+          "description" TEXT NOT NULL,
+          "status" TEXT NOT NULL DEFAULT 'OPEN',
+          "clientEvidence" JSONB,
+          "providerEvidence" JSONB,
+          "clientResponse" TEXT,
+          "providerResponse" TEXT,
+          "correctionDetails" TEXT,
+          "resolution" TEXT,
+          "resolutionReason" TEXT,
+          "assignedAdminId" TEXT,
+          "resolvedAt" TIMESTAMP(3),
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "DisputeEvent" (
+          "id" TEXT PRIMARY KEY,
+          "disputeId" TEXT NOT NULL,
+          "actorId" TEXT NOT NULL,
+          "actorType" TEXT NOT NULL,
+          "eventType" TEXT NOT NULL,
+          "description" TEXT NOT NULL,
+          "metadata" JSONB,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ServiceAgreement" (
+          "id" TEXT PRIMARY KEY,
+          "publicAgreementNumber" TEXT UNIQUE NOT NULL,
+          "sourceType" TEXT NOT NULL DEFAULT 'BOOKING',
+          "bookingId" TEXT,
+          "taskId" TEXT,
+          "clientId" TEXT NOT NULL,
+          "providerId" TEXT NOT NULL,
+          "version" INTEGER NOT NULL DEFAULT 1,
+          "status" TEXT NOT NULL DEFAULT 'PENDING_ACCEPTANCE',
+          "terms" JSONB NOT NULL,
+          "clientAcceptance" JSONB,
+          "providerAcceptance" JSONB,
+          "pdfReference" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "activatedAt" TIMESTAMP(3),
+          "completedAt" TIMESTAMP(3),
+          "supersededAt" TIMESTAMP(3)
+        )
+      `);
+
+      console.log('Materials, Dispute & ServiceAgreement DB columns & tables verified successfully');
     } catch (migErr) {
       console.error('[Migration] Failed to run auto-migration:', migErr.message);
     }

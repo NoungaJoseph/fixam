@@ -1,14 +1,15 @@
 const prisma = require('../config/prisma');
 const { createJobSchema } = require('../validators/job.validator');
 const { calculateProviderStats } = require('../utils/providerStats');
+const agreementService = require('../services/agreement.service');
 
 const calculateJobCoinCost = (providersCount) => {
   const count = parseInt(providersCount) || 1;
-  if (count >= 1 && count <= 5) return 1;
-  if (count >= 6 && count <= 10) return 2;
-  if (count >= 11 && count <= 20) return 3;
-  if (count >= 21 && count <= 30) return 4;
-  return 5;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count >= 3 && count <= 6) return 3;
+  if (count >= 7 && count <= 9) return 4;
+  return 5; // 10 and above
 };
 
 const normalizeBudgetRange = (data) => {
@@ -69,8 +70,9 @@ const createJob = async (req, res, next) => {
     });
 
     // 2. Check client verification status
+    const isUserVerified = clientUser?.providerProfile?.verification === 'VERIFIED' || clientUser?.isVerified === true;
     const verificationStatus = clientUser?.providerProfile?.verification;
-    if (verificationStatus !== 'VERIFIED') {
+    if (!isUserVerified) {
       return res.status(403).json({
         success: false,
         message: 'Your account must be verified before you can post a task.',
@@ -78,11 +80,17 @@ const createJob = async (req, res, next) => {
       });
     }
 
-    // 3. Check client wallet balance
+    // 3. Check client wallet balance (ensure wallet exists)
     const providersNeeded = validatedData.providersNeeded || 1;
     const coinCost = calculateJobCoinCost(providersNeeded);
-    const clientWallet = clientUser?.wallet;
-    if (!clientWallet || clientWallet.balance < coinCost) {
+    let clientWallet = clientUser?.wallet;
+    if (!clientWallet) {
+      clientWallet = await prisma.wallet.create({
+        data: { userId: clientUser.id, balance: 1 }
+      });
+    }
+
+    if (clientWallet.balance < coinCost) {
       return res.status(400).json({
         success: false,
         message: `You do not have enough coins to post this task. Cost is ${coinCost} coins. Please top up.`
@@ -114,6 +122,11 @@ const createJob = async (req, res, next) => {
         ? validatedData.isRemote
         : isRemoteSkill(validatedData.category);
 
+      const isDiagnosisReq = Boolean(req.body.requiresDiagnosis || validatedData.requiresDiagnosis);
+      const rawMaterials = req.body.materialsList || validatedData.materialsList;
+      const formattedMaterials = isDiagnosisReq ? null : (Array.isArray(rawMaterials) ? rawMaterials : []);
+      const materialsStatus = isDiagnosisReq ? 'DIAGNOSIS_REQUIRED' : (formattedMaterials && formattedMaterials.length > 0 ? 'PENDING_AGREEMENT' : 'AGREED');
+
       // Create job
       return await tx.job.create({
         data: {
@@ -126,7 +139,12 @@ const createJob = async (req, res, next) => {
           approvalStatus: 'PENDING_APPROVAL',  // New jobs require admin approval
           scheduledTime: validatedData.scheduledTime ? new Date(validatedData.scheduledTime) : null,
           isRemote,
-          country: clientUser.country || 'Cameroon'
+          country: clientUser.country || 'Cameroon',
+          requiresDiagnosis: isDiagnosisReq,
+          diagnosisStatus: isDiagnosisReq ? 'PENDING_DIAGNOSIS' : null,
+          materialsList: formattedMaterials,
+          materialsStatus: materialsStatus,
+          materialsVersion: 1,
         }
       });
     });
@@ -541,8 +559,19 @@ const applyForJob = async (req, res, next) => {
       return res.status(409).json({ success: false, data: existing, message: 'You have already applied for this task.', code: 'ALREADY_APPLIED' });
     }
 
-    if (!req.user.isOnline) {
-      return res.status(403).json({ success: false, message: 'You must be available for work to apply for tasks.', code: 'PROVIDER_OFFLINE' });
+    const isAvailable = Boolean(req.user.isOnline || req.user.providerProfile?.isAvailable);
+    if (!isAvailable) {
+      if (req.user.providerProfile) {
+        // Auto-activate availability since provider is actively submitting a proposal
+        await prisma.user.update({ where: { id: req.user.id }, data: { isOnline: true } }).catch(() => {});
+        await prisma.providerProfile.update({ where: { id: req.user.providerProfile.id }, data: { isAvailable: true } }).catch(() => {});
+        try {
+          const { clearUserCache } = require('../middlewares/auth.middleware');
+          clearUserCache(req.user.id);
+        } catch (_) {}
+      } else {
+        return res.status(403).json({ success: false, message: 'You must be available for work to apply for tasks.', code: 'PROVIDER_OFFLINE' });
+      }
     }
 
     if (boostCoinsAmount > 0) {
@@ -571,13 +600,21 @@ const applyForJob = async (req, res, next) => {
       ]);
     }
 
+
+    const materialsList = req.body.materialsList;
+    const proposedBudget = req.body.proposedBudget !== undefined && req.body.proposedBudget !== null ? Number(req.body.proposedBudget) : null;
+    const proposalMedia = req.body.proposalMedia || null;
+
     const assignment = await prisma.jobAssignment.create({
       data: { 
         jobId, 
         providerId, 
         status: 'PENDING', 
         boostCoins: boostCoinsAmount,
-        coverLetter: coverLetter || null
+        coverLetter: coverLetter || null,
+        proposedBudget: (proposedBudget !== null && !isNaN(proposedBudget)) ? proposedBudget : null,
+        proposalMedia: proposalMedia,
+        materialsList: Array.isArray(materialsList) ? materialsList : null
       }
     });
 
@@ -691,12 +728,57 @@ const selectProviderForJob = async (req, res, next) => {
       const refundedProviders = [];
 
       const newAcceptedCount = acceptedCount + 1;
-      if (newAcceptedCount >= (job.providersNeeded || 1)) {
-        await tx.job.update({
-          where: { id: jobId },
-          data: { status: 'IN_PROGRESS', selectedAssignmentId: assignmentId }
-        });
+      const finalMaterials = assignment.materialsList || job.materialsList || [];
+      const updatedJobStatus = newAcceptedCount >= (job.providersNeeded || 1) ? 'IN_PROGRESS' : job.status;
 
+      await tx.job.update({
+        where: { id: jobId },
+        data: {
+          status: updatedJobStatus,
+          selectedAssignmentId: assignmentId,
+          materialsList: finalMaterials,
+          materialsStatus: job.requiresDiagnosis ? 'DIAGNOSIS_REQUIRED' : 'AGREED',
+          materialsVersion: 1,
+        }
+      });
+
+      if (!job.requiresDiagnosis && finalMaterials && finalMaterials.length > 0) {
+        await tx.agreementAmendment.create({
+          data: {
+            jobId,
+            type: 'MATERIALS',
+            version: 1,
+            status: 'AGREED',
+            proposedByUserId: assignment.provider?.userId || req.user.id,
+            acceptedByUserId: req.user.id,
+            materials: finalMaterials,
+            price: job.budget,
+            notes: 'Final materials list agreed upon provider selection.'
+          }
+        });
+      }
+
+      // Auto-generate Task Service Agreement
+      agreementService.createOrUpdateAgreement({
+        sourceType: 'TASK',
+        taskId: jobId,
+        clientId: job.clientId,
+        providerId: assignment.provider?.userId || req.user.id,
+        title: job.title || 'Task Service',
+        category: job.category || 'General',
+        scopeOfWork: job.description || 'As described in job posting.',
+        location: job.location || 'Client location',
+        schedule: {
+          date: job.scheduledTime ? new Date(job.scheduledTime).toLocaleDateString() : 'As scheduled',
+          time: 'Scheduled Time',
+          duration: 'Standard',
+          urgency: job.priority || 'Normal'
+        },
+        price: job.budget,
+        materialsList: finalMaterials
+      }).catch(err => console.error('[Agreement Service Task] Error:', err.message));
+
+      if (updatedJobStatus === 'IN_PROGRESS') {
         // Refund boost coins to all unselected providers
         for (const unselected of unselectedAssignments) {
           const unselectedBoost = Number(unselected.boostCoins || 0);
@@ -727,11 +809,6 @@ const selectProviderForJob = async (req, res, next) => {
         await tx.jobAssignment.updateMany({
           where: { jobId, status: 'PENDING' },
           data: { status: 'REJECTED' }
-        });
-      } else {
-        await tx.job.update({
-          where: { id: jobId },
-          data: { selectedAssignmentId: assignmentId }
         });
       }
 
@@ -841,6 +918,34 @@ const updateJobStatus = async (req, res, next) => {
     const allowedStatuses = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid job status' });
+    }
+
+    if (status === 'CANCELLED') {
+      await prisma.serviceAgreement.deleteMany({ where: { taskId: jobId } }).catch(() => {});
+      await prisma.agreementAmendment.deleteMany({ where: { taskId: jobId } }).catch(() => {});
+      await prisma.dispute.deleteMany({ where: { jobId } }).catch(() => {});
+      await prisma.review.deleteMany({ where: { jobId } }).catch(() => {});
+      await prisma.assignment.deleteMany({ where: { jobId } }).catch(() => {});
+      await prisma.booking.deleteMany({ where: { taskId: jobId } }).catch(() => {});
+      await prisma.job.delete({ where: { id: jobId } });
+
+      try {
+        const { getIO } = require('../services/socket.service');
+        const io = getIO();
+        io.to(existing.clientId).emit('job:deleted', { id: jobId, deleted: true });
+        existing.assignments?.forEach((assignment) => {
+          if (assignment.provider?.userId) {
+            io.to(assignment.provider.userId).emit('job:deleted', { id: jobId, deleted: true });
+          }
+        });
+      } catch (_) {}
+
+      return res.status(200).json({
+        success: true,
+        message: 'Task cancelled and deleted completely.',
+        deleted: true,
+        data: { id: jobId, status: 'CANCELLED' }
+      });
     }
 
     const job = await prisma.job.update({
@@ -996,11 +1101,11 @@ const getProviderJobs = async (req, res, next) => {
     // Fast ETag check
     const [latestAssignment, total] = await Promise.all([
       prisma.jobAssignment.findFirst({
-        where: { providerId },
+        where: { providerId, status: 'ACCEPTED' },
         orderBy: { assignedAt: 'desc' },
         select: { assignedAt: true }
       }),
-      prisma.jobAssignment.count({ where: { providerId } })
+      prisma.jobAssignment.count({ where: { providerId, status: 'ACCEPTED' } })
     ]);
 
     const lastUpdated = latestAssignment ? latestAssignment.assignedAt.getTime() : 0;
@@ -1012,7 +1117,7 @@ const getProviderJobs = async (req, res, next) => {
     res.setHeader('ETag', etag);
 
     const assignments = await prisma.jobAssignment.findMany({
-      where: { providerId },
+      where: { providerId, status: 'ACCEPTED' },
       include: { 
         job: { 
           include: { 
@@ -1075,6 +1180,138 @@ const getPopularCategories = async (req, res, next) => {
   }
 };
 
+const proposeDiagnosisMaterials = async (req, res, next) => {
+  try {
+    const { jobId } = req.params;
+    const { materialsList, notes } = req.body;
+
+    if (!Array.isArray(materialsList) || materialsList.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please provide at least one item in the materials list.' });
+    }
+
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { assignments: { include: { provider: true } } }
+    });
+
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found.' });
+    }
+
+    const isAssignedProvider = job.assignments.some(a => a.status === 'ACCEPTED' && a.provider?.userId === req.user.id);
+    if (!isAssignedProvider) {
+      return res.status(403).json({ success: false, message: 'Only the assigned provider can propose materials for this job.' });
+    }
+
+    const updated = await prisma.job.update({
+      where: { id: jobId },
+      data: {
+        materialsList: materialsList,
+        materialsStatus: 'COUNTER_PROPOSED',
+        diagnosisStatus: 'DIAGNOSED',
+      }
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: job.clientId,
+        title: 'Post-Diagnosis Materials Proposed 🧰',
+        body: `The provider proposed a materials list for "${job.title}".`,
+        data: { type: 'JOB_MATERIALS_PROPOSED', jobId: job.id }
+      }
+    });
+
+    res.status(200).json({ success: true, data: updated, message: 'Job materials list proposed successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const respondToMaterialsProposal = async (req, res, next) => {
+  try {
+    const { jobId } = req.params;
+    const { action, notes } = req.body; // 'ACCEPT' | 'REJECT'
+
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { assignments: { where: { status: 'ACCEPTED' }, include: { provider: true } } }
+    });
+
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found.' });
+    }
+
+    if (job.clientId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Only the job client can respond to a materials proposal.' });
+    }
+
+    if (action === 'REJECT') {
+      const updated = await prisma.job.update({
+        where: { id: jobId },
+        data: { materialsStatus: 'REJECTED' }
+      });
+      return res.status(200).json({ success: true, data: updated, message: 'Materials proposal rejected.' });
+    }
+
+    const existingAgreements = await prisma.agreementAmendment.count({ where: { jobId } });
+    const nextVersion = existingAgreements + 1;
+    const assignedProviderUserId = job.assignments[0]?.provider?.userId || req.user.id;
+
+    await prisma.agreementAmendment.create({
+      data: {
+        jobId,
+        type: 'MATERIALS',
+        version: nextVersion,
+        status: 'AGREED',
+        proposedByUserId: assignedProviderUserId,
+        acceptedByUserId: req.user.id,
+        materials: job.materialsList || [],
+        price: job.budget,
+        notes: notes || 'Materials list accepted by client after diagnosis review.'
+      }
+    });
+
+    const updated = await prisma.job.update({
+      where: { id: jobId },
+      data: {
+        materialsStatus: 'AGREED',
+        materialsVersion: nextVersion
+      }
+    });
+
+    res.status(200).json({ success: true, data: updated, message: 'Materials list accepted and committed to agreement history.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAgreementHistory = async (req, res, next) => {
+  try {
+    const { jobId } = req.params;
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
+      include: { agreements: { orderBy: { version: 'asc' } } }
+    });
+
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found.' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        activeMaterialsList: job.materialsList,
+        materialsStatus: job.materialsStatus,
+        materialsVersion: job.materialsVersion,
+        requiresDiagnosis: job.requiresDiagnosis,
+        agreements: job.agreements
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createJob,
   getJobById,
@@ -1086,5 +1323,8 @@ module.exports = {
   updateJobStatus,
   updateJob,
   getAllJobs,
-  getPopularCategories
+  getPopularCategories,
+  proposeDiagnosisMaterials,
+  respondToMaterialsProposal,
+  getAgreementHistory
 };

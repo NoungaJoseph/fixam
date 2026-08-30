@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { setupProviderSchema } = require('../validators/provider.validator');
 const { calculateProviderStats, enrichProvidersWithStats } = require('../utils/providerStats');
 const { isRemoteSkill } = require('../utils/skillClassifier');
+const cacheMiddleware = require('../middlewares/cache.middleware');
 
 const maskProvidersPhone = (providers) => providers.map(p => {
   if (!p.user || !p.user.phone) return p;
@@ -84,6 +85,7 @@ const updateProviderProfile = async (req, res, next) => {
       data: { ...validatedData, profileScore: score },
     });
 
+    cacheMiddleware.clearCache();
     res.status(200).json({ success: true, data: profile });
   } catch (error) {
     next(error);
@@ -99,10 +101,7 @@ const getProviders = async (req, res, next) => {
     const providers = await prisma.providerProfile.findMany({
       where: { 
         profileMode: 'WORK',
-        user: { 
-          isOnline: true,
-          country: isRemote ? undefined : clientCountry
-        }
+        ...(isRemote ? {} : { user: { country: clientCountry } })
       },
       include: { 
         user: { 
@@ -394,15 +393,29 @@ const addFavoriteProvider = async (req, res, next) => {
   try {
     const { providerId } = req.params;
 
-    const provider = await prisma.providerProfile.findUnique({ where: { id: providerId } });
+    const provider = await prisma.providerProfile.findFirst({
+      where: {
+        OR: [
+          { id: providerId },
+          { userId: providerId }
+        ]
+      }
+    });
+
     if (!provider) {
-      return res.status(404).json({ success: false, message: 'Provider not found' });
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
     }
 
+    if (provider.userId === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot favorite your own profile' });
+    }
+
+    const targetId = provider.id;
+
     await prisma.clientFavoriteProvider.upsert({
-      where: { clientId_providerId: { clientId: req.user.id, providerId } },
+      where: { clientId_providerId: { clientId: req.user.id, providerId: targetId } },
       update: {},
-      create: { clientId: req.user.id, providerId }
+      create: { clientId: req.user.id, providerId: targetId }
     });
 
     res.status(200).json({ success: true, message: 'Provider added to favorites' });
@@ -415,8 +428,19 @@ const removeFavoriteProvider = async (req, res, next) => {
   try {
     const { providerId } = req.params;
 
+    const provider = await prisma.providerProfile.findFirst({
+      where: {
+        OR: [
+          { id: providerId },
+          { userId: providerId }
+        ]
+      }
+    });
+
+    const targetId = provider ? provider.id : providerId;
+
     await prisma.clientFavoriteProvider.deleteMany({
-      where: { clientId: req.user.id, providerId }
+      where: { clientId: req.user.id, providerId: targetId }
     });
 
     res.status(200).json({ success: true, message: 'Provider removed from favorites' });
@@ -480,12 +504,42 @@ const uploadVerificationDocs = async (req, res, next) => {
 
 const updateProviderStatus = async (req, res, next) => {
   try {
-    const { isOnline } = req.body;
-    const user = await prisma.user.update({
+    const { isOnline, isAvailable } = req.body;
+    const statusVal = isAvailable !== undefined ? Boolean(isAvailable) : (isOnline !== undefined ? Boolean(isOnline) : true);
+
+    await prisma.user.update({
       where: { id: req.user.id },
-      data: { isOnline: Boolean(isOnline) },
+      data: { isOnline: statusVal }
+    });
+
+    if (req.user.providerProfile) {
+      await prisma.providerProfile.update({
+        where: { id: req.user.providerProfile.id },
+        data: { isAvailable: statusVal }
+      });
+    }
+
+    try {
+      const { clearUserCache } = require('../middlewares/auth.middleware');
+      clearUserCache(req.user.id);
+    } catch (_) {}
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
       include: { providerProfile: true, wallet: true }
     });
+
+    // Broadcast real-time availability update to user's devices
+    try {
+      const { getIO } = require('../services/socket.service');
+      const io = getIO();
+      io.to(req.user.id).emit('provider:status-changed', {
+        userId: req.user.id,
+        isOnline: statusVal,
+        isAvailable: statusVal,
+        user
+      });
+    } catch (_) {}
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -959,6 +1013,7 @@ const getProviderStatsSummary = async (req, res, next) => {
     next(error);
   }
 };
+
 
 module.exports = {
   updateProviderProfile,

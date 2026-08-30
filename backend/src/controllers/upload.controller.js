@@ -1,12 +1,39 @@
 const { uploadFile } = require('../services/storage.service');
+const { processMedia } = require('../services/media.service');
+const prisma = require('../config/prisma');
 
 const uploadProfileImage = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    
-    const url = await uploadFile(req.file, 'profile-images', { requireCloud: false, req });
-    res.status(200).json({ success: true, url, data: { url }, path: req.file.originalname });
+
+    // Compress image before uploading
+    let processedFile;
+    try {
+      processedFile = await processMedia(req.file);
+    } catch (mediaErr) {
+      console.warn('[uploadProfileImage] Media processing skipped:', mediaErr.message);
+      processedFile = req.file;
+    }
+
+    const url = await uploadFile(processedFile, 'profile-images', { requireCloud: true, req });
+
+    // Automatically update user avatar in DB and clear session cache
+    if (req.user?.id) {
+      try {
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { avatar: url }
+        });
+        const { clearUserCache } = require('../middlewares/auth.middleware');
+        clearUserCache(req.user.id);
+      } catch (dbErr) {
+        console.warn('[uploadProfileImage] Auto-update avatar DB error:', dbErr.message);
+      }
+    }
+
+    res.status(200).json({ success: true, url, data: { url }, path: processedFile.originalname });
   } catch (error) {
+    console.error('[uploadProfileImage Error]:', error);
     next(error);
   }
 };
@@ -14,8 +41,10 @@ const uploadProfileImage = async (req, res, next) => {
 const uploadVerificationDoc = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    
-    const url = await uploadFile(req.file, 'verification-documents', { requireCloud: false, req });
+
+    // Verification docs: compress images but leave PDFs untouched
+    const processedFile = await processMedia(req.file);
+    const url = await uploadFile(processedFile, 'verification-documents', { requireCloud: true, req });
     res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
@@ -25,8 +54,9 @@ const uploadVerificationDoc = async (req, res, next) => {
 const uploadPaymentProof = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    
-    const url = await uploadFile(req.file, 'payment-proofs', { requireCloud: false, req });
+
+    const processedFile = await processMedia(req.file);
+    const url = await uploadFile(processedFile, 'payment-proofs', { requireCloud: true, req });
     res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
@@ -36,9 +66,30 @@ const uploadPaymentProof = async (req, res, next) => {
 const uploadPortfolioMedia = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    const bucket = req.file?.mimetype?.startsWith('video/') ? 'portfolio-videos' : 'portfolio-images';
-    const url = await uploadFile(req.file, bucket, { requireCloud: false, req });
+
+    // Compress portfolio images and videos before uploading
+    const processedFile = await processMedia(req.file);
+    // All portfolio media (images AND videos) go to a single 'portfolio-media' bucket
+    const url = await uploadFile(processedFile, 'portfolio-media', { requireCloud: true, req });
     res.status(200).json({ success: true, url, data: { url } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const uploadProposalMedia = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    const processedFile = await processMedia(req.file);
+    const url = await uploadFile(processedFile, 'proposal-media', { requireCloud: true, req });
+    res.status(200).json({ 
+      success: true, 
+      url, 
+      data: { url }, 
+      fileName: req.file.originalname, 
+      fileType: req.file.mimetype 
+    });
   } catch (error) {
     next(error);
   }
@@ -47,8 +98,10 @@ const uploadPortfolioMedia = async (req, res, next) => {
 const uploadGeneric = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-    const bucket = req.body?.type === 'video' || req.file?.mimetype?.startsWith('video/') ? 'portfolio-videos' : 'chat-media';
-    const url = await uploadFile(req.file, bucket, { requireCloud: false, req });
+
+    // Compress media before uploading
+    const processedFile = await processMedia(req.file);
+    const url = await uploadFile(processedFile, 'chat-media', { requireCloud: true, req });
     res.status(200).json({ success: true, url, data: { url } });
   } catch (error) {
     next(error);
@@ -60,5 +113,6 @@ module.exports = {
   uploadVerificationDoc,
   uploadPaymentProof,
   uploadPortfolioMedia,
+  uploadProposalMedia,
   uploadGeneric
 };

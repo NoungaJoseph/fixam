@@ -15,5 +15,9 @@ router.get('/:bookingId', bookingController.getBookingById);
 router.patch('/:bookingId/status', validate(updateBookingStatusSchema), bookingController.updateBookingStatus);
 router.post('/:bookingId/counter', validate(counterBookingSchema), bookingController.counterBooking);
 router.post('/:bookingId/request-review', bookingController.requestReview);
+router.post('/:bookingId/materials/propose', bookingController.proposeDiagnosisMaterials);
+router.post('/:bookingId/materials/respond', bookingController.respondToMaterialsProposal);
+router.get('/:bookingId/agreements', bookingController.getAgreementHistory);
+router.get('/:bookingId/contract-pdf', bookingController.downloadContractPdf);
 
 module.exports = router;

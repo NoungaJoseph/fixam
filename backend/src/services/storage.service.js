@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs/promises');
 const path = require('path');
@@ -27,46 +28,44 @@ const uploadLocal = async (file, bucket, fileName, req) => {
   return `${baseUrl}/uploads/${bucket}/${fileName}`;
 };
 
+const verifiedBuckets = new Set();
+
 const uploadFile = async (file, bucket, options = {}) => {
-  const { requireCloud = false, req } = options;
-  const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const { req } = options;
+  const safeName = (file.originalname || 'file').replace(/[^a-zA-Z0-9._-]/g, '_');
   const fileName = `${Date.now()}-${safeName}`;
 
   if (!supabase) {
-    if (requireCloud) {
-      throw new Error('Supabase Storage is not configured for persistent profile uploads.');
-    }
+    console.warn('[Storage] Supabase client not initialized. Falling back to local server storage.');
     return uploadLocal(file, bucket, fileName, req);
   }
 
   try {
+    // If bucket not yet verified in memory, ensure it exists quickly once
+    if (!verifiedBuckets.has(bucket)) {
+      try {
+        await supabase.storage.createBucket(bucket, { public: true });
+      } catch (e) {
+        // Bucket probably already exists
+      }
+      verifiedBuckets.add(bucket);
+    }
+
     let uploadRes = await supabase.storage
       .from(bucket)
       .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
+        contentType: file.mimetype || 'application/octet-stream',
         upsert: true
       });
 
-    // If bucket doesn't exist, create it dynamically and retry
-    if (uploadRes.error && (uploadRes.error.message?.includes('not found') || uploadRes.error.statusCode === '404' || uploadRes.error.statusCode === 404)) {
-      console.log(`Bucket '${bucket}' not found. Attempting to create it dynamically...`);
-      const { error: createError } = await supabase.storage.createBucket(bucket, {
-        public: true,
-        allowedMimeTypes: null,
-        fileSizeLimit: null
-      });
-
-      if (!createError) {
-        console.log(`Bucket '${bucket}' created successfully. Retrying upload...`);
-        uploadRes = await supabase.storage
-          .from(bucket)
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype,
-            upsert: true
-          });
-      } else {
-        console.error(`Failed to create bucket '${bucket}':`, createError);
-      }
+    if (uploadRes.error) {
+      console.warn(`[Storage] Upload retry for '${bucket}': ${uploadRes.error.message || uploadRes.error}`);
+      uploadRes = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype || 'application/octet-stream',
+          upsert: true
+        });
     }
 
     if (uploadRes.error) throw uploadRes.error;
@@ -77,10 +76,7 @@ const uploadFile = async (file, bucket, options = {}) => {
 
     return publicUrl;
   } catch (error) {
-    console.error('Storage Upload Error:', error);
-    if (requireCloud) {
-      throw error;
-    }
+    console.error('[Storage] Storage Upload Error, using fallback:', error.message || error);
     return uploadLocal(file, bucket, fileName, req);
   }
 };
