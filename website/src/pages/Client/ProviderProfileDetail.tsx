@@ -5,10 +5,12 @@ import { useAuth } from '../../context/AuthContext';
 import BookingFormModal from '../../components/BookingFormModal';
 import { api } from '../../services/api';
 import { getMediaUrl } from '../../App';
+import UserAvatar from '../../components/UserAvatar';
 
 interface ProviderProfileDetailProps {
   selectedProvider: any;
   setSelectedProvider: (pro: any) => void;
+  setSelectedProject?: (proj: any) => void;
   clientBookings: any[];
   setClientBookings: (bookings: any[]) => void;
   setActiveTab: (tab: string) => void;
@@ -20,6 +22,7 @@ interface ProviderProfileDetailProps {
 export default function ProviderProfileDetail({
   selectedProvider,
   setSelectedProvider,
+  setSelectedProject,
   clientBookings,
   setClientBookings,
   setActiveTab,
@@ -33,8 +36,6 @@ export default function ProviderProfileDetail({
   
   const original = selectedProvider?.originalData || {};
   const providerId = original._id || original.id;
-  const initialSaved = savedProsState.some((p: any) => p._id === providerId || (p.provider && p.provider._id === providerId));
-  const [isSaved, setIsSaved] = useState(initialSaved);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -58,19 +59,28 @@ export default function ProviderProfileDetail({
   };
 
   const fullName = selectedProvider.name || `${selectedProvider.firstName || ''} ${selectedProvider.lastName || ''}`.trim() || 'Provider';
-  const displayImage = selectedProvider.image ? getMediaUrl(selectedProvider.image) : '';
+  const rawAvatar = selectedProvider.image 
+    || selectedProvider.avatar 
+    || original.user?.avatar 
+    || original.avatar 
+    || (typeof original.portfolio?.[0] === 'string' ? original.portfolio[0] : (original.portfolio?.[0]?.imageUrl || original.portfolio?.[0]?.url || original.portfolio?.[0]?.image));
+  const displayImage = rawAvatar ? getMediaUrl(rawAvatar) : '';
+  const targetFavId = selectedProvider?.id || selectedProvider?.userId || original?.id || original?.userId;
+  const [isSaved, setIsSaved] = useState(() => {
+    return savedProsState?.some((p: any) => p.id === targetFavId || p.userId === targetFavId || p.originalData?.id === targetFavId || p.originalData?.userId === targetFavId) || false;
+  });
 
   const handleShare = async () => {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Fixam Provider: ${fullName}`,
-          text: `Check out ${fullName}'s profile on Fixam!`,
+          title: fullName,
+          text: `Check out ${fullName} on Fixam!`,
           url: window.location.href,
         });
       } else {
-        navigator.clipboard.writeText(window.location.href);
-        alert('Profile link copied to clipboard!');
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
       }
     } catch (err) {
       console.error('Error sharing:', err);
@@ -78,24 +88,32 @@ export default function ProviderProfileDetail({
   };
 
   const handleSave = async () => {
-    if (!providerId) return;
+    if (!targetFavId) return;
     try {
       if (isSaved) {
-        await api.delete(`/providers/${providerId}/favorite`);
+        await api.delete(`/providers/${targetFavId}/favorite`);
         setIsSaved(false);
         if (setSavedProsState) {
-          setSavedProsState(savedProsState.filter((p: any) => p._id !== providerId && p.provider?._id !== providerId));
+          setSavedProsState(savedProsState.filter((p: any) => p.id !== targetFavId && p.userId !== targetFavId && p.originalData?.id !== targetFavId));
         }
       } else {
-        await api.post(`/providers/${providerId}/favorite`);
+        await api.post(`/providers/${targetFavId}/favorite`);
         setIsSaved(true);
         if (setSavedProsState) {
-          setSavedProsState([...savedProsState, original]);
+          setSavedProsState([...savedProsState, {
+            id: selectedProvider.id,
+            userId: selectedProvider.userId,
+            name: fullName,
+            role: selectedProvider.role || 'Service Provider',
+            rating: selectedProvider.rating || '5.0',
+            image: displayImage,
+            originalData: selectedProvider
+          }]);
         }
       }
     } catch (err) {
       console.error('Error toggling favorite:', err);
-      alert('Failed to update favorites. Please try again.');
+      setIsSaved(!isSaved);
     }
   };
 
@@ -109,21 +127,12 @@ export default function ProviderProfileDetail({
       <div className="profile-banner-card-centered">
         <div className="profile-banner-bg-centered"></div>
         <div className="profile-header-main-centered">
-          {displayImage ? (
-            <img 
-              src={displayImage} 
-              alt={fullName} 
-              className="profile-avatar-xl" 
-              onError={(e) => {
-                (e.target as HTMLImageElement).onerror = null;
-                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=14B8A6&color=fff&size=120&rounded=true`;
-              }}
-            />
-          ) : (
-            <div className="profile-avatar-xl fallback-avatar-centered flex items-center justify-center font-bold text-3xl bg-teal-500 text-white">
-              {fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-            </div>
-          )}
+          <UserAvatar
+            uri={rawAvatar}
+            name={fullName}
+            size={120}
+            className="profile-avatar-xl shadow-lg border-4 border-white"
+          />
           
           <div className="profile-header-info-centered">
             <h1 className="profile-name-centered">
@@ -266,7 +275,27 @@ export default function ProviderProfileDetail({
                   {portfolio.map((proj: any, idx: number) => {
                     const projectImage = proj.imageUrl || proj.image || proj.url || (Array.isArray(proj.images) ? proj.images[0] : '');
                     return (
-                    <div key={idx} className="portfolio-item">
+                    <div 
+                      key={idx} 
+                      className="portfolio-item" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (setSelectedProject) {
+                          setSelectedProject({
+                            ...proj,
+                            provider: {
+                              id: selectedProvider?.id,
+                              userId: selectedProvider?.userId || selectedProvider?.id,
+                              name: selectedProvider?.name || 'Provider',
+                              avatar: selectedProvider?.image || '',
+                              rating: selectedProvider?.rating || 5.0,
+                              reviewCount: selectedProvider?.reviewCount || 0
+                            }
+                          });
+                          setActiveTab('Project Details');
+                        }
+                      }}
+                    >
                       <img src={projectImage ? getMediaUrl(projectImage) : 'https://via.placeholder.com/300x200'} alt={proj.title} />
                       <div className="portfolio-info">
                         <h4>{proj.title}</h4>
@@ -315,12 +344,13 @@ export default function ProviderProfileDetail({
             const providerUserId = selectedProvider.originalData?.userId || selectedProvider.userId || selectedProvider.id;
             
             const COIN_COSTS: Record<string, number> = {
-              NORMAL: 1,
-              URGENT: 2,
-              EMERGENCY: 3
+              NORMAL: 0,
+              HIGH_PRIORITY: 1,
+              URGENT: 1,
+              EMERGENCY: 1
             };
             const urgencyLevel = bookingData.urgency || 'NORMAL';
-            const coinCost = COIN_COSTS[urgencyLevel] || 1;
+            const coinCost = COIN_COSTS[urgencyLevel] !== undefined ? COIN_COSTS[urgencyLevel] : 0;
 
             const res = await api.post('/bookings', {
               providerId: providerUserId,
@@ -329,7 +359,8 @@ export default function ProviderProfileDetail({
               location: bookingData.location,
               notes: bookingData.notes,
               urgencyLevel: urgencyLevel,
-              budget: coinCost
+              bookingDuration: bookingData.duration || '1 Hour',
+              budget: Number(bookingData.budget) || 0
             });
 
             if (res.data?.success || res.status === 201) {

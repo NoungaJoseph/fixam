@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Icon, getMediaUrl, DEFAULT_AVATAR } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -7,6 +8,8 @@ import './ProviderDashboard.css';
 interface ProviderDashboardProps {
   setActiveTab: (tab: string) => void;
   onRoleChange?: (role: 'client' | 'pro') => void;
+  setActiveChatUser?: (user: any) => void;
+  setSelectedBooking?: (booking: any) => void;
 }
 
 type JobLead = {
@@ -45,8 +48,9 @@ const formatBudget = (job: JobLead) => {
 // Module-level persistent cache across tab navigation remounts
 let cachedJobs: JobLead[] = [];
 
-export default function ProviderDashboard({ setActiveTab, onRoleChange }: ProviderDashboardProps) {
-  const { user } = useAuth();
+export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiveChatUser, setSelectedBooking }: ProviderDashboardProps) {
+  const { user, refreshUser, updateUser } = useAuth();
+  const { t, i18n } = useTranslation();
   const [jobs, setJobs] = useState<JobLead[]>(cachedJobs);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(cachedJobs.length === 0);
@@ -61,11 +65,21 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
   const [proposalModalJob, setProposalModalJob] = useState<JobLead | null>(null);
   const [boostCoins, setBoostCoins] = useState<number>(0);
   const [coverLetter, setCoverLetter] = useState<string>('');
+  const [proposedBudget, setProposedBudget] = useState<string>('');
+  const [proposalAttachments, setProposalAttachments] = useState<any[]>([]);
+  const [isUploadingProposalFile, setIsUploadingProposalFile] = useState<boolean>(false);
   const [isSubmittingProposal, setIsSubmittingProposal] = useState<boolean>(false);
 
-  const [activeFeedTab, setActiveFeedTab] = useState<'best_matches' | 'most_recent' | 'remote_only' | 'saved_jobs'>('best_matches');
+  const [activeFeedTab, setActiveFeedTab] = useState<'best_matches' | 'most_recent' | 'remote_only' | 'saved_jobs' | 'direct_bookings'>('best_matches');
   const [isAlertVisible, setIsAlertVisible] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(user?.providerProfile?.isAvailable ?? true);
+  const [isAvailable, setIsAvailable] = useState(() => user?.providerProfile?.isAvailable ?? user?.isOnline ?? true);
+
+  useEffect(() => {
+    if (user) {
+      const currentAvail = user.providerProfile?.isAvailable ?? user.isOnline ?? true;
+      setIsAvailable(currentAvail);
+    }
+  }, [user?.providerProfile?.isAvailable, user?.isOnline]);
 
   const completionPercentage = useMemo(() => {
     let score = 0;
@@ -99,6 +113,33 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
   const [pendingBudgetMax, setPendingBudgetMax] = useState('');
   const [pendingSort, setPendingSort] = useState<'newest' | 'oldest' | 'price_high' | 'price_low'>('newest');
   const [pendingVerifiedOnly, setPendingVerifiedOnly] = useState(false);
+
+  // Direct Client Bookings Received by Provider
+  const [providerBookings, setProviderBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchProviderBookings = async () => {
+      try {
+        const res = await api.get('/bookings/mine?role=PROVIDER');
+        if (res.data?.data) {
+          setProviderBookings(res.data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching provider bookings:', err);
+      }
+    };
+    fetchProviderBookings();
+  }, []);
+
+  const handleBookingStatus = async (bookingId: string, status: 'ACCEPTED' | 'REJECTED' | 'COMPLETED') => {
+    try {
+      await api.patch(`/bookings/${bookingId}/status`, { status });
+      setProviderBookings(prev => prev.map(b => (b.id === bookingId || b._id === bookingId) ? { ...b, status } : b));
+      alert(`Booking request ${status.toLowerCase()} successfully!`);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update booking status.');
+    }
+  };
 
   // Applied filter values (triggers API request)
   const [appliedJobType, setAppliedJobType] = useState<'all' | 'remote' | 'physical'>('all');
@@ -186,15 +227,42 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
   };
 
   const isVerified = (user as any)?.verificationStatus === 'VERIFIED' || user?.providerProfile?.verification === 'VERIFIED' || user?.providerProfile?.verificationStatus === 'VERIFIED';
-  const totalProposalCoins = 1 + boostCoins;
+  const totalProposalCoins = boostCoins;
   const currentWalletBalance = walletBalance !== null ? walletBalance : 0;
-  const hasEnoughCoins = currentWalletBalance >= totalProposalCoins;
+  const hasEnoughCoins = boostCoins === 0 || currentWalletBalance >= boostCoins;
 
   const openProposalModal = (job: JobLead) => {
     setSelectedJob(null);
     setProposalModalJob(job);
     setBoostCoins(0);
     setCoverLetter('');
+    setProposedBudget(String(job.budget || ''));
+    setProposalAttachments([]);
+  };
+
+  const handleProposalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingProposalFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/uploads/proposal', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const url = res.data?.url || res.data?.data?.url;
+      if (url) {
+        setProposalAttachments(prev => [...prev, { url, name: file.name, type: file.type }]);
+      }
+    } catch (err) {
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setIsUploadingProposalFile(false);
+    }
+  };
+
+  const removeProposalAttachment = (idxToRemove: number) => {
+    setProposalAttachments(prev => prev.filter((_, idx) => idx !== idxToRemove));
   };
 
   const topBidder = useMemo(() => {
@@ -233,7 +301,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
     }
 
     if (!hasEnoughCoins) {
-      alert(`Insufficient Fixam Coins: You need at least ${totalProposalCoins} Fixam Coin${totalProposalCoins > 1 ? 's' : ''} to submit this proposal.`);
+      alert(`Insufficient Fixam Coins: You need at least ${totalProposalCoins} Fixam Coin${totalProposalCoins > 1 ? 's' : ''} to boost this proposal.`);
       setProposalModalJob(null);
       setSelectedJob(null);
       setActiveTab('Wallet');
@@ -245,15 +313,19 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
       const response = await api.post(`/jobs/${proposalModalJob.id}/apply`, {
         boostCoins,
         coverLetter: coverLetter.trim() || undefined,
+        proposedBudget: proposedBudget ? Number(proposedBudget) : undefined,
+        proposalMedia: proposalAttachments.length > 0 ? proposalAttachments : undefined,
       });
 
-      // Update local wallet balance
-      setWalletBalance((prev) => Math.max(0, (prev || 0) - totalProposalCoins));
+      // Update local wallet balance if boosted
+      if (totalProposalCoins > 0) {
+        setWalletBalance((prev) => Math.max(0, (prev || 0) - totalProposalCoins));
+      }
 
       // Remove job from feed list
       setJobs((current) => current.filter((item) => item.id !== proposalModalJob.id));
 
-      const successMsg = response.data?.message || (boostCoins > 0 ? `🚀 Boosted Proposal Sent Successfully! (${boostCoins} boost coins used)` : '🎉 Proposal Sent Successfully!');
+      const successMsg = response.data?.message || (boostCoins > 0 ? `🚀 Boosted Proposal Sent Successfully! (${boostCoins} boost coins used)` : '🎉 Proposal Sent Successfully (FREE)!');
       alert(successMsg);
 
       setProposalModalJob(null);
@@ -307,10 +379,14 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
           {/* DARK HERO BANNER */}
           <div className="upwork-hero-banner">
             <div className="upwork-hero-content">
-              <span className="upwork-hero-tag">Direct Contracts</span>
-              <h2>Maximize your earnings with a low 5% service fee when you bring new clients to Fixam.</h2>
+              <span className="upwork-hero-tag">{i18n.language === 'fr' ? 'Contrats directs' : 'Direct Contracts'}</span>
+              <h2>
+                {i18n.language === 'fr' 
+                  ? 'Maximisez vos gains avec des frais de service réduits à 5% lorsque vous amenez de nouveaux clients sur Fixam.' 
+                  : 'Maximize your earnings with a low 5% service fee when you bring new clients to Fixam.'}
+              </h2>
               <button className="btn-hero-white" onClick={() => setActiveTab('Post a Project')}>
-                Publish Project
+                {i18n.language === 'fr' ? 'Publier un projet' : 'Publish Project'}
               </button>
             </div>
             <div className="upwork-hero-graphic">
@@ -331,7 +407,11 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
             <div className="upwork-alert-banner">
               <div className="alert-text-group">
                 <span className="alert-icon">🎓</span>
-                <p>Explore professional career pathways & skill certifications on Fixam Career Hub to boost your earnings and win high-paying client contracts in Cameroon.</p>
+                <p>
+                  {i18n.language === 'fr'
+                    ? 'Explorez les parcours professionnels et certifications sur Fixam Career Hub pour augmenter vos revenus et décrocher des contrats au Cameroun.'
+                    : 'Explore professional career pathways & skill certifications on Fixam Career Hub to boost your earnings and win high-paying client contracts in Cameroon.'}
+                </p>
               </div>
               <div className="alert-actions">
                 <button 
@@ -341,7 +421,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                     window.open(url, '_blank');
                   }}
                 >
-                  Explore Career Pathways
+                  {i18n.language === 'fr' ? 'Explorer les parcours' : 'Explore Career Pathways'}
                 </button>
                 <button className="alert-close-btn" onClick={() => setIsAlertVisible(false)} title="Close alert">
                   ✕
@@ -358,7 +438,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
               </svg>
               <input
                 type="search"
-                placeholder="Search for jobs"
+                placeholder={i18n.language === 'fr' ? 'Rechercher des missions' : 'Search for jobs'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -368,7 +448,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
           {/* JOBS YOU MIGHT LIKE SECTION */}
           <div className="upwork-jobs-section">
             <div className="jobs-section-header">
-              <h2>Jobs you might like</h2>
+              <h2>{i18n.language === 'fr' ? 'Missions qui pourraient vous intéresser' : 'Jobs you might like'}</h2>
             </div>
 
             {/* TAB LINKS & FILTER BUTTON ROW */}
@@ -378,25 +458,31 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                   className={`feed-tab-btn ${activeFeedTab === 'best_matches' ? 'active' : ''}`}
                   onClick={() => setActiveFeedTab('best_matches')}
                 >
-                  Best matches
+                  {i18n.language === 'fr' ? 'Meilleures correspondances' : 'Best matches'}
                 </button>
                 <button
                   className={`feed-tab-btn ${activeFeedTab === 'most_recent' ? 'active' : ''}`}
                   onClick={() => setActiveFeedTab('most_recent')}
                 >
-                  Most recent
+                  {i18n.language === 'fr' ? 'Plus récentes' : 'Most recent'}
                 </button>
                 <button
                   className={`feed-tab-btn ${activeFeedTab === 'remote_only' ? 'active' : ''}`}
                   onClick={() => setActiveFeedTab('remote_only')}
                 >
-                  Remote only
+                  {i18n.language === 'fr' ? 'À distance' : 'Remote only'}
+                </button>
+                <button
+                  className={`feed-tab-btn ${activeFeedTab === 'direct_bookings' ? 'active' : ''}`}
+                  onClick={() => setActiveFeedTab('direct_bookings')}
+                >
+                  {i18n.language === 'fr' ? 'Réservations directes' : 'Direct Bookings'} {providerBookings.length > 0 && `(${providerBookings.length})`}
                 </button>
                 <button
                   className={`feed-tab-btn ${activeFeedTab === 'saved_jobs' ? 'active' : ''}`}
                   onClick={() => setActiveFeedTab('saved_jobs')}
                 >
-                  Saved jobs {savedJobIds.length > 0 && `(${savedJobIds.length})`}
+                  {i18n.language === 'fr' ? 'Missions enregistrées' : 'Saved jobs'} {savedJobIds.length > 0 && `(${savedJobIds.length})`}
                 </button>
               </div>
 
@@ -408,18 +494,119 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="4" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="16" y2="12" /><line x1="11" y1="18" x2="13" y2="18" />
                 </svg>
-                Filters
+                {i18n.language === 'fr' ? 'Filtres' : 'Filters'}
                 {hasActiveFilters && <span className="filter-badge-dot" />}
               </button>
             </div>
+      <p className="feed-subtext">
+        {i18n.language === 'fr' 
+          ? 'Parcourez les offres correspondant à votre expérience et aux préférences des clients. Triées par pertinence.'
+          : 'Browse jobs that match your experience to a client\'s hiring preferences. Ordered by most relevant.'}
+      </p>
 
-            <p className="feed-subtext">
-              Browse jobs that match your experience to a client's hiring preferences. Ordered by most relevant.
-            </p>
+            {/* FEED JOB CARDS LIST */}
+            <div className="upwork-feed-cards-list">
+              {activeFeedTab === 'direct_bookings' ? (
+                providerBookings.length === 0 ? (
+                  <div className="feed-empty-state">
+                    <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '0.5rem' }}>📅</span>
+                    <p style={{ fontWeight: 600, color: '#334155' }}>No direct booking requests yet</p>
+                    <p style={{ fontSize: '0.88rem', color: '#64748B', maxWidth: '400px', margin: '0.5rem auto' }}>
+                      When clients book your services directly from your profile, their booking requests will appear here for you to accept, manage, or complete.
+                    </p>
+                  </div>
+                ) : (
+                  providerBookings.map((bk) => {
+                    const clientObj = bk.client || bk.user || {};
+                    const clientName = clientObj.fullName || `${clientObj.firstName || ''} ${clientObj.lastName || ''}`.trim() || 'Client';
+                    const clientAvatar = clientObj.avatar ? getMediaUrl(clientObj.avatar) : DEFAULT_AVATAR;
+                    const status = bk.status || 'PENDING';
+                    const bkId = bk.id || bk._id;
+                    const formattedDate = bk.bookingDate ? new Date(bk.bookingDate).toLocaleDateString() : 'Scheduled';
+                    const formattedTime = bk.bookingTime || '09:00';
 
-            {/* JOB FEED CARDS */}
-            <div className="upwork-job-cards-list">
-              {isLoading ? (
+                    return (
+                      <article className="upwork-job-card" key={bkId} style={{ borderLeft: '4px solid #14B8A6' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <img src={clientAvatar} alt={clientName} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #CBD5E1' }} />
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0F172A' }}>{clientName}</h4>
+                              <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>
+                                📅 {formattedDate} • ⏰ {formattedTime}
+                              </span>
+                            </div>
+                          </div>
+                          <span 
+                            style={{ 
+                              padding: '4px 12px', 
+                              borderRadius: '20px', 
+                              fontSize: '0.75rem', 
+                              fontWeight: 800, 
+                              textTransform: 'uppercase',
+                              backgroundColor: status === 'ACCEPTED' ? '#DCFCE7' : status === 'COMPLETED' ? '#DBEAFE' : status === 'REJECTED' || status === 'CANCELLED' ? '#FEE2E2' : '#FEF9C3',
+                              color: status === 'ACCEPTED' ? '#166534' : status === 'COMPLETED' ? '#1E40AF' : status === 'REJECTED' || status === 'CANCELLED' ? '#991B1B' : '#854D0E'
+                            }}
+                          >
+                            {status}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem', backgroundColor: '#F8FAFC', padding: '0.75rem', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+                          <div><span style={{ color: '#64748B' }}>Duration:</span> <strong style={{ color: '#334155' }}>{bk.bookingDuration || '1 Hour'}</strong></div>
+                          <div><span style={{ color: '#64748B' }}>Budget:</span> <strong style={{ color: '#0D9488' }}>{bk.budget ? `${Number(bk.budget).toLocaleString()} XAF` : 'Agreed Rate'}</strong></div>
+                          <div><span style={{ color: '#64748B' }}>Urgency:</span> <strong style={{ color: '#334155' }}>{bk.urgencyLevel || 'NORMAL'}</strong></div>
+                          <div style={{ gridColumn: '1 / -1' }}><span style={{ color: '#64748B' }}>Location:</span> <strong style={{ color: '#334155' }}>{bk.location || 'Client Location'}</strong></div>
+                        </div>
+
+                        {bk.notes && (
+                          <p style={{ fontSize: '0.82rem', color: '#475569', backgroundColor: '#FFFFFF', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #F1F5F9', fontStyle: 'italic', margin: '0 0 0.75rem 0' }}>
+                            "{bk.notes}"
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #F1F5F9' }}>
+                          {status === 'PENDING' && (
+                            <>
+                              <button
+                                style={{ backgroundColor: '#10B981', color: '#FFFFFF', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                                onClick={() => handleBookingStatus(bkId, 'ACCEPTED')}
+                              >
+                                ✓ Accept Booking
+                              </button>
+                              <button
+                                style={{ backgroundColor: '#FEF2F2', color: '#EF4444', border: '1px solid #FCA5A5', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                                onClick={() => handleBookingStatus(bkId, 'REJECTED')}
+                              >
+                                ✕ Reject
+                              </button>
+                            </>
+                          )}
+                          {status === 'ACCEPTED' && (
+                            <button
+                              style={{ backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                              onClick={() => handleBookingStatus(bkId, 'COMPLETED')}
+                            >
+                              ✓ Mark Completed
+                            </button>
+                          )}
+                          <button
+                            style={{ backgroundColor: '#F0FDFA', color: '#0D9488', border: '1px solid #99F6E4', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}
+                            onClick={() => {
+                              if (setSelectedBooking) {
+                                setSelectedBooking(bk);
+                              }
+                              setActiveTab('Booking Details');
+                            }}
+                          >
+                            {i18n.language === 'fr' ? '📋 Voir la réservation' : '📋 View Booking Details'}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
+                )
+              ) : isLoading ? (
                 <div className="feed-status-message">Loading jobs...</div>
               ) : error ? (
                 <div className="feed-status-message error">{error}</div>
@@ -639,7 +826,9 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
               />
               <div className="flex-1 min-w-0">
                 <h4 className="user-name truncate">{user?.fullName || 'Nounga Joseph'}</h4>
-                <p className="user-tagline text-teal-600 font-bold">Provider & Specialist</p>
+                <p className="user-tagline text-teal-600 font-bold">
+                  {i18n.language === 'fr' ? 'Prestataire & Spécialiste' : 'Provider & Specialist'}
+                </p>
               </div>
             </div>
 
@@ -652,7 +841,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 >
                   <span className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Switch to Client Profile
+                    {i18n.language === 'fr' ? 'Espace Client' : 'Client'}
                   </span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="9 18 15 12 9 6" />
@@ -664,7 +853,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
             <div className="profile-completion-box pt-2 border-t border-slate-100">
               <div className="flex justify-between items-center text-xs mb-1.5">
                 <button className="complete-profile-link" onClick={() => setActiveTab('My Profile')}>
-                  Complete your profile
+                  {i18n.language === 'fr' ? 'Complétez votre profil' : 'Complete your profile'}
                 </button>
                 <strong className="text-slate-700 font-extrabold">{completionPercentage}%</strong>
               </div>
@@ -677,14 +866,16 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
           {/* PROMOTE WITH ADS CARD */}
           <div className="upwork-sidebar-card">
             <div className="sidebar-card-header">
-              <h4>Promote with ads</h4>
+              <h4>{i18n.language === 'fr' ? 'Promouvoir avec des annonces' : 'Promote with ads'}</h4>
               <span className="chevron">^</span>
             </div>
             <div className="promote-option-row flex items-center justify-between py-2 border-b border-slate-100">
               <div>
-                <span className="label block font-semibold text-slate-800 text-xs">Availability badge</span>
+                <span className="label block font-semibold text-slate-800 text-xs">
+                  {i18n.language === 'fr' ? 'Badge de disponibilité' : 'Availability badge'}
+                </span>
                 <span className={`val text-xs font-bold ${isAvailable ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {isAvailable ? 'Available Now ●' : 'Off'}
+                  {isAvailable ? (i18n.language === 'fr' ? 'Disponible maintenant ●' : 'Available Now ●') : (i18n.language === 'fr' ? 'Désactivé' : 'Off')}
                 </span>
               </div>
               <button
@@ -692,10 +883,19 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 onClick={async () => {
                   const nextState = !isAvailable;
                   setIsAvailable(nextState);
+                  updateUser({
+                    isOnline: nextState,
+                    providerProfile: { ...user?.providerProfile, isAvailable: nextState }
+                  });
                   try {
-                    await api.put('/providers/status', { isAvailable: nextState });
+                    await api.put('/providers/status', { isAvailable: nextState, isOnline: nextState });
                   } catch (e) {
                     console.error('Failed to update availability status', e);
+                    setIsAvailable(!nextState);
+                    updateUser({
+                      isOnline: !nextState,
+                      providerProfile: { ...user?.providerProfile, isAvailable: !nextState }
+                    });
                   }
                 }}
                 title={isAvailable ? 'Turn off availability' : 'Turn on availability'}
@@ -705,11 +905,13 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
             </div>
             <div className="promote-option-row flex items-center justify-between py-2">
               <div>
-                <span className="label block font-semibold text-slate-800 text-xs">Boost your profile</span>
+                <span className="label block font-semibold text-slate-800 text-xs">
+                  {i18n.language === 'fr' ? 'Booster votre profil' : 'Boost your profile'}
+                </span>
                 <span className="val text-xs font-bold text-slate-400">
                   {user?.providerProfile?.boostExpiresAt && new Date(user.providerProfile.boostExpiresAt) > new Date()
-                    ? 'Active 🚀'
-                    : 'Off'}
+                    ? (i18n.language === 'fr' ? 'Actif 🚀' : 'Active 🚀')
+                    : (i18n.language === 'fr' ? 'Désactivé' : 'Off')}
                 </span>
               </div>
               <button
@@ -717,35 +919,112 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 onClick={() => setActiveTab('Boost Profile')}
                 title="Boost your profile"
               >
-                Boost 🚀
+                {i18n.language === 'fr' ? 'Booster 🚀' : 'Boost 🚀'}
               </button>
             </div>
           </div>
 
+          {/* PROFILE COMPLETION STEPS (FREE/BORDERLESS - DISAPPEARS WHEN 100% COMPLETE) */}
+          {(() => {
+            const hasAvatar = Boolean(user?.image);
+            const hasSkills = Array.isArray(user?.providerProfile?.skills) && user.providerProfile.skills.length > 0;
+            const hasBio = Boolean(user?.providerProfile?.bio && user.providerProfile.bio.trim().length > 10);
+            const hasRate = Boolean(user?.providerProfile?.rate && Number(user.providerProfile.rate) > 0);
+            const hasLocation = Boolean(user?.location || user?.providerProfile?.serviceArea);
+            const hasVerification = user?.providerProfile?.verification === 'VERIFIED' || user?.providerProfile?.verification === 'PENDING' || (user as any)?.isVerified;
+
+            const stepsList = [
+              { id: 'avatar', title: i18n.language === 'fr' ? 'Photo de profil' : 'Profile Photo', done: hasAvatar, tab: 'My Profile' },
+              { id: 'skills', title: i18n.language === 'fr' ? 'Compétences' : 'Skills & Services', done: hasSkills, tab: 'My Profile' },
+              { id: 'bio', title: i18n.language === 'fr' ? 'Bio professionnelle' : 'Professional Bio', done: hasBio, tab: 'My Profile' },
+              { id: 'rate', title: i18n.language === 'fr' ? 'Tarif horaire' : 'Hourly Rate', done: hasRate, tab: 'My Profile' },
+              { id: 'location', title: i18n.language === 'fr' ? 'Zone de service' : 'Service Location', done: hasLocation, tab: 'My Profile' },
+              { id: 'verification', title: i18n.language === 'fr' ? 'Vérification' : 'Identity Verification', done: hasVerification, tab: 'My Profile' },
+            ];
+
+            const completedSteps = stepsList.filter(s => s.done).length;
+            const percentage = Math.round((completedSteps / stepsList.length) * 100);
+
+            if (completedSteps === stepsList.length) return null;
+
+            return (
+              <div className="py-3 px-1 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                    {i18n.language === 'fr' ? 'Complétez votre profil' : 'Complete your profile'}
+                  </span>
+                  <span className="text-xs font-black text-teal-600 dark:text-teal-400">
+                    {completedSteps}/{stepsList.length} ({percentage}%)
+                  </span>
+                </div>
+
+                {/* Stepper Progress Bar */}
+                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex gap-1">
+                  {stepsList.map((step, idx) => (
+                    <div
+                      key={step.id}
+                      className={`h-full flex-1 rounded-full transition-all duration-300 ${step.done ? 'bg-teal-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                      title={`${idx + 1}. ${step.title}: ${step.done ? 'Done' : 'Pending'}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Steps List */}
+                <div className="space-y-1 pt-1">
+                  {stepsList.map((step, idx) => (
+                    <button
+                      key={step.id}
+                      onClick={() => setActiveTab(step.tab)}
+                      className={`w-full flex items-center justify-between text-left py-1 px-1.5 rounded transition text-xs ${
+                        step.done 
+                          ? 'text-slate-400 dark:text-slate-500 line-through' 
+                          : 'text-slate-700 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 font-semibold'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          step.done ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}>
+                          {step.done ? '✓' : idx + 1}
+                        </span>
+                        {step.title}
+                      </span>
+                      {!step.done && (
+                        <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold">
+                          {i18n.language === 'fr' ? 'Ajouter +' : 'Add +'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* COINS & WALLET CARD */}
           <div className="upwork-sidebar-card">
             <div className="sidebar-card-header">
-              <h4>Coins: {walletBalance !== null ? walletBalance : 0} XAF</h4>
+              <h4>{i18n.language === 'fr' ? 'Pièces' : 'Coins'}: {walletBalance !== null ? walletBalance : 0} XAF</h4>
               <span className="chevron">^</span>
             </div>
             <button
               className="btn-buy-connects"
               onClick={() => setActiveTab('Wallet')}
             >
-              Buy Coins
+              {i18n.language === 'fr' ? 'Acheter des pièces' : 'Buy Coins'}
             </button>
           </div>
 
           {/* QUICK LINKS CARD */}
           <div className="upwork-sidebar-card quick-links-card">
             <button className="quick-link-item" onClick={() => setActiveTab('Post a Project')}>
-              Post a Project ↗
+              {i18n.language === 'fr' ? 'Publier un projet ↗' : 'Post a Project ↗'}
             </button>
             <button className="quick-link-item" onClick={() => setActiveTab('My Stats')}>
-              My Stats & Earnings ↗
+              {i18n.language === 'fr' ? 'Mes stats & gains ↗' : 'My Stats & Earnings ↗'}
             </button>
             <button className="quick-link-item" onClick={() => setActiveTab('Support')}>
-              Help Center & Support ↗
+              {i18n.language === 'fr' ? 'Centre d\'aide & Support ↗' : 'Help Center & Support ↗'}
             </button>
           </div>
 
@@ -1109,7 +1388,8 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                     className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer transition border-none outline-none"
                     onClick={async () => {
                       try {
-                        await api.put('/providers/status', { isAvailable: true });
+                        await api.put('/providers/status', { isAvailable: true, isOnline: true });
+                        await refreshUser();
                         setIsAvailable(true);
                       } catch (e) {}
                     }}
@@ -1159,6 +1439,20 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 </div>
               )}
 
+              {/* Proposed Budget */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Your Proposed Price / Budget (XAF)
+                </label>
+                <input 
+                  type="number"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 bg-slate-50 focus:bg-white transition"
+                  placeholder="e.g. 50000"
+                  value={proposedBudget}
+                  onChange={(e) => setProposedBudget(e.target.value)}
+                />
+              </div>
+
               {/* Pitch / Cover Note Textarea */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -1173,13 +1467,47 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 />
               </div>
 
+              {/* Attach Photo CV / PDF Resume */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Attach Photo CV / PDF Resume / Samples
+                </label>
+                <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-emerald-300 hover:border-emerald-500 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer transition">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={handleProposalFileUpload}
+                    disabled={isUploadingProposalFile}
+                  />
+                  <span>{isUploadingProposalFile ? 'Uploading File...' : '+ Attach Photo or PDF Document'}</span>
+                </label>
+
+                {proposalAttachments.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {proposalAttachments.map((att, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 bg-slate-100 rounded-lg text-xs">
+                        <span className="truncate max-w-[280px] font-medium text-slate-700">📎 {att.name}</span>
+                        <button
+                          type="button"
+                          className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer border-none bg-transparent"
+                          onClick={() => removeProposalAttachment(idx)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Boost Proposal Section (Manual Input Field) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Boost Your Proposal Rank (Optional)
                 </label>
                 <p className="text-[11px] text-slate-500 mb-2">
-                  Enter extra boost coins to outbid competitors and rank at the top of the client's applicant list.
+                  Enter extra boost coins to rank at the top of the client's applicant list. If not selected, boost coins are 100% refunded.
                 </p>
                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                   <div className="flex-1">
@@ -1198,7 +1526,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                     />
                   </div>
                   <div className="text-right text-xs text-slate-600 font-medium">
-                    <div>Base Cost: <strong>1 Coin</strong></div>
+                    <div>Base Cost: <strong className="text-emerald-600">FREE</strong></div>
                     {boostCoins > 0 && <div className="text-emerald-600 font-bold">+ {boostCoins} Boost Coins</div>}
                   </div>
                 </div>
@@ -1207,7 +1535,9 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
               {/* Summary Cost Footer */}
               <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
                 <span className="text-slate-600 font-medium">Total Cost:</span>
-                <strong className="text-emerald-700 font-extrabold text-sm">{totalProposalCoins} Fixam Coin{totalProposalCoins > 1 ? 's' : ''}</strong>
+                <strong className="text-emerald-700 font-extrabold text-sm">
+                  {totalProposalCoins > 0 ? `${totalProposalCoins} Fixam Coin${totalProposalCoins > 1 ? 's' : ''}` : 'FREE (0 Coins)'}
+                </strong>
               </div>
 
             </div>
@@ -1227,7 +1557,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange }: Provid
                 onClick={handleSubmitProposalForm}
                 disabled={isSubmittingProposal || !isVerified || !isAvailable || !hasEnoughCoins}
               >
-                {isSubmittingProposal ? 'Submitting...' : 'Submit Proposal Now'}
+                {isSubmittingProposal ? 'Submitting...' : (totalProposalCoins > 0 ? `Submit Boosted Proposal (${totalProposalCoins} Coins)` : 'Submit Proposal (FREE)')}
               </button>
             </div>
 

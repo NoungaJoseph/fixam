@@ -190,9 +190,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
 
     setIsUploadingAvatar(true);
     try {
-      const response = await api.post('/upload/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await api.post('/upload/profile', formData);
       if (response.data?.url) {
         // Persist the new avatar URL to the database user record
         await api.put('/users/profile', { avatar: response.data.url });
@@ -227,7 +225,16 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
         <div className="flex flex-col md:flex-row items-center md:items-end text-center md:text-left gap-6 relative">
           <div className="relative flex-shrink-0">
             <div className="relative w-28 h-28 rounded-full overflow-hidden shadow-md">
-              <img src={user?.image ? getMediaUrl(user.image) : DEFAULT_AVATAR} alt={fullName} className="w-full h-full object-cover bg-gray-100" />
+              <img 
+                src={(user?.avatar || user?.image) ? getMediaUrl(user.avatar || user.image) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'User')}&background=14B8A6&color=fff&size=120&rounded=true`} 
+                alt={fullName} 
+                className="w-full h-full object-cover bg-gray-100" 
+                onError={(e) => {
+                  (e.target as HTMLImageElement).onerror = null;
+                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || 'User')}&background=14B8A6&color=fff&size=120&rounded=true`;
+                }}
+              />
+            </div>
               {isUploadingAvatar && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <svg className="animate-spin h-8 w-8 text-[#14B8A6]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -236,7 +243,6 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
                   </svg>
                 </div>
               )}
-            </div>
             <button 
               className="absolute bottom-0 right-0 bg-[#14B8A6] text-white p-1.5 rounded-full shadow-sm hover:bg-[#0F9788] transition" 
               aria-label="Change Avatar" 
@@ -281,8 +287,8 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
               >
                 <Icon name={userRole === 'client' ? 'briefcase' : 'user'} /> 
                 {userRole === 'client' 
-                  ? (i18n.language === 'fr' ? 'Passer en Mode Prestataire 🔄' : 'Switch to Provider Mode 🔄')
-                  : (i18n.language === 'fr' ? 'Passer en Mode Client 🔄' : 'Switch to Client Mode 🔄')
+                  ? (i18n.language === 'fr' ? 'Prestataire' : 'Provider')
+                  : 'Client'
                 }
               </button>
             )}
@@ -342,14 +348,14 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
 
       {profileActiveSubTab === 'Overview' && (
         <div className="space-y-8 animate-fade-in w-full">
-          <section className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm w-full">
+          <section className="bg-transparent py-2 w-full">
             <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">About the Fixam Profile</h3>
             <p className="text-gray-600 leading-relaxed text-sm mb-4">
               Your profile is your digital identity on Fixam. A complete profile helps providers trust you, resulting in faster booking acceptances and better service. It gives professionals an idea of who they are working with before they even arrive.
             </p>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm w-full">
+          <section className="bg-transparent py-2 w-full">
             <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">Personal Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
               <div className="flex flex-col py-2 border-b border-gray-100">
@@ -376,7 +382,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
       )}
 
       {profileActiveSubTab === 'Preferences' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm animate-fade-in max-w-2xl">
+        <div className="bg-transparent py-2 animate-fade-in max-w-2xl">
           <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">Account Preferences</h3>
           
           <div className="space-y-6">
@@ -405,7 +411,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
       )}
 
       {profileActiveSubTab === 'Reviews' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm animate-fade-in">
+        <div className="bg-transparent py-2 animate-fade-in">
           <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">My Reviews</h3>
           {reviews.length > 0 ? (
             <div className="space-y-4">
@@ -426,7 +432,7 @@ export default function MyProfile({ setActiveTab, onRoleChange, userRole }: MyPr
       )}
 
       {profileActiveSubTab === 'Saved Providers' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm animate-fade-in">
+        <div className="bg-transparent py-2 animate-fade-in">
           <h3 className="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">Saved Providers</h3>
           {savedPros.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

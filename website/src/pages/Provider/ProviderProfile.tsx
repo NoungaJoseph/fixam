@@ -1,11 +1,13 @@
 import './ProviderProfile.css';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Icon, getMediaUrl, DEFAULT_AVATAR } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
 interface ProviderProfileProps {
   setActiveTab?: (tab: string) => void;
+  setSelectedProject?: (proj: any) => void;
 }
 
 type Certificate = {
@@ -16,9 +18,16 @@ type Certificate = {
 };
 
 type PortfolioItem = {
+  id?: string;
   title: string;
   description: string;
+  category?: string;
+  price?: number;
   imageUrl?: string;
+  images?: string[];
+  video?: string;
+  videoUrl?: string;
+  videos?: string[];
   link?: string;
 };
 
@@ -38,8 +47,10 @@ const SKILL_SUGGESTIONS = [
   'Make-up Artist', 'Barbing', 'Nail Technician', 'Massage Therapy',
 ];
 
-export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) {
-  const { user, refreshUser } = useAuth();
+export default function ProviderProfile({ setActiveTab, setSelectedProject }: ProviderProfileProps) {
+  const { user, refreshUser, updateUser } = useAuth();
+  const { t, i18n } = useTranslation();
+  const [selectedModalProject, setSelectedModalProject] = useState<any | null>(null);
   const [activeSubTab, setActiveSubTab] = useState('Overview');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,11 +99,15 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
   // Reviews
   const [reviews, setReviews] = useState<any[]>([]);
 
+  // Availability toggle (for mobile and desktop)
+  const [isProfileAvailable, setIsProfileAvailable] = useState(() => Boolean(user?.providerProfile?.isAvailable ?? user?.isOnline ?? true));
+
   const fullName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Provider';
 
-  // Populate form when user loads
+  // Populate form and sync availability when user loads
   useEffect(() => {
     if (user) {
+      setIsProfileAvailable(Boolean(user.providerProfile?.isAvailable ?? user.isOnline ?? true));
       setEditFirstName(user.firstName || user.fullName?.split(' ')[0] || '');
       setEditLastName(user.lastName || user.fullName?.split(' ')[1] || '');
       setEditPhone(user.phone || '');
@@ -166,9 +181,7 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const res = await api.post('/upload/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const res = await api.post('/upload/profile', formData);
       if (res.data?.url) {
         await api.put('/users/profile', { avatar: res.data.url });
         await refreshUser();
@@ -217,9 +230,7 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
       if (certFile) {
         const fd = new FormData();
         fd.append('file', certFile);
-        const res = await api.post('/upload/portfolio', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await api.post('/upload/portfolio', fd);
         documentUrl = res.data?.url || res.data?.data?.url || '';
       }
       const newCert: Certificate = {
@@ -266,9 +277,7 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
       if (portfolioFile) {
         const fd = new FormData();
         fd.append('file', portfolioFile);
-        const res = await api.post('/upload/portfolio', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await api.post('/upload/portfolio', fd);
         imageUrl = res.data?.url || res.data?.data?.url || '';
       }
       const newItem: PortfolioItem = {
@@ -305,7 +314,18 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
     }
   };
 
-  const subTabs = ['Overview', 'Skills', 'Portfolio', 'Certificates', 'Reviews'];
+  const rawSubTabs = ['Overview', 'Skills', 'Portfolio', 'Certificates', 'Reviews'];
+  const getSubTabLabel = (tab: string) => {
+    if (i18n.language !== 'fr') return tab;
+    switch (tab) {
+      case 'Overview': return 'Aperçu';
+      case 'Skills': return 'Compétences';
+      case 'Portfolio': return 'Portfolio';
+      case 'Certificates': return 'Certificats';
+      case 'Reviews': return 'Avis';
+      default: return tab;
+    }
+  };
 
   return (
     <div className="pp-root animate-fade-in">
@@ -351,36 +371,74 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
               <h2 className="pp-fullname">{fullName}</h2>
               {(user?.providerProfile?.verification === 'VERIFIED' || (user as any)?.isVerified) && (
                 <span className="pp-badge pp-verified">
-                  <Icon name="shield" /> Verified
+                  <Icon name="shield" /> {i18n.language === 'fr' ? 'Vérifié' : 'Verified'}
                 </span>
               )}
               {user?.providerProfile?.verification === 'PENDING' && (
-                <span className="pp-badge pp-pending">⏰ Pending Review</span>
+                <span className="pp-badge pp-pending">⏰ {i18n.language === 'fr' ? 'Vérification en attente' : 'Pending Review'}</span>
               )}
             </div>
             {user?.providerProfile?.experienceLevel && (
-              <p className="pp-experience-label">{user.providerProfile.experienceLevel} Professional</p>
+              <p className="pp-experience-label">{user.providerProfile.experienceLevel} {i18n.language === 'fr' ? 'Professionnel' : 'Professional'}</p>
             )}
             <div className="pp-contact-row">
-              <span><Icon name="message" /> {user?.email || 'No email'}</span>
-              <span><Icon name="phone" /> {user?.phone || 'No phone'}</span>
-              <span><Icon name="location" /> {user?.location || 'No location'}</span>
+              <span><Icon name="message" /> {user?.email || (i18n.language === 'fr' ? 'Pas d\'e-mail' : 'No email')}</span>
+              <span><Icon name="phone" /> {user?.phone || (i18n.language === 'fr' ? 'Pas de téléphone' : 'No phone')}</span>
+              <span><Icon name="location" /> {user?.location || (i18n.language === 'fr' ? 'Lieu non défini' : 'No location')}</span>
             </div>
             {user?.providerProfile?.rate && (
               <div className="pp-rate-badge">
-                💰 {Number(user.providerProfile.rate).toLocaleString()} XAF / hr
+                💰 {Number(user.providerProfile.rate).toLocaleString()} XAF / {i18n.language === 'fr' ? 'h' : 'hr'}
               </div>
             )}
           </div>
 
           {/* Action Buttons */}
           <div className="pp-action-btns">
+            {/* Availability Toggle - visible especially on mobile */}
+            <div className="pp-availability-toggle" style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              background: isProfileAvailable ? '#ecfdf5' : '#f1f5f9',
+              border: `1px solid ${isProfileAvailable ? '#6ee7b7' : '#cbd5e1'}`,
+              borderRadius: '12px', padding: '0.6rem 1rem', width: '100%', marginBottom: '0.75rem'
+            }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isProfileAvailable ? '#059669' : '#64748b', flex: 1 }}>
+                {isProfileAvailable
+                  ? (i18n.language === 'fr' ? '🟢 En ligne — Disponible' : '🟢 Online — Available')
+                  : (i18n.language === 'fr' ? '⚪ Hors ligne — Indisponible' : '⚪ Offline — Unavailable')}
+              </span>
+              <button
+                className={`w-12 h-7 flex items-center rounded-full p-1 transition-colors cursor-pointer border-none outline-none ${isProfileAvailable ? 'bg-emerald-500 justify-end' : 'bg-slate-300 justify-start'}`}
+                onClick={async () => {
+                  const nextState = !isProfileAvailable;
+                  setIsProfileAvailable(nextState);
+                  updateUser({
+                    isOnline: nextState,
+                    providerProfile: { ...user?.providerProfile, isAvailable: nextState }
+                  });
+                  try {
+                    await api.put('/providers/status', { isAvailable: nextState, isOnline: nextState });
+                    await refreshUser();
+                  } catch (e) {
+                    console.error('Failed to update availability status', e);
+                    setIsProfileAvailable(!nextState);
+                    updateUser({
+                      isOnline: !nextState,
+                      providerProfile: { ...user?.providerProfile, isAvailable: !nextState }
+                    });
+                  }
+                }}
+                title={isProfileAvailable ? (i18n.language === 'fr' ? 'Désactiver la disponibilité' : 'Turn off availability') : (i18n.language === 'fr' ? 'Activer la disponibilité' : 'Turn on availability')}
+              >
+                <span className="w-5 h-5 bg-white rounded-full shadow-md" />
+              </button>
+            </div>
             <button className="pp-btn-edit" onClick={() => setIsEditModalOpen(true)}>
-              <Icon name="wrench" /> Edit Profile
+              <Icon name="wrench" /> {i18n.language === 'fr' ? 'Modifier le profil' : 'Edit Profile'}
             </button>
             {!(user?.providerProfile?.verification === 'VERIFIED' || user?.providerProfile?.verification === 'PENDING') && (
               <button className="pp-btn-verify" onClick={() => setActiveTab?.('Verification')}>
-                <Icon name="shield" /> Get Verified
+                <Icon name="shield" /> {i18n.language === 'fr' ? 'Se faire vérifier' : 'Get Verified'}
               </button>
             )}
           </div>
@@ -389,37 +447,37 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
         {/* Stats Row */}
         <div className="pp-stats-row">
           <div className="pp-stat">
-            <span className="pp-stat-label">Member Since</span>
+            <span className="pp-stat-label">{i18n.language === 'fr' ? 'Membre depuis' : 'Member Since'}</span>
             <strong className="pp-stat-val">
               <Icon name="calendar" /> {new Date((user as any)?.createdAt || Date.now()).toLocaleDateString()}
             </strong>
           </div>
           <div className="pp-stat">
-            <span className="pp-stat-label">Date of Birth</span>
+            <span className="pp-stat-label">{i18n.language === 'fr' ? 'Date de naissance' : 'Date of Birth'}</span>
             <strong className="pp-stat-val">
-              {user?.dob ? new Date(user.dob).toLocaleDateString() : 'Not set'}
+              {user?.dob ? new Date(user.dob).toLocaleDateString() : (i18n.language === 'fr' ? 'Non définie' : 'Not set')}
             </strong>
           </div>
           <div className="pp-stat">
-            <span className="pp-stat-label">Skills</span>
-            <strong className="pp-stat-val">{skills.length} Added</strong>
+            <span className="pp-stat-label">{i18n.language === 'fr' ? 'Compétences' : 'Skills'}</span>
+            <strong className="pp-stat-val">{skills.length} {i18n.language === 'fr' ? 'Ajoutées' : 'Added'}</strong>
           </div>
           <div className="pp-stat">
-            <span className="pp-stat-label">Certifications</span>
-            <strong className="pp-stat-val">{certificates.length} Uploaded</strong>
+            <span className="pp-stat-label">{i18n.language === 'fr' ? 'Certifications' : 'Certifications'}</span>
+            <strong className="pp-stat-val">{certificates.length} {i18n.language === 'fr' ? 'Téléchargées' : 'Uploaded'}</strong>
           </div>
         </div>
       </div>
 
       {/* Sub-Tab Navigation */}
       <div className="pp-tabs-scroll">
-        {subTabs.map(tab => (
+        {rawSubTabs.map(tab => (
           <button
             key={tab}
             className={`pp-tab-btn ${activeSubTab === tab ? 'active' : ''}`}
             onClick={() => setActiveSubTab(tab)}
           >
-            {tab}
+            {getSubTabLabel(tab)}
           </button>
         ))}
       </div>
@@ -431,17 +489,17 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
         {activeSubTab === 'Overview' && (
           <div className="pp-panel-group animate-fade-in">
             <div className="pp-panel">
-              <h3 className="pp-panel-title">About Me</h3>
+              <h3 className="pp-panel-title">{i18n.language === 'fr' ? 'À propos de moi' : 'About Me'}</h3>
               <p className="pp-bio-text">
-                {user?.providerProfile?.bio || 'No bio yet. Click Edit Profile to add a professional summary.'}
+                {user?.providerProfile?.bio || (i18n.language === 'fr' ? 'Aucune biographie pour le moment. Cliquez sur Modifier le profil pour ajouter un résumé professionnel.' : 'No bio yet. Click Edit Profile to add a professional summary.')}
               </p>
             </div>
 
             <div className="pp-panel">
-              <h3 className="pp-panel-title">Personal Information</h3>
+              <h3 className="pp-panel-title">{i18n.language === 'fr' ? 'Informations personnelles' : 'Personal Information'}</h3>
               <div className="pp-info-grid">
                 <div className="pp-info-item">
-                  <span className="pp-info-label"><Icon name="user" /> Full Name</span>
+                  <span className="pp-info-label"><Icon name="user" /> {i18n.language === 'fr' ? 'Nom complet' : 'Full Name'}</span>
                   <strong>{fullName}</strong>
                 </div>
                 <div className="pp-info-item">
@@ -449,28 +507,28 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
                   <strong>{user?.email}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label"><Icon name="phone" /> Phone</span>
-                  <strong>{user?.phone || 'Not set'}</strong>
+                  <span className="pp-info-label"><Icon name="phone" /> {i18n.language === 'fr' ? 'Téléphone' : 'Phone'}</span>
+                  <strong>{user?.phone || (i18n.language === 'fr' ? 'Non défini' : 'Not set')}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label"><Icon name="location" /> Location</span>
-                  <strong>{user?.location || 'Not set'}</strong>
+                  <span className="pp-info-label"><Icon name="location" /> {i18n.language === 'fr' ? 'Lieu' : 'Location'}</span>
+                  <strong>{user?.location || (i18n.language === 'fr' ? 'Non défini' : 'Not set')}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label">📅 Date of Birth</span>
-                  <strong>{user?.dob ? new Date(user.dob).toLocaleDateString() : 'Not set'}</strong>
+                  <span className="pp-info-label">📅 {i18n.language === 'fr' ? 'Date de naissance' : 'Date of Birth'}</span>
+                  <strong>{user?.dob ? new Date(user.dob).toLocaleDateString() : (i18n.language === 'fr' ? 'Non définie' : 'Not set')}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label">💰 Hourly Rate</span>
-                  <strong>{user?.providerProfile?.rate ? `${Number(user.providerProfile.rate).toLocaleString()} XAF/hr` : 'Not set'}</strong>
+                  <span className="pp-info-label">💰 {i18n.language === 'fr' ? 'Tarif horaire' : 'Hourly Rate'}</span>
+                  <strong>{user?.providerProfile?.rate ? `${Number(user.providerProfile.rate).toLocaleString()} XAF/hr` : (i18n.language === 'fr' ? 'Non défini' : 'Not set')}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label">🎯 Experience Level</span>
-                  <strong>{user?.providerProfile?.experienceLevel || 'Not set'}</strong>
+                  <span className="pp-info-label">🎯 {i18n.language === 'fr' ? 'Niveau d\'expérience' : 'Experience Level'}</span>
+                  <strong>{user?.providerProfile?.experienceLevel || (i18n.language === 'fr' ? 'Non défini' : 'Not set')}</strong>
                 </div>
                 <div className="pp-info-item">
-                  <span className="pp-info-label">📍 Service Area</span>
-                  <strong>{user?.providerProfile?.serviceArea || 'Not set'}</strong>
+                  <span className="pp-info-label">📍 {i18n.language === 'fr' ? 'Zone d\'intervention' : 'Service Area'}</span>
+                  <strong>{user?.providerProfile?.serviceArea || (i18n.language === 'fr' ? 'Non définie' : 'Not set')}</strong>
                 </div>
               </div>
             </div>
@@ -625,27 +683,124 @@ export default function ProviderProfile({ setActiveTab }: ProviderProfileProps) 
               </div>
             ) : (
               <div className="pp-portfolio-grid">
-                {portfolio.map((item, i) => (
-                  <div key={i} className="pp-portfolio-card">
-                    {item.imageUrl && (
-                      <img src={getMediaUrl(item.imageUrl)} alt={item.title} className="pp-portfolio-img" />
-                    )}
-                    <div className="pp-portfolio-body">
-                      <h4 className="pp-portfolio-title">{item.title}</h4>
-                      {item.description && <p className="pp-portfolio-desc">{item.description}</p>}
-                      {item.link && (
-                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="pp-portfolio-link">
-                          🔗 View Project
-                        </a>
+                {portfolio.map((item, i) => {
+                  const coverImg = item.imageUrl || (Array.isArray(item.images) && item.images[0]) || '';
+                  const rawImgs = Array.isArray(item.images) && item.images.length > 0 ? item.images : (coverImg ? [coverImg] : []);
+                  const rawVids = Array.isArray(item.videos) ? item.videos : (item.video ? (Array.isArray(item.video) ? item.video : [item.video]) : []);
+
+                  const handleCardClick = () => {
+                    const fullProj = {
+                      ...item,
+                      imageUrl: coverImg,
+                      images: rawImgs,
+                      videos: rawVids,
+                      provider: {
+                        id: user?.id,
+                        userId: user?.id,
+                        name: fullName,
+                        avatar: user?.avatar || '',
+                        rating: (user as any)?.rating || 5.0,
+                        reviewCount: (user as any)?.reviewCount || 0
+                      }
+                    };
+                    setSelectedModalProject(fullProj);
+                  };
+
+                  return (
+                    <div
+                      key={item.id || i}
+                      className="pp-portfolio-card"
+                      style={{ cursor: 'pointer', position: 'relative' }}
+                      onClick={handleCardClick}
+                    >
+                      {coverImg ? (
+                        <img src={getMediaUrl(coverImg)} alt={item.title} className="pp-portfolio-img" />
+                      ) : (
+                        <div style={{ width: '100%', height: '140px', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                          🎬 Demo Video ({rawVids.length})
+                        </div>
                       )}
+                      <div className="pp-portfolio-body">
+                        <h4 className="pp-portfolio-title">{item.title}</h4>
+                        {item.description && <p className="pp-portfolio-desc">{item.description}</p>}
+                        {item.link && (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pp-portfolio-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            🔗 External Link
+                          </a>
+                        )}
+                        <span style={{ fontSize: '0.75rem', color: '#14b8a6', fontWeight: 700, marginTop: '8px', display: 'inline-block' }}>
+                          View Full Details →
+                        </span>
+                      </div>
+                      <button
+                        className="pp-btn-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePortfolio(i);
+                        }}
+                        title="Delete"
+                      >✕</button>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Quick Preview Modal for Provider Portfolio */}
+            {selectedModalProject && (
+              <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '20px' }}>
+                <div style={{ background: '#fff', borderRadius: '16px', maxWidth: '700px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', position: 'relative' }}>
+                  <button
+                    onClick={() => setSelectedModalProject(null)}
+                    style={{ position: 'absolute', top: '16px', right: '16px', background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    ✕
+                  </button>
+
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>{selectedModalProject.title}</h3>
+                  {selectedModalProject.category && (
+                    <span style={{ fontSize: '0.75rem', background: '#ccfbf1', color: '#0d9488', padding: '4px 10px', borderRadius: '12px', fontWeight: 700, display: 'inline-block', marginBottom: '16px' }}>
+                      {selectedModalProject.category}
+                    </span>
+                  )}
+
+                  {/* Images Showcase */}
+                  {selectedModalProject.images && selectedModalProject.images.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                      {selectedModalProject.images.map((img: string, idx: number) => (
+                        <img key={idx} src={getMediaUrl(img)} alt={`Project media ${idx}`} style={{ width: '100%', height: '180px', objectFit: 'cover', borderRadius: '10px' }} />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Videos Showcase */}
+                  {selectedModalProject.videos && selectedModalProject.videos.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                      {selectedModalProject.videos.map((vid: string, idx: number) => (
+                        <video key={idx} src={getMediaUrl(vid, 'video')} controls style={{ width: '100%', maxHeight: '300px', borderRadius: '10px', background: '#000' }} />
+                      ))}
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: '0.95rem', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                    {selectedModalProject.description}
+                  </p>
+
+                  <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
-                      className="pp-btn-delete"
-                      onClick={() => handleDeletePortfolio(i)}
-                      title="Delete"
-                    >✕</button>
+                      onClick={() => setSelectedModalProject(null)}
+                      style={{ background: '#0d9488', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 20px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Close
+                    </button>
                   </div>
-                ))}
+                </div>
               </div>
             )}
           </div>

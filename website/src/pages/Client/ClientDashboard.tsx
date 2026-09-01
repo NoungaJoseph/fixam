@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Icon, getMediaUrl } from '../../App';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
 import CreateTaskModal from './CreateTaskModal';
+import UserAvatar from '../../components/UserAvatar';
 
 interface Service {
   id: string;
@@ -39,6 +42,8 @@ interface ClientDashboardProps {
   walletBalance?: number;
   setSelectedBooking?: (booking: any) => void;
   onRoleChange?: (role: 'client' | 'pro') => void;
+  favoriteProjectIds?: string[];
+  toggleFavoriteProject?: (projectId: string) => void;
 }
 
 export default function ClientDashboard({
@@ -53,8 +58,11 @@ export default function ClientDashboard({
   setClientTasks,
   setSelectedBooking,
   onRoleChange,
+  favoriteProjectIds = [],
+  toggleFavoriteProject,
 }: ClientDashboardProps) {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const [showTaskModal, setShowTaskModal] = useState(false);
 
   // Auto-open task creation modal if redirected from the landing page
@@ -66,11 +74,42 @@ export default function ClientDashboard({
     }
   }, []);
 
+  const [fallbackPros, setFallbackPros] = useState<Provider[]>([]);
+
+  // Self-healing provider fetch in case initial app boot occurred during server restart
+  useEffect(() => {
+    if (displayedPros.length === 0) {
+      const fetchFallbackPros = async () => {
+        try {
+          const res = await api.get('/providers');
+          if (res.data?.data && Array.isArray(res.data.data)) {
+            const formatted = res.data.data.map((item: any) => ({
+              id: item.id,
+              userId: item.user?.id || item.userId,
+              name: item.user?.fullName || 'Anonymous Provider',
+              role: item.skills && item.skills.length > 0 ? item.skills.join(', ') : 'Service Provider',
+              rating: item.rating ? Number(item.rating).toFixed(1) : '5.0',
+              image: item.user?.avatar ? getMediaUrl(item.user.avatar) : '',
+              originalData: item,
+              isVerified: item.verification === 'VERIFIED'
+            }));
+            setFallbackPros(formatted);
+          }
+        } catch (err) {
+          console.error('Failed to load fallback providers in dashboard:', err);
+        }
+      };
+      fetchFallbackPros();
+    }
+  }, [displayedPros.length]);
+
+  const activePros = displayedPros.length > 0 ? displayedPros : fallbackPros;
+
   // Extract portfolio projects from all providers (matching mobile app's projectShowcaseList)
   const portfolioProjects = useMemo(() => {
     const projects: any[] = [];
     const currentUserId = user?.id || '';
-    displayedPros.forEach((pro) => {
+    activePros.forEach((pro) => {
       const raw = pro.originalData;
       if (!raw || !Array.isArray(raw.portfolio)) return;
       raw.portfolio.forEach((item: any) => {
@@ -81,19 +120,21 @@ export default function ClientDashboard({
           try { parsedPackages = JSON.parse(parsedPackages); } catch (_) {}
         }
 
-        const itemImages = Array.isArray(item.images) && item.images.length > 0
+        const rawImages = Array.isArray(item.images) && item.images.length > 0
           ? item.images
           : (item.imageUrl ? [item.imageUrl] : (item.url ? [item.url] : (item.image ? [item.image] : [])));
+        const itemImages = rawImages.map((u: string) => getMediaUrl(u, 'image')).filter(Boolean);
 
-        const itemVideos = Array.isArray(item.videos) && item.videos.length > 0
+        const rawVideos = Array.isArray(item.videos) && item.videos.length > 0
           ? item.videos
           : (item.video ? (Array.isArray(item.video) ? item.video : [item.video]) : (item.videoUrl ? [item.videoUrl] : []));
+        const itemVideos = rawVideos.map((u: string) => getMediaUrl(u, 'video')).filter(Boolean);
 
         projects.push({
           id: item.id || `${raw.id}_${item.title || 'proj'}`,
           title: item.title || 'Untitled Project',
           description: item.description || '',
-          imageUrl: itemImages[0] || item.imageUrl || item.url || item.image || '',
+          imageUrl: itemImages[0] || getMediaUrl(item.imageUrl || item.url || item.image, 'image') || '',
           images: itemImages,
           videos: itemVideos,
           video: itemVideos[0] || null,
@@ -114,10 +155,15 @@ export default function ClientDashboard({
     });
     // Exclude own projects
     return projects.filter(p => p.provider.id !== currentUserId && p.provider.userId !== currentUserId);
-  }, [displayedPros, user?.id]);
+  }, [activePros, user?.id]);
   
   const getGreeting = () => {
     const hour = new Date().getHours();
+    if (i18n.language === 'fr') {
+      if (hour < 12) return 'Bonjour';
+      if (hour < 18) return 'Bon après-midi';
+      return 'Bonsoir';
+    }
     if (hour < 12) return 'Good Morning';
     if (hour < 18) return 'Good Afternoon';
     return 'Good Evening';
@@ -128,12 +174,16 @@ export default function ClientDashboard({
       {/* Greeting row */}
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{getGreeting()}, {user?.firstName || 'User'}! 👋</h1>
-          <p className="text-sm text-gray-500">Here's what's happening with your account today.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            {getGreeting()}, {user?.firstName || (i18n.language === 'fr' ? 'Utilisateur' : 'User')} ! 👋
+          </h1>
+          <p className="text-sm text-gray-500">
+            {i18n.language === 'fr' ? 'Voici ce qui se passe sur votre compte aujourd\'hui.' : 'Here\'s what\'s happening with your account today.'}
+          </p>
         </div>
         <button className="bg-[#14B8A6] text-white text-sm px-4 py-2 rounded font-medium hover:bg-[#0F9788] transition flex items-center gap-2 w-full md:w-auto justify-center" onClick={() => setActiveTab('Find Services')}>
           <Icon name="search" />
-          Browse Services
+          {i18n.language === 'fr' ? 'Parcourir les services' : 'Browse Services'}
         </button>
       </div>
 
@@ -141,33 +191,35 @@ export default function ClientDashboard({
       <div className="grid md:grid-cols-2 gap-5 mb-8">
         <div className="bg-orange-50/50 border border-gray-200 rounded-lg p-5 relative flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-gray-400 mb-3">Post a Task</p>
+            <p className="text-xs font-medium text-gray-400 mb-3">{i18n.language === 'fr' ? 'Publier une tâche' : 'Post a Task'}</p>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-md bg-orange-100 flex items-center justify-center">
                 <span className="text-orange-600"><Icon name="briefcase" /></span>
               </div>
-              <span className="text-sm font-bold text-gray-800">New Job</span>
+              <span className="text-sm font-bold text-gray-800">{i18n.language === 'fr' ? 'Nouvelle tâche' : 'New Job'}</span>
             </div>
-            <h3 className="text-base font-semibold text-gray-700 mb-4">What do you need help with?</h3>
+            <h3 className="text-base font-semibold text-gray-700 mb-4">
+              {i18n.language === 'fr' ? 'Avec quoi avez-vous besoin d\'aide ?' : 'What do you need help with?'}
+            </h3>
           </div>
           <div className="border-t border-gray-200 pt-3 flex justify-end">
             <button 
               className="bg-[#14B8A6] text-white text-sm font-bold px-6 py-2.5 rounded-lg hover:bg-[#0F9788] transition-colors shadow-sm"
               onClick={() => setShowTaskModal(true)}
             >
-              Create a Task
+              {i18n.language === 'fr' ? 'Créer une tâche' : 'Create a Task'}
             </button>
           </div>
         </div>
 
         <div className="bg-teal-50/50 border border-gray-200 rounded-lg p-5 relative flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-gray-400 mb-3">Your Wallet</p>
+            <p className="text-xs font-medium text-gray-400 mb-3">{i18n.language === 'fr' ? 'Votre portefeuille' : 'Your Wallet'}</p>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-md bg-teal-100 flex items-center justify-center">
                 <span className="text-teal-600"><Icon name="wallet" /></span>
               </div>
-              <span className="text-sm font-bold text-gray-800">Fixam Coins</span>
+              <span className="text-sm font-bold text-gray-800">{i18n.language === 'fr' ? 'Pièces Fixam' : 'Fixam Coins'}</span>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">{walletBalance.toLocaleString()} XAF</h3>
           </div>
@@ -179,7 +231,7 @@ export default function ClientDashboard({
             >
               <span className="text-2xl leading-none">+</span>
             </button>
-            <span className="text-xs font-bold text-[#14B8A6]">Top Up</span>
+            <span className="text-xs font-bold text-[#14B8A6]">{i18n.language === 'fr' ? 'Recharger' : 'Top Up'}</span>
           </div>
         </div>
       </div>
@@ -309,9 +361,23 @@ export default function ClientDashboard({
                     {/* Like Button */}
                     <button
                       className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition"
-                      onClick={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (toggleFavoriteProject) toggleFavoriteProject(project.id);
+                      }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill={favoriteProjectIds.includes(project.id) ? "#EF4444" : "none"} 
+                        stroke={favoriteProjectIds.includes(project.id) ? "#EF4444" : "currentColor"} 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      </svg>
                     </button>
                   </div>
 
@@ -357,44 +423,64 @@ export default function ClientDashboard({
         </div>
       )}
 
-      {/* 2. Recommended For You (No box, larger profiles) */}
+      {/* 2. Recommended For You (2x2 Grid, Max 4 Pros) */}
       <div className="mb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-xl">🎯</span>
-          <h2 className="text-xl font-bold text-gray-800">Recommended for You</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎯</span>
+            <h2 className="text-xl font-bold text-gray-800">
+              {i18n.language === 'fr' ? 'Recommandé pour vous' : 'Recommended for You'}
+            </h2>
+          </div>
+          <button 
+            type="button"
+            className="text-sm font-bold text-[#14B8A6] hover:text-[#0F9788] transition-colors flex items-center gap-1"
+            onClick={() => setActiveTab('Find Services')}
+          >
+            {i18n.language === 'fr' ? 'Voir tout' : 'View All'} &rarr;
+          </button>
         </div>
-        <div className="flex flex-wrap gap-6">
-          {displayedPros.slice(0, 5).map((pro, idx) => {
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {activePros.slice(0, 4).map((pro, idx) => {
             const roleArray = pro.role ? pro.role.split(',').map((s: string) => s.trim()) : [];
-            const displayRole = roleArray.length > 0 ? roleArray[0] : 'Service Provider';
+            const displayRole = roleArray.length > 0 ? roleArray[0] : (i18n.language === 'fr' ? 'Prestataire' : 'Service Provider');
+            const proObj = pro as any;
+            const rawAvatar = proObj.image 
+              || proObj.avatar 
+              || proObj.user?.avatar 
+              || proObj.user?.image 
+              || proObj.originalData?.user?.avatar 
+              || proObj.originalData?.avatar 
+              || (typeof proObj.originalData?.portfolio?.[0] === 'string' ? proObj.originalData.portfolio[0] : (proObj.originalData?.portfolio?.[0]?.imageUrl || proObj.originalData?.portfolio?.[0]?.url || proObj.originalData?.portfolio?.[0]?.image));
+
             return (
-              <div className="flex flex-col items-center text-center group cursor-pointer bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow p-5" key={idx} onClick={() => { setSelectedProvider(pro); setActiveTab('Provider Profile'); }} style={{ width: '170px' }}>
-                <div className="relative mb-4">
-                  {pro.image ? (
-                    <img 
-                      src={getMediaUrl(pro.image)} 
-                      alt={pro.name || 'Provider'} 
-                      className="w-24 h-24 rounded-full object-cover shadow-inner group-hover:ring-4 ring-teal-50 transition-all" 
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).onerror = null;
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(pro.name || 'Provider')}&background=14B8A6&color=fff&size=96&rounded=true`;
-                      }}
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full shadow-inner bg-teal-500 text-white flex items-center justify-center font-bold text-3xl group-hover:ring-4 ring-teal-50 transition-all">
-                      {(pro.name || 'Provider').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  <button className="absolute -top-2 -right-2 bg-white rounded-full p-2 shadow border border-gray-50 text-gray-300 hover:text-[#F59E0B] hover:scale-110 transition z-10" onClick={(e) => { e.stopPropagation(); alert(`${pro.name} saved!`); }}>
+              <div 
+                className="flex flex-col items-center text-center group cursor-pointer bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all p-4 relative" 
+                key={idx} 
+                onClick={() => { setSelectedProvider(pro); setActiveTab('Provider Profile'); }}
+              >
+                <div className="relative mb-3">
+                  <UserAvatar 
+                    uri={rawAvatar} 
+                    name={pro.name || 'Provider'} 
+                    size={88} 
+                    className="shadow-inner group-hover:ring-4 ring-teal-50 transition-all" 
+                  />
+                  <button 
+                    type="button"
+                    className="absolute -top-1 -right-1 bg-white rounded-full p-1.5 shadow border border-gray-100 text-gray-300 hover:text-[#F59E0B] hover:scale-110 transition z-10" 
+                    onClick={(e) => { e.stopPropagation(); alert(`${pro.name} saved!`); }}
+                  >
                     <Icon name="star" />
                   </button>
                 </div>
-                <h4 className="text-[15px] font-bold text-gray-800 mb-1 group-hover:text-teal-600 transition-colors line-clamp-1 w-full">{pro.name || 'Provider'}</h4>
-                <span className="block text-[11px] uppercase font-bold tracking-wider text-gray-500 mb-2 line-clamp-1 w-full" title={displayRole}>{displayRole}</span>
-                <div className="flex items-center justify-center gap-1 text-sm bg-orange-50 px-2 py-1 rounded-full text-[#F59E0B]">
+                <h4 className="text-[14px] sm:text-[15px] font-bold text-gray-800 mb-0.5 group-hover:text-teal-600 transition-colors line-clamp-1 w-full">{pro.name || 'Provider'}</h4>
+                <span className="block text-[10px] sm:text-[11px] uppercase font-bold tracking-wider text-gray-500 mb-2 line-clamp-1 w-full" title={displayRole}>{displayRole}</span>
+                <div className="flex items-center justify-center gap-1 text-xs bg-orange-50 px-2.5 py-1 rounded-full text-[#F59E0B] font-semibold mt-auto">
                   <Icon name="star" />
-                  <span className="font-bold">{pro.rating}</span>
-                  <span className="text-orange-400 text-xs ml-1">({pro.originalData?.reviewsCount || 0})</span>
+                  <span className="font-bold">{pro.rating || '5.0'}</span>
+                  <span className="text-orange-400 text-[10px] ml-0.5">({pro.originalData?.reviewsCount || 0})</span>
                 </div>
               </div>
             );
@@ -414,7 +500,7 @@ export default function ClientDashboard({
           </button>
         </div>
         
-        <div style={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+        <div className="w-full">
           {(() => {
             const formatCardDate = (dateStr: string) => {
               if (!dateStr || dateStr === 'TBD') {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Icon } from '../../App';
+import { MaterialsListEditor, MaterialItem } from '../../components/MaterialsListEditor';
 
 const SERVICE_CATEGORIES = [
   { value: 'plumbing', label: 'Plumbing', fr: 'Plomberie', icon: '🔧' },
@@ -25,6 +26,14 @@ const PRIORITY_OPTIONS = [
   { value: 'LOW', label: 'Low – Flexible schedule', fr: 'Faible – Flexible' },
   { value: 'NORMAL', label: 'Normal – Within a few days', fr: 'Normal – Dans quelques jours' },
   { value: 'HIGH', label: 'Urgent – As soon as possible', fr: 'Urgent – Dès que possible' },
+];
+
+const PROVIDER_TIERS = [
+  { value: '1', label: '1 Provider (1 Coin)', fr: '1 Prestataire (1 Pièce)', coins: 1 },
+  { value: '2', label: '2 Providers (2 Coins)', fr: '2 Prestataires (2 Pièces)', coins: 2 },
+  { value: '3', label: '3+ Providers (3 Coins)', fr: '3+ Prestataires (3 Pièces)', coins: 3 },
+  { value: '7', label: '7+ Providers (4 Coins)', fr: '7+ Prestataires (4 Pièces)', coins: 4 },
+  { value: '10', label: '10+ Providers (5 Coins)', fr: '10+ Prestataires (5 Pièces)', coins: 5 },
 ];
 
 const SCOPE_OPTIONS = [
@@ -65,6 +74,8 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
     priority: 'NORMAL',
     taskScope: 'SMALL',
     scheduledTime: '',
+    materialsList: [] as MaterialItem[],
+    requiresDiagnosis: false,
   });
 
   useEffect(() => {
@@ -89,6 +100,8 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
         priority: 'NORMAL',
         taskScope: 'SMALL',
         scheduledTime: '',
+        materialsList: [],
+        requiresDiagnosis: false,
       });
     }
   }, [isOpen]);
@@ -212,6 +225,9 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
         providersNeeded: Number(form.providersNeeded),
         priority: form.priority,
         taskScope: form.taskScope,
+        scheduledTime: form.scheduledTime || undefined,
+        materialsList: form.materialsList,
+        requiresDiagnosis: form.requiresDiagnosis,
       };
       if (form.whatNeedsDone) payload.whatNeedsDone = form.whatNeedsDone;
       if (form.importantDetails) payload.importantDetails = form.importantDetails;
@@ -454,16 +470,23 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>{t.description} *</label>
                     <textarea
+                      rows={4}
                       value={form.description}
                       onChange={e => update('description', e.target.value)}
                       placeholder={t.descriptionPlaceholder}
-                      rows={3}
                       style={{
                         width: '100%', border: '1px solid #E2E8F0', borderRadius: '10px',
-                        padding: '0.7rem 1rem', fontSize: '0.875rem', outline: 'none', resize: 'none'
+                        padding: '0.7rem 1rem', fontSize: '0.875rem', outline: 'none', resize: 'vertical'
                       }}
                     />
                   </div>
+
+                  <MaterialsListEditor
+                    items={form.materialsList}
+                    onChangeItems={(items) => setForm(f => ({ ...f, materialsList: items }))}
+                    requiresDiagnosis={form.requiresDiagnosis}
+                    onToggleDiagnosis={(val) => setForm(f => ({ ...f, requiresDiagnosis: val }))}
+                  />
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>{t.whatNeedsDone} ({isFr ? 'optionnel' : 'optional'})</label>
@@ -555,19 +578,28 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>{t.providersNeeded}</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => update('providersNeeded', String(Math.max(1, Number(form.providersNeeded) - 1)))}
-                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer', color: '#475569' }}
-                      >−</button>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0F172A', width: '20px', textAlign: 'center' }}>{form.providersNeeded}</span>
-                      <button
-                        type="button"
-                        onClick={() => update('providersNeeded', String(Math.min(30, Number(form.providersNeeded) + 1)))}
-                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '1.2rem', fontWeight: 700, cursor: 'pointer', color: '#475569' }}
-                      >+</button>
-                    </div>
+                    <select
+                      value={form.providersNeeded}
+                      onChange={(e) => update('providersNeeded', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.7rem 1rem',
+                        borderRadius: '10px',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: '#0F172A',
+                        background: '#FFF',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      {PROVIDER_TIERS.map(tier => (
+                        <option key={tier.value} value={tier.value}>
+                          {isFr ? tier.fr : tier.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

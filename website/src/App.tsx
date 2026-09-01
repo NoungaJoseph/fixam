@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from './i18n'
 import Login from './pages/Auth/Login'
 import Register from './pages/Auth/Register'
 import ForgotPassword from './pages/Auth/ForgotPassword'
@@ -58,22 +59,27 @@ import SkillDetail from './pages/Resources/SkillDetail'
 import CareerPathways from './pages/Resources/CareerPathways'
 import CareerPathwaysBrowsePage from './pages/Resources/CareerPathwaysBrowsePage'
 import CareerPathwayDetailPage from './pages/Resources/CareerPathwayDetailPage'
+import SupportPage from './pages/SupportPage'
+import WhyFixam from './pages/WhyFixam'
+import Solutions from './pages/Solutions'
+import Insights from './pages/Insights'
 import { useAuth } from './context/AuthContext'
 import { api } from './services/api'
 import CookieBanner from './components/CookieBanner'
+import { usePageAnalytics } from './hooks/usePageAnalytics'
 
 import './App.css'
 import './marketplace.css'
 import './components/Megamenu.css'
 import './mobile-upgrades.css'
 
-export type Page = 'home' | 'services' | 'about' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide' | 'terms' | 'privacy' | 'success_stories' | 'reviews' | 'updates' | 'research' | 'blog' | 'release_notes' | 'skill_detail' | 'career_pathways' | 'career_pathway_detail' | 'career_simulation' | 'download' | 'profile_view' | 'job_view'
+export type Page = 'home' | 'services' | 'about' | 'why_fixam' | 'solutions' | 'insights' | 'login' | 'register' | 'forgot_password' | 'otp' | 'dashboard' | 'guide' | 'terms' | 'privacy' | 'success_stories' | 'reviews' | 'updates' | 'research' | 'blog' | 'release_notes' | 'skill_detail' | 'career_pathways' | 'career_pathway_detail' | 'career_simulation' | 'download' | 'profile_view' | 'job_view' | 'support'
 
 export type IconName =
   | 'appliance' | 'bell' | 'briefcase' | 'calendar' | 'chat' | 'check' | 'cleaning'
   | 'delivery' | 'electrical' | 'filter' | 'home' | 'location' | 'menu' | 'message'
   | 'painting' | 'plumbing' | 'search' | 'shield' | 'star' | 'user' | 'wallet' | 'wrench' | 'x'
-  | 'chevron-up' | 'chevron-down'
+  | 'chevron-up' | 'chevron-down' | 'heart'
   | 'sun' | 'moon' | 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'chart' | 'phone' | 'settings' | 'logout'
 
 export const asset = (fileName: string) => `/assets/${fileName}`
@@ -92,15 +98,23 @@ export const getMediaUrl = (path?: string, type?: 'image' | 'video') => {
       : 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
   }
 
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path;
-  }
-
   // Handle local device URIs from mobile emulators that cannot be rendered directly by web browsers
   if (path.startsWith('file://') || path.startsWith('content://')) {
     return type === 'video'
       ? 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
       : 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&auto=format&fit=crop&q=80';
+  }
+
+  // Normalize /uploads/ paths so they dynamically point to current active backend origin
+  if (path.includes('/uploads/')) {
+    const relativeUpload = '/uploads/' + path.split('/uploads/')[1];
+    const API_URL = getApiUrl();
+    const origin = API_URL.replace(/\/api\/?$/, '');
+    return `${origin}${relativeUpload}`;
+  }
+
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
   }
 
   const API_URL = getApiUrl();
@@ -217,11 +231,86 @@ function MaintenanceScreen({ message }: { message: string }) {
   );
 }
 
+const TAB_SLUG_MAP: Record<string, string> = {
+  'dashboard': 'Dashboard',
+  'find-services': 'Find Services',
+  'my-bookings': 'My Bookings',
+  'my-tasks': 'My Tasks',
+  'saved-providers': 'Saved Providers',
+  'stats': 'Stats',
+  'wallet-and-coins': 'Wallet & Coins',
+  'wallet': 'Wallet',
+  'buy-coins': 'Buy Coins',
+  'messages': 'Messages',
+  'notifications': 'Notifications',
+  'settings': 'Settings',
+  'reviews': 'Reviews',
+  'support': 'Support',
+  'referrals': 'Referrals',
+  'my-profile': 'My Profile',
+  'verification': 'Verification',
+  'my-jobs': 'My Jobs',
+  'job-leads': 'Job Leads',
+  'post-a-project': 'Post a Project',
+  'profile-settings': 'Profile Settings',
+  'public-profile': 'Public Profile',
+  'boost-profile': 'Boost Profile',
+  'booking-details': 'Booking Details',
+};
+
+function getInitialPageFromUrl(): Page {
+  if (typeof window === 'undefined') return 'home';
+  const path = window.location.pathname;
+  if (path.startsWith('/profile/')) return 'profile_view';
+  if (path.startsWith('/job/')) return 'job_view';
+  if (path === '/download' || path === '/download/') return 'download';
+  if (path === '/support' || path === '/support/') return 'support';
+
+  const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  if (hash === 'support' || hash === 'help') {
+    return 'support';
+  }
+  if (hash.startsWith('tab-') || TAB_SLUG_MAP[hash]) {
+    return 'dashboard';
+  }
+
+  const validPages: Page[] = ['home', 'services', 'about', 'login', 'register', 'forgot_password', 'otp', 'dashboard', 'guide', 'terms', 'privacy', 'success_stories', 'reviews', 'updates', 'research', 'blog', 'release_notes', 'skill_detail', 'career_pathways', 'career_pathway_detail', 'career_simulation', 'download', 'profile_view', 'job_view', 'support'];
+  if (validPages.includes(hash as Page)) {
+    return hash as Page;
+  }
+
+  const pathPage = path.replace(/^\/+/, '').replace(/\/$/, '').replace(/-/g, '_').toLowerCase();
+  if (validPages.includes(pathPage as Page)) {
+    return pathPage as Page;
+  }
+
+  const savedPage = localStorage.getItem('fixam_last_page') as Page | null;
+  const token = localStorage.getItem('fixam_token');
+  if (savedPage && validPages.includes(savedPage)) {
+    if (savedPage === 'dashboard' && !token) return 'home';
+    return savedPage;
+  }
+
+  return token ? 'dashboard' : 'home';
+}
+
+function getInitialDashboardTab(role: 'client' | 'pro'): string {
+  if (typeof window !== 'undefined') {
+    const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+    if (hash.startsWith('tab-')) {
+      const slug = hash.substring(4);
+      if (TAB_SLUG_MAP[slug]) return TAB_SLUG_MAP[slug];
+    } else if (TAB_SLUG_MAP[hash]) {
+      return TAB_SLUG_MAP[hash];
+    }
+    const saved = localStorage.getItem(`fixam_active_tab_${role}`) || localStorage.getItem('fixam_active_tab');
+    if (saved) return saved;
+  }
+  return 'Dashboard';
+}
+
 function App() {
-  const [page, setPage] = useState<Page>(() => {
-    const token = localStorage.getItem('fixam_token');
-    return token ? 'dashboard' : 'home';
-  });
+  const [page, setPage] = useState<Page>(getInitialPageFromUrl);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
   const { i18n } = useTranslation();
   const [selectedSkill, setSelectedSkill] = useState('')
@@ -234,6 +323,7 @@ function App() {
   const [onboardingSlide, setOnboardingSlide] = useState(0);
 
   const { isLoggedIn, isLoading, user, refreshUser } = useAuth();
+  usePageAnalytics(page);
 
   useEffect(() => {
     if (isLoggedIn && page === 'dashboard') {
@@ -247,15 +337,32 @@ function App() {
 
   useEffect(() => {
     if (user?.preferredLanguage) {
-      i18n.changeLanguage(user.preferredLanguage.toLowerCase());
+      const code = user.preferredLanguage.toLowerCase();
+      i18n.changeLanguage(code);
+      localStorage.setItem('fixam_lang', code);
+    } else {
+      const savedLang = localStorage.getItem('fixam_lang');
+      if (savedLang) {
+        i18n.changeLanguage(savedLang.toLowerCase());
+      }
     }
   }, [user?.preferredLanguage]);
+
+  const handleGlobalLanguageChange = async (langCode: string) => {
+    const code = langCode.toLowerCase();
+    i18n.changeLanguage(code);
+    localStorage.setItem('fixam_lang', code);
+    if (isLoggedIn) {
+      await api.put('/users/profile', { preferredLanguage: code.toUpperCase() }).catch(() => null);
+      if (refreshUser) refreshUser().catch(() => null);
+    }
+  };
 
   const completeOnboarding = () => {
     localStorage.setItem('fixam_onboarded', 'true');
     setShowOnboarding(false);
   };
-  
+
   const [userRole, setUserRole] = useState<'client' | 'pro'>(() => {
     const savedRole = localStorage.getItem('fixam_user_role');
     if (savedRole === 'client' || savedRole === 'pro') return savedRole;
@@ -268,6 +375,9 @@ function App() {
     roleManuallySetRef.current = true;
     setUserRole(newRole);
     localStorage.setItem('fixam_user_role', newRole);
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     try {
       const mode = newRole === 'pro' ? 'WORK' : 'PERSONAL';
       await api.put('/users/profile', { profileMode: mode }).catch(() => null);
@@ -331,24 +441,32 @@ function App() {
         return;
       }
 
-      const validPages: Page[] = ['home', 'services', 'about', 'login', 'register', 'forgot_password', 'otp', 'dashboard', 'guide', 'terms', 'privacy', 'success_stories', 'reviews', 'updates', 'research', 'blog', 'release_notes', 'skill_detail', 'career_pathways', 'career_pathway_detail', 'career_simulation', 'download', 'profile_view', 'job_view'];
-      const pathPage = path.replace(/^\/+/, '').replace(/\/$/, '').replace(/-/g, '_').toLowerCase();
-      if (page !== 'dashboard' && validPages.includes(hash as Page)) {
-        setPage(hash as Page);
-      } else if (page !== 'dashboard' && validPages.includes(pathPage as Page)) {
-        setPage(pathPage as Page);
-      } else if (!hash && page !== 'dashboard') {
-        const token = localStorage.getItem('fixam_token');
-        setPage(token ? 'dashboard' : 'home');
+      if (path === '/support' || path === '/support/') {
+        setPage('support');
+        return;
       }
 
-      // If the URL pathname is invalid, reset it to / to clean up browser URL
-      if (path !== '/' && path !== '' && 
-          !path.startsWith('/profile/') && 
-          !path.startsWith('/job/') && 
-          path !== '/download' && path !== '/download/' &&
-          !validPages.includes(pathPage as Page)) {
-        window.history.replaceState('', document.title, '/' + window.location.hash);
+      if (hash === 'support' || hash === 'help') {
+        setPage('support');
+        return;
+      }
+
+      if (hash.startsWith('tab-') || TAB_SLUG_MAP[hash]) {
+        setPage('dashboard');
+        return;
+      }
+
+      const validPages: Page[] = ['home', 'services', 'about', 'login', 'register', 'forgot_password', 'otp', 'dashboard', 'guide', 'terms', 'privacy', 'success_stories', 'reviews', 'updates', 'research', 'blog', 'release_notes', 'skill_detail', 'career_pathways', 'career_pathway_detail', 'career_simulation', 'download', 'profile_view', 'job_view', 'support'];
+      const pathPage = path.replace(/^\/+/, '').replace(/\/$/, '').replace(/-/g, '_').toLowerCase();
+
+      if (validPages.includes(hash as Page)) {
+        setPage(hash as Page);
+        return;
+      }
+
+      if (validPages.includes(pathPage as Page)) {
+        setPage(pathPage as Page);
+        return;
       }
     };
 
@@ -363,6 +481,7 @@ function App() {
 
   // Update hash when page changes
   useEffect(() => {
+    localStorage.setItem('fixam_last_page', page);
     const currentHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
     const path = window.location.pathname;
 
@@ -370,11 +489,18 @@ function App() {
       return;
     }
 
+    if (page === 'support') {
+      if (path !== '/support' && path !== '/support/') {
+        window.history.pushState('', document.title, '/support');
+      }
+      return;
+    }
+
     if (page === 'home') {
-      if (currentHash && currentHash !== 'home') {
+      if (currentHash && currentHash !== 'home' && !currentHash.startsWith('tab-')) {
         window.history.pushState('', document.title, window.location.pathname + window.location.search);
       }
-    } else {
+    } else if (page !== 'dashboard') {
       if (currentHash !== page && !path.includes(page)) {
         window.location.hash = page;
       }
@@ -395,7 +521,7 @@ function App() {
             const role = item.skills && item.skills.length > 0 ? item.skills.join(', ') : 'Service Provider';
             const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
             const distance = item.serviceArea || 'Nearby';
-            
+
             let image = DEFAULT_AVATAR;
             if (item.user?.avatar) {
               image = getMediaUrl(item.user.avatar);
@@ -443,10 +569,10 @@ function App() {
           <Header page={page} onNavigate={setPage} onSearch={setServiceSearchQuery} setSelectedPathway={setSelectedPathway} />
           <main>
             {page === 'services' && (
-              <Services 
-                onNavigate={setPage} 
-                searchQuery={serviceSearchQuery} 
-                setSearchQuery={setServiceSearchQuery} 
+              <Services
+                onNavigate={setPage}
+                searchQuery={serviceSearchQuery}
+                setSearchQuery={setServiceSearchQuery}
                 serviceCategories={serviceCategories}
                 translateService={(name, desc) => translateServiceHelper(name, desc, i18n.language)}
                 translateCat={(cat) => translateCatHelper(cat, i18n.language)}
@@ -454,8 +580,12 @@ function App() {
             )}
             {page === 'guide' && <Guide onNavigate={setPage} />}
             {page === 'about' && <About onNavigate={setPage} />}
+            {page === 'why_fixam' && <WhyFixam onNavigate={setPage} />}
+            {page === 'solutions' && <Solutions onNavigate={setPage} />}
+            {page === 'insights' && <Insights onNavigate={setPage} />}
             {page === 'terms' && <TermsOfService onNavigate={setPage} />}
             {page === 'privacy' && <PrivacyPolicy onNavigate={setPage} />}
+            {page === 'support' && <SupportPage onNavigate={setPage} />}
             {page === 'success_stories' && <SuccessStories onNavigate={setPage} />}
             {page === 'reviews' && <ReviewsPage onNavigate={setPage} onSelectSkill={setSelectedSkill} />}
             {page === 'skill_detail' && <SkillDetail onNavigate={setPage} skillName={selectedSkill} onSelectSkill={setSelectedSkill} livePros={livePros} />}
@@ -470,10 +600,10 @@ function App() {
             {page === 'profile_view' && <ProfileViewPage profileId={profileId} />}
             {page === 'job_view' && <JobViewPage jobId={jobId} />}
             {page === 'home' && (
-              <Home 
-                onNavigate={setPage} 
-                livePros={livePros} 
-                onSelectSkill={setSelectedSkill} 
+              <Home
+                onNavigate={setPage}
+                livePros={livePros}
+                onSelectSkill={setSelectedSkill}
                 setSearchQuery={setServiceSearchQuery}
               />
             )}
@@ -484,124 +614,125 @@ function App() {
 
       <CookieBanner />
 
-      {/* Onboarding Slider Deck Modal */}
+      {/* Onboarding Slider Deck Modal - Flat Minimalist Zero-Radius Design */}
       {showOnboarding && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-[3px] z-[9999] flex items-center justify-center p-4 animate-fade-in text-slate-800 font-sans">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 flex flex-col relative">
-            
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 animate-fade-in text-slate-900 font-['Outfit',sans-serif]">
+          <div className="bg-white rounded-none shadow-2xl max-w-xl w-full border-2 border-slate-900 flex flex-col relative">
+
             {/* Close Button */}
-            <button 
-              onClick={completeOnboarding} 
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition font-bold z-10"
+            <button
+              onClick={completeOnboarding}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-none w-10 h-10 flex items-center justify-center transition font-black text-lg z-10"
+              aria-label="Close"
             >
               ✕
             </button>
 
             {/* Slide Content */}
-            <div className="p-8 text-center flex flex-col items-center">
+            <div className="px-8 sm:px-12 pt-12 pb-10 text-center flex flex-col items-center">
               {onboardingSlide === 0 && (
-                <div className="animate-fade-in">
-                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
-                    👋
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-3">
-                    {i18n.language === 'fr' ? 'Bienvenue sur Fixam' : 'Welcome to Fixam'}
+                <div className="animate-fade-in w-full">
+                  <span className="text-xs uppercase tracking-widest text-teal-600 font-black mb-3 block">
+                    {i18n.language.startsWith('fr') ? 'BIENVENUE SUR FIXAM' : 'WELCOME TO FIXAM'}
+                  </span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mb-5 tracking-tight leading-tight">
+                    {i18n.language.startsWith('fr') ? 'Vos services de confiance en un clic' : 'Verified home & pro services at your fingertips'}
                   </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                    {i18n.language === 'fr' 
-                      ? 'Votre plateforme de confiance pour trouver et réserver instantanément des prestataires de services qualifiés à domicile (plomberie, électricité, ménage).' 
-                      : 'Your premium hub for on-demand home and expert professional services. Instantly book verified plumbing, electrical, and cleaning specialists.'}
+                  <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto font-normal">
+                    {i18n.language.startsWith('fr')
+                      ? 'Trouvez et réservez instantanément des spécialistes qualifiés (plomberie, électricité, menuiserie, ménage) pour tous vos travaux et urgences.'
+                      : 'Instantly find and book verified specialists for plumbing, electrical, carpentry, and home maintenance with full escrow security.'}
                   </p>
                 </div>
               )}
 
               {onboardingSlide === 1 && (
-                <div className="animate-fade-in">
-                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-pulse">
-                    🛡️
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-3">
-                    {i18n.language === 'fr' ? 'Profils 100% Vérifiés' : '100% Verified Profiles'}
+                <div className="animate-fade-in w-full">
+                  <span className="text-xs uppercase tracking-widest text-teal-600 font-black mb-3 block">
+                    {i18n.language.startsWith('fr') ? 'SÉCURITÉ & VÉRIFICATION' : 'SECURITY & VERIFICATION'}
+                  </span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mb-5 tracking-tight leading-tight">
+                    {i18n.language.startsWith('fr') ? 'Prestataires 100% vérifiés et certifiés' : '100% verified & background-checked experts'}
                   </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                    {i18n.language === 'fr' 
-                      ? 'Tous nos experts passent par une vérification d\'identité rigoureuse avec selfie vidéo et validation de document officiel.' 
-                      : 'All service providers undergo strict background checks, including official document verification and live webcam selfie checks.'}
+                  <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto font-normal">
+                    {i18n.language.startsWith('fr')
+                      ? 'Chaque professionnel passe par une vérification officielle de pièce d’identité, selfie vidéo et contrôle de compétences avant d’intervenir.'
+                      : 'Every service provider undergoes rigorous official government ID verification, webcam validation, and skill assessment.'}
                   </p>
                 </div>
               )}
 
               {onboardingSlide === 2 && (
-                <div className="animate-fade-in">
-                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
-                    💳
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-3">
-                    {i18n.language === 'fr' ? 'Paiement Mobile Sécurisé' : 'Secure Mobile Payments'}
+                <div className="animate-fade-in w-full">
+                  <span className="text-xs uppercase tracking-widest text-teal-600 font-black mb-3 block">
+                    {i18n.language.startsWith('fr') ? 'PAIEMENT MOBILE' : 'MOBILE MONEY'}
+                  </span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mb-5 tracking-tight leading-tight">
+                    {i18n.language.startsWith('fr') ? 'Paiements rapides MTN MoMo & Orange Money' : 'Instant MTN MoMo & Orange Money payments'}
                   </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                    {i18n.language === 'fr' 
-                      ? 'Rechargez votre portefeuille avec MTN MoMo, Orange Money ou M-Pesa. Suivez la confirmation de transaction en direct.' 
-                      : 'Top up your wallet instantly using MTN MoMo, Orange Money, or M-Pesa. Poll for automated transaction updates in 3 seconds.'}
+                  <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto font-normal">
+                    {i18n.language.startsWith('fr')
+                      ? 'Rechargez facilement votre compte en pièces Fixam en quelques secondes avec vos numéros Mobile Money locaux en toute sécurité.'
+                      : 'Seamlessly top up Fixam coins in seconds using your local MTN Mobile Money, Orange Money, or M-Pesa account.'}
                   </p>
                 </div>
               )}
 
               {onboardingSlide === 3 && (
-                <div className="animate-fade-in">
-                  <div className="w-20 h-20 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce">
-                    📍
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-3">
-                    {i18n.language === 'fr' ? 'Suivi en Direct & Vocal' : 'Live Tracking & Chat'}
+                <div className="animate-fade-in w-full">
+                  <span className="text-xs uppercase tracking-widest text-teal-600 font-black mb-3 block">
+                    {i18n.language.startsWith('fr') ? 'SUIVI & MESSAGERIE' : 'LIVE TRACKING & CHAT'}
+                  </span>
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mb-5 tracking-tight leading-tight">
+                    {i18n.language.startsWith('fr') ? 'Suivi en temps réel et messagerie directe' : 'Real-time tracking and instant direct messaging'}
                   </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                    {i18n.language === 'fr' 
-                      ? 'Suivez le trajet de votre prestataire sur une carte interactive, partagez votre position GPS et envoyez des notes vocales.' 
-                      : 'Track your provider\'s arrival on a live interactive map, share your GPS location, and send voice notes in the chat area.'}
+                  <p className="text-lg sm:text-xl text-slate-600 leading-relaxed max-w-lg mx-auto font-normal">
+                    {i18n.language.startsWith('fr')
+                      ? 'Discutez directement avec votre prestataire, partagez votre localisation et suivez l’avancement de vos tâches en direct.'
+                      : 'Chat directly with your assigned pro, share location coordinates, and track task progress live from start to finish.'}
                   </p>
                 </div>
               )}
             </div>
 
             {/* Slider Navigation Bar */}
-            <div className="bg-slate-50 px-8 py-5 border-t border-slate-100 flex items-center justify-between">
-              {/* Dots */}
-              <div className="flex gap-2">
+            <div className="bg-slate-50 px-8 sm:px-12 py-6 border-t-2 border-slate-900 flex items-center justify-between">
+              {/* Progress Step Numbers */}
+              <div className="flex items-center gap-3">
                 {[0, 1, 2, 3].map((idx) => (
                   <button
                     type="button"
                     key={idx}
                     onClick={() => setOnboardingSlide(idx)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${onboardingSlide === idx ? 'bg-teal-500 w-6' : 'bg-slate-300'}`}
+                    className={`h-2 transition-all duration-300 rounded-none ${onboardingSlide === idx ? 'bg-teal-600 w-8' : 'bg-slate-300 w-3 hover:bg-slate-400'}`}
                     aria-label={`Slide ${idx + 1}`}
                   />
                 ))}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2">
+              <div className="flex items-center gap-3">
                 {onboardingSlide < 3 ? (
                   <>
-                    <button 
-                      onClick={completeOnboarding} 
-                      className="text-xs font-bold text-slate-500 hover:text-slate-800 px-3 py-2"
+                    <button
+                      onClick={completeOnboarding}
+                      className="text-sm font-bold text-slate-600 hover:text-slate-900 px-3 py-2 transition rounded-none uppercase tracking-wider"
                     >
-                      {i18n.language === 'fr' ? 'Passer' : 'Skip'}
+                      {i18n.language.startsWith('fr') ? 'Passer' : 'Skip'}
                     </button>
-                    <button 
+                    <button
                       onClick={() => setOnboardingSlide(prev => prev + 1)}
-                      className="bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow transition"
+                      className="bg-slate-900 hover:bg-teal-600 text-white text-sm font-extrabold px-6 py-3 rounded-none shadow-md transition uppercase tracking-wider"
                     >
-                      {i18n.language === 'fr' ? 'Suivant' : 'Next'}
+                      {i18n.language.startsWith('fr') ? 'Suivant' : 'Next'}
                     </button>
                   </>
                 ) : (
-                  <button 
+                  <button
                     onClick={completeOnboarding}
-                    className="bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold px-5 py-2.5 rounded-lg shadow transition"
+                    className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-black px-7 py-3 rounded-none shadow-lg transition uppercase tracking-wider"
                   >
-                    {i18n.language === 'fr' ? 'Commencer' : 'Get Started'}
+                    {i18n.language.startsWith('fr') ? 'Commencer' : 'Get Started'}
                   </button>
                 )}
               </div>
@@ -755,6 +886,13 @@ export const translateServiceHelper = (name: string, desc: string, lang: string)
   return { name, desc };
 };
 
+const handleGlobalLanguageChange = (langCode: string) => {
+  const code = langCode.toLowerCase();
+  i18n.changeLanguage(code);
+  localStorage.setItem('fixam_lang', code);
+  api.put('/users/profile', { preferredLanguage: code.toUpperCase() }).catch(() => null);
+};
+
 function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page; onNavigate: (page: Page) => void; onSearch: (query: string) => void; setSelectedPathway: (pathway: string) => void }) {
   const { t, i18n } = useTranslation();
   const { isLoggedIn, logout } = useAuth();
@@ -777,7 +915,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 
   const [tickerIndex, setTickerIndex] = useState(0);
   const tickerMessages = [
-    i18n.language === 'fr' 
+    i18n.language === 'fr'
       ? "« Maison nettoyée en 2 heures ! Excellent travail du prestataire Fixam ! » (Amélia N.)"
       : "“Cleaned my house in 2 hours! Excellent job by Fixam provider!” (Amélia N.)",
     i18n.language === 'fr'
@@ -850,8 +988,8 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
         {/* Upper Row */}
         <div className="header-upper-row">
           <div className="header-left">
-            <button 
-              className="mobile-menu-btn" 
+            <button
+              className="mobile-menu-btn"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -880,9 +1018,9 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
             </div>
 
             <div className="language-dropdown-new desktop-only">
-              <select 
-                value={i18n.language} 
-                onChange={(e) => i18n.changeLanguage(e.target.value)}
+              <select
+                value={i18n.language}
+                onChange={(e) => handleGlobalLanguageChange(e.target.value)}
                 style={{ background: 'transparent', border: 'none', fontWeight: 800, cursor: 'pointer' }}
               >
                 <option value="en">EN</option>
@@ -895,15 +1033,15 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
             {/* Mobile Header Right */}
             <div className="mobile-header-right mobile-only">
               {isLoggedIn ? (
-                <button 
-                  className="mobile-header-signup" 
+                <button
+                  className="mobile-header-signup"
                   onClick={() => handleNavigate('dashboard')}
                 >
                   Dashboard
                 </button>
               ) : (
-                <button 
-                  className="mobile-header-signup" 
+                <button
+                  className="mobile-header-signup"
                   onClick={() => handleNavigate('login')}
                 >
                   {t('nav.signin') || 'Sign In'}
@@ -917,9 +1055,9 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
           <nav className="desktop-nav">
             <button className={`nav-link-new ${page === 'home' ? 'active' : ''}`} onClick={() => handleNavigate('home')}>{t('nav.home') || 'HOME'}</button>
             <span className="nav-divider">|</span>
-            
+
             {/* Explore Services Dropdown */}
-            <div 
+            <div
               className="nav-item-with-dropdown"
               onMouseEnter={() => { setActiveDropdown('services'); setActiveCategory('Home Services'); }}
               onMouseLeave={() => setActiveDropdown(null)}
@@ -927,15 +1065,15 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
               <button className={`nav-link-new ${page === 'services' ? 'active' : ''}`} onClick={() => handleNavigate('services')}>
                 {i18n.language === 'fr' ? 'Explorer les services' : 'Explore Services'}
               </button>
-              
+
               {activeDropdown === 'services' && (
                 <div className="megamenu-overlay">
                   <div className="megamenu-body">
                     {/* Left side categories */}
                     <div className="megamenu-left-col">
                       {Object.keys(serviceCategories).map((cat) => (
-                        <button 
-                          key={cat} 
+                        <button
+                          key={cat}
                           className={`megamenu-cat-item ${activeCategory === cat ? 'active' : ''}`}
                           onMouseEnter={() => setActiveCategory(cat)}
                           onClick={() => handleNavigate('services')}
@@ -945,7 +1083,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Right side services grid */}
                     <div className="megamenu-right-col">
                       <div className="megamenu-grid-2col">
@@ -974,9 +1112,9 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
             </div>
 
             <span className="nav-divider">|</span>
-            
+
             {/* How It Works Dropdown */}
-            <div 
+            <div
               className="nav-item-with-dropdown"
               onMouseEnter={() => setActiveDropdown('guide')}
               onMouseLeave={() => setActiveDropdown(null)}
@@ -984,7 +1122,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
               <button className={`nav-link-new ${page === 'guide' ? 'active' : ''}`} onClick={() => handleNavigate('guide')}>
                 How it works
               </button>
-              
+
               {activeDropdown === 'guide' && (
                 <div className="megamenu-overlay" style={{ width: '800px' }}>
                   <div className="megamenu-body">
@@ -1035,35 +1173,31 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
               )}
             </div>
 
-            <span className="nav-divider">|</span>
-            
-            {/* Career Pathways Link (No Dropdown) */}
-            <button className={`nav-link-new ${page === 'career_pathways' ? 'active' : ''}`} onClick={() => handleNavigate('career_pathways')}>
-              {i18n.language === 'fr' ? 'Parcours Pro' : 'Career Pathways'}
+            <button className={`nav-link-new ${page === 'about' ? 'active' : ''}`} onClick={() => handleNavigate('about')}>
+              {i18n.language === 'fr' ? 'À propos' : 'About'}
             </button>
-
             <span className="nav-divider">|</span>
-            <button className={`nav-link-new ${page === 'about' ? 'active' : ''}`} onClick={() => handleNavigate('about')}>{t('nav.about') || 'ABOUT US'}</button>
+            <button className={`nav-link-new ${page === 'why_fixam' ? 'active' : ''}`} onClick={() => handleNavigate('why_fixam')}>
+              {i18n.language === 'fr' ? 'Pourquoi Fixam' : 'Why Fixam'}
+            </button>
+            <span className="nav-divider">|</span>
+            <button className={`nav-link-new ${page === 'solutions' ? 'active' : ''}`} onClick={() => handleNavigate('solutions')}>
+              {i18n.language === 'fr' ? 'Solutions' : 'Solutions'}
+            </button>
+            <span className="nav-divider">|</span>
+            <button className={`nav-link-new ${page === 'services' ? 'active' : ''}`} onClick={() => handleNavigate('services')}>
+              {i18n.language === 'fr' ? 'Services' : 'Services'}
+            </button>
+            <span className="nav-divider">|</span>
+            <button className={`nav-link-new ${page === 'insights' ? 'active' : ''}`} onClick={() => handleNavigate('insights')}>
+              {i18n.language === 'fr' ? 'Ressources' : 'Insights'}
+            </button>
           </nav>
-          
-          <div className="auth-buttons-desktop" style={{ display: 'flex', gap: '1rem', alignItems: 'center', position: 'absolute', right: 0 }}>
-            {isLoggedIn ? (
-              <>
-                <button className="nav-link-new" onClick={() => handleNavigate('dashboard')} style={{ fontWeight: '600' }}>DASHBOARD</button>
-                <button onClick={async () => { await logout(); handleNavigate('home'); }} style={{ backgroundColor: '#EF4444', color: '#FFF', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>LOG OUT</button>
-              </>
-            ) : (
-              <>
-                <button className="nav-link-new" onClick={() => handleNavigate('login')} style={{ fontWeight: '600' }}>{t('nav.signin') || 'SIGN IN'}</button>
-                <button onClick={() => handleNavigate('register')} style={{ backgroundColor: '#14B8A6', color: '#FFF', padding: '0.6rem 1.2rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', border: 'none' }}>GET STARTED</button>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         <nav className={`main-nav-mobile ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-          
+
           <div className="mobile-menu-header">
             <button className="brand brand-button" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('home'); }} aria-label="Go to homepage">
               <img src={asset('fixam-white-bg.png')} alt="Fixam Logo" style={{ height: '28px', transform: 'scale(5)', transformOrigin: 'left center' }} />
@@ -1096,13 +1230,32 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
           )}
 
           <div className="mobile-menu-content">
+            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('about'); }}>
+              {i18n.language === 'fr' ? 'À Propos' : 'About'}
+            </button>
+
+            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('why_fixam'); }}>
+              {i18n.language === 'fr' ? 'Pourquoi Fixam' : 'Why Fixam'}
+            </button>
+
+            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('solutions'); }}>
+              {i18n.language === 'fr' ? 'Solutions' : 'Solutions'}
+            </button>
+
             {/* Mobile Accordion for Explore Services */}
             <div>
               <button className="mobile-nav-accordion-btn" onClick={() => setMobileServicesOpen(!mobileServicesOpen)}>
-                {i18n.language === 'fr' ? 'Explorer les services' : 'Explore Services'}
+                {i18n.language === 'fr' ? 'Services' : 'Services'}
                 <Icon name={mobileServicesOpen ? "chevron-up" : "chevron-down"} />
               </button>
               <div className={`mobile-nav-accordion-content ${mobileServicesOpen ? 'open' : ''}`}>
+                <button 
+                  className="mobile-nav-subitem" 
+                  onClick={() => { setIsMobileMenuOpen(false); handleNavigate('services'); }}
+                  style={{ fontWeight: 700, color: '#2563EB', padding: '0.75rem 0' }}
+                >
+                  {i18n.language === 'fr' ? '→ Voir tous les services' : '→ Browse All Services'}
+                </button>
                 {Object.keys(serviceCategories).map((cat) => (
                   <div key={cat} className="mobile-cat-group" style={{ marginBottom: '1rem' }}>
                     <div className="mobile-cat-title" style={{ fontWeight: 700, padding: '0.5rem 0', color: 'var(--ink)' }}>{translateCat(cat)}</div>
@@ -1120,45 +1273,25 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
               </div>
             </div>
 
+            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('insights'); }}>
+              {i18n.language === 'fr' ? 'Ressources & Insights' : 'Insights & Resources'}
+            </button>
+
             <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('career_pathways'); }}>
               {i18n.language === 'fr' ? 'Parcours Professionnels' : 'Career Pathways'}
             </button>
 
-            {/* Mobile Accordion for Resources */}
-            <div>
-              <button className="mobile-nav-accordion-btn" onClick={() => setMobileHowOpen(!mobileHowOpen)}>
-                {i18n.language === 'fr' ? 'Ressources' : 'Resources'}
-                <Icon name={mobileHowOpen ? "chevron-up" : "chevron-down"} />
-              </button>
-              <div className={`mobile-nav-accordion-content ${mobileHowOpen ? 'open' : ''}`}>
-                <div className="mobile-how-section">
-                  <button className="mobile-nav-subitem" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('success_stories'); }}>
-                    <span className="mobile-nav-subitem-title">{i18n.language === 'fr' ? 'Histoires de succès' : 'Success stories'}</span>
-                  </button>
-                  <button className="mobile-nav-subitem" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('reviews'); }}>
-                    <span className="mobile-nav-subitem-title">{i18n.language === 'fr' ? 'Avis' : 'Reviews'}</span>
-                  </button>
-                  <button className="mobile-nav-subitem" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('services'); }}>
-                    <span className="mobile-nav-subitem-title">{i18n.language === 'fr' ? 'Comment engager' : 'How to hire'}</span>
-                  </button>
-                  <button className="mobile-nav-subitem" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('guide'); }}>
-                    <span className="mobile-nav-subitem-title">{i18n.language === 'fr' ? 'Comment trouver du travail' : 'How to find work'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('about'); }}>
-              {t('nav.about') || 'About Us'}
+            <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('guide'); }}>
+              {i18n.language === 'fr' ? 'Comment ça Marche' : 'How It Works'}
             </button>
 
             {/* Settings (Language / Theme) inside menu */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 0', marginTop: '1rem', borderTop: '1px solid var(--line)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Icon name="user" />
-                <select value={i18n.language} onChange={(e) => i18n.changeLanguage(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 600, color: 'var(--ink)' }}>
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
+                <select value={i18n.language} onChange={(e) => handleGlobalLanguageChange(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 600, color: 'var(--ink)' }}>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
                 </select>
               </div>
 
@@ -1193,12 +1326,12 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 }
 
 function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigate: (page: Page) => void; livePros: any[]; userRole: 'client' | 'pro'; onRoleChange?: (role: 'client' | 'pro') => void }) {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const { t, i18n } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1210,27 +1343,68 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-    // Dashboard navigation specific state
-    const [activeTab, setActiveTab] = useState('Dashboard')
-    const [selectedProvider, setSelectedProvider] = useState<any>(null)
-    const [selectedBooking, setSelectedBooking] = useState<any>(null)
-    const [selectedProject, setSelectedProject] = useState<any>(null)
+  // Dashboard navigation specific state
+  const [activeTab, setActiveTab] = useState(() => getInitialDashboardTab(userRole));
+  const [previousTab, setPreviousTab] = useState('Dashboard');
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const prevRoleRef = useRef(userRole);
 
-  const [searchVal, setSearchVal] = useState('');
-  
   useEffect(() => {
-    if (activeTab === 'Dashboard') {
-      window.history.replaceState(null, '', window.location.pathname);
-    } else {
-      window.history.replaceState(null, '', window.location.pathname + '#tab-' + activeTab.toLowerCase().replace(/\s+/g, '-').replace('&', 'and'));
+    if (activeTab && activeTab !== 'Booking Details') {
+      setPreviousTab(activeTab);
     }
   }, [activeTab]);
 
+  const handleSetSelectedBooking = (val: any) => {
+    setSelectedBooking(val);
+    if (val === null) {
+      setActiveTab(previousTab);
+    }
+  };
+  const [favoriteProjectIds, setFavoriteProjectIds] = useState<string[]>([]);
+
   useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (!hash) setActiveTab('Dashboard');
-    setSelectedProvider(null);
-    setSelectedProject(null);
+    if (user?.id) {
+      const stored = localStorage.getItem(`fixam:favorite-projects:${user.id}`);
+      setFavoriteProjectIds(stored ? JSON.parse(stored) : []);
+    } else {
+      setFavoriteProjectIds([]);
+    }
+  }, [user?.id]);
+
+  const toggleFavoriteProject = (projectId: string) => {
+    if (!user?.id) return;
+    const next = favoriteProjectIds.includes(projectId)
+      ? favoriteProjectIds.filter(id => id !== projectId)
+      : [...favoriteProjectIds, projectId];
+    setFavoriteProjectIds(next);
+    localStorage.setItem(`fixam:favorite-projects:${user.id}`, JSON.stringify(next));
+  };
+
+  const [searchVal, setSearchVal] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem(`fixam_active_tab_${userRole}`, activeTab);
+    localStorage.setItem('fixam_active_tab', activeTab);
+    if (activeTab === 'Dashboard') {
+      window.history.replaceState(null, '', window.location.pathname + '#tab-dashboard');
+    } else {
+      const slug = activeTab.toLowerCase().replace(/\s+/g, '-').replace('&', 'and');
+      window.history.replaceState(null, '', window.location.pathname + '#tab-' + slug);
+    }
+  }, [activeTab, userRole]);
+
+  useEffect(() => {
+    if (prevRoleRef.current !== userRole) {
+      prevRoleRef.current = userRole;
+      const savedTab = localStorage.getItem(`fixam_active_tab_${userRole}`) || 'Dashboard';
+      setActiveTab(savedTab);
+      setSelectedProvider(null);
+      setSelectedProject(null);
+      setSelectedBooking(null);
+    }
   }, [userRole]);
 
   const [tickerItems, setTickerItems] = useState<Array<{ isNews: boolean; badgeText: string; text: string }>>([
@@ -1286,7 +1460,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
         console.warn('Error loading live ticker:', err);
       }
     };
-    
+
     fetchTickerData();
     const interval = setInterval(fetchTickerData, 2 * 60 * 1000);
     return () => {
@@ -1309,63 +1483,116 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   }, [localLivePros, livePros, user]);
 
   // Client-specific interactive state hooks
-  // Client-specific interactive state hooks
   const [clientTasks, setClientTasks] = useState<any[]>([]);
   const [clientBookings, setClientBookings] = useState<any[]>([]);
-  const [walletBalance, setWalletBalance] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(() => (user as any)?.wallet?.balance || (user as any)?.walletBalance || 0);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [leads, setLeads] = useState<any[]>([]);
   const [activeProposals, setActiveProposals] = useState<any[]>([]);
 
+  // Fetch public providers on app mount for landing page display
+  useEffect(() => {
+    const fetchPublicProviders = async () => {
+      try {
+        const res = await api.get('/providers');
+        if (res.data?.data) {
+          const formattedPros = res.data.data.map((item: any) => {
+            const name = item.user?.fullName || 'Anonymous Provider';
+            const role = item.skills && item.skills.length > 0 ? item.skills.join(', ') : 'Service Provider';
+            const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
+            const rawAvatar = item.user?.avatar || item.avatar || '';
+            const image = rawAvatar ? getMediaUrl(rawAvatar) : '';
+
+            return {
+              id: item.id,
+              userId: item.user?.id || item.userId,
+              name,
+              role,
+              rating,
+              image,
+              originalData: item,
+              isVerified: item.verification === 'VERIFIED'
+            };
+          });
+          setLocalLivePros(formattedPros);
+        }
+      } catch (err) {
+        console.warn('Error fetching public providers for landing page:', err);
+      }
+    };
+    fetchPublicProviders();
+  }, []);
+
+  // Update initial wallet balance whenever user object updates
+  useEffect(() => {
+    if ((user as any)?.wallet?.balance !== undefined) {
+      setWalletBalance((user as any).wallet.balance);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (isLoggedIn) {
       const fetchData = async () => {
         try {
-          // Fetch badge & notification metrics
-          const [convsRes, notifsRes] = await Promise.all([
-            api.get('/chat/conversations').catch(() => null),
-            api.get('/notifications').catch(() => null)
-          ]);
-
-          if (convsRes?.data?.data) {
-            const totalUnread = convsRes.data.data.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
-            setUnreadMessagesCount(totalUnread);
-          }
-          if (notifsRes?.data) {
-            const unreadNotifs = notifsRes.data.unreadCount !== undefined 
-              ? notifsRes.data.unreadCount 
-              : ((notifsRes.data.notifications || notifsRes.data.data || []).filter((n: any) => !n.isRead && !n.read).length);
-            setUnreadNotificationsCount(unreadNotifs);
-          }
-
           if (userRole === 'client') {
-            const [jobsRes, walletRes, providersRes, bookingsRes] = await Promise.all([
+            const [convsRes, notifsRes, jobsRes, walletRes, providersRes, bookingsRes, favsRes] = await Promise.all([
+              api.get('/chat/conversations').catch(() => null),
+              api.get('/notifications').catch(() => null),
               api.get('/jobs/client').catch(() => null),
               api.get('/wallet/balance').catch(() => null),
               api.get('/providers').catch(() => null),
-              api.get('/bookings/mine').catch(() => null)
+              api.get('/bookings/mine').catch(() => null),
+              api.get('/providers/favorites').catch(() => null)
             ]);
+
+            if (convsRes?.data?.data) {
+              const totalUnread = convsRes.data.data.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
+              setUnreadMessagesCount(totalUnread);
+            }
+            if (notifsRes?.data) {
+              const unreadNotifs = notifsRes.data.unreadCount !== undefined
+                ? notifsRes.data.unreadCount
+                : ((notifsRes.data.notifications || notifsRes.data.data || []).filter((n: any) => !n.isRead && !n.read).length);
+              setUnreadNotificationsCount(unreadNotifs);
+            }
             if (bookingsRes?.data?.data) setClientBookings(bookingsRes.data.data);
             if (jobsRes?.data?.data) setClientTasks(jobsRes.data.data);
             if (walletRes?.data?.data) {
               setWalletBalance(walletRes.data.data.balance || 0);
               if (walletRes.data.data.transactions) setWalletTransactions(walletRes.data.data.transactions);
             }
+            if (favsRes?.data?.data) {
+              const formattedFavs = favsRes.data.data.map((item: any) => {
+                const name = item.user?.fullName || item.name || 'Provider';
+                const role = item.skills && item.skills.length > 0 ? item.skills.join(', ') : (item.role || 'Service Provider');
+                const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
+                const rawAvatar = item.user?.avatar || item.avatar || item.image || '';
+                const image = rawAvatar ? getMediaUrl(rawAvatar) : '';
+                return {
+                  id: item.id,
+                  userId: item.user?.id || item.userId,
+                  name,
+                  role,
+                  rating,
+                  image,
+                  originalData: item
+                };
+              });
+              setSavedProsState(formattedFavs);
+            }
             if (providersRes?.data?.data) {
               const formattedPros = providersRes.data.data.map((item: any) => {
                 const name = item.user?.fullName || 'Anonymous Provider';
                 const role = item.skills && item.skills.length > 0 ? item.skills.join(', ') : 'Service Provider';
                 const rating = item.rating ? Number(item.rating).toFixed(1) : '5.0';
-                
-                let image = 'https://via.placeholder.com/150';
-                if (item.user?.avatar) {
-                  image = item.user.avatar.startsWith('http') ? item.user.avatar : `https://api.usefixam.com/api${item.user.avatar}`;
-                }
-                
+                const rawAvatar = item.user?.avatar || item.avatar || '';
+                const image = rawAvatar ? getMediaUrl(rawAvatar) : '';
+
                 return {
                   id: item.id,
+                  userId: item.user?.id || item.userId,
                   name,
                   role,
                   rating,
@@ -1376,11 +1603,23 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
               setLocalLivePros(formattedPros);
             }
           } else if (userRole === 'pro') {
-            const [leadsRes, proposalsRes, walletRes] = await Promise.all([
-              api.get('/jobs/pro/matches').catch(() => null), 
-              api.get('/jobs/pro/proposals').catch(() => null),
+            const [convsRes, notifsRes, leadsRes, proposalsRes, walletRes] = await Promise.all([
+              api.get('/chat/conversations').catch(() => null),
+              api.get('/notifications').catch(() => null),
+              api.get('/jobs/available').catch(() => null),
+              api.get('/jobs/my-jobs').catch(() => null),
               api.get('/wallet/balance').catch(() => null)
             ]);
+            if (convsRes?.data?.data) {
+              const totalUnread = convsRes.data.data.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
+              setUnreadMessagesCount(totalUnread);
+            }
+            if (notifsRes?.data) {
+              const unreadNotifs = notifsRes.data.unreadCount !== undefined
+                ? notifsRes.data.unreadCount
+                : ((notifsRes.data.notifications || notifsRes.data.data || []).filter((n: any) => !n.isRead && !n.read).length);
+              setUnreadNotificationsCount(unreadNotifs);
+            }
             if (leadsRes?.data) setLeads(leadsRes.data.jobs || leadsRes.data.matches || []);
             if (proposalsRes?.data?.proposals) setActiveProposals(proposalsRes.data.proposals);
             if (walletRes?.data?.data) {
@@ -1398,19 +1637,20 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [activeChatUser, setActiveChatUser] = useState<string>('');
-  
+
   const [savedProsState, setSavedProsState] = useState<any[]>([]);
 
   if (userRole === 'client') {
     const clientNavItems = [
-      { name: 'Dashboard', icon: 'home' as IconName },
-      { name: 'Find Services', icon: 'search' as IconName },
-      { name: 'My Bookings', icon: 'calendar' as IconName },
-      { name: 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
-      { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
-      { name: 'Refer & Earn', icon: 'star' as IconName },
-      { name: 'Settings', icon: 'settings' as IconName },
-      { name: 'Support', icon: 'message' as IconName }
+      { name: 'Dashboard', label: i18n.language === 'fr' ? 'Tableau de bord' : 'Dashboard', icon: 'home' as IconName },
+      { name: 'Find Services', label: i18n.language === 'fr' ? 'Trouver un service' : 'Find Services', icon: 'search' as IconName },
+      { name: 'My Bookings', label: i18n.language === 'fr' ? 'Mes réservations' : 'My Bookings', icon: 'calendar' as IconName },
+      { name: 'Saved Providers', label: i18n.language === 'fr' ? 'Prestataires enregistrés' : 'Saved Providers', icon: 'heart' as IconName },
+      { name: 'Messages', label: i18n.language === 'fr' ? 'Messages' : 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
+      { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
+      { name: 'Refer & Earn', label: i18n.language === 'fr' ? 'Parrainer & Gagner' : 'Refer & Earn', icon: 'star' as IconName },
+      { name: 'Settings', label: i18n.language === 'fr' ? 'Paramètres' : 'Settings', icon: 'settings' as IconName },
+      { name: 'Support', label: i18n.language === 'fr' ? 'Support' : 'Support', icon: 'message' as IconName }
     ];
 
     const handleNavClick = async (itemName: string) => {
@@ -1429,31 +1669,31 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     return (
       <main className={`dashboard-shell-new ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {isSidebarOpen && (
-          <div 
-            className="sidebar-backdrop" 
-            onClick={() => setIsSidebarOpen(false)} 
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setIsSidebarOpen(false)}
             style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 998 }}
           ></div>
         )}
         {/* Left Sidebar */}
         <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
-          
+
           {/* Desktop Toggle Button placed outside the sidebar */}
-          <button 
+          <button
             className="desktop-only"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-            style={{ 
-              position: 'absolute', 
-              right: '-45px', 
-              top: '20px', 
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            style={{
+              position: 'absolute',
+              right: '-45px',
+              top: '20px',
               width: '40px',
               height: '40px',
-              background: '#fff', 
-              border: '1px solid var(--line)', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
+              background: '#fff',
+              border: '1px solid var(--line)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
               zIndex: 10
@@ -1464,8 +1704,8 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
           </button>
 
           <div className="brand-header" style={{ justifyContent: 'space-between' }}>
-            <div 
-              className="user-card-new" 
+            <div
+              className="user-card-new"
               style={{ cursor: 'pointer', padding: '0', background: 'transparent', border: 'none' }}
               onClick={() => {
                 setIsSidebarOpen(false);
@@ -1480,7 +1720,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1', fontSize: '10px', padding: '2px 6px' }}>Client</span>
                     <span className="verified-badge" style={{ fontSize: '10px' }}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.6rem', height: '0.6rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      Verified
+                      {i18n.language === 'fr' ? 'Vérifié' : 'Verified'}
                     </span>
                   </div>
                 </div>
@@ -1496,23 +1736,22 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
           <nav className="sidebar-links-new">
             {clientNavItems.map((item) => (
-              <button 
-                key={item.name} 
+              <button
+                key={item.name}
                 className={`side-link-new ${activeTab === item.name ? 'active' : ''}`}
                 onClick={() => handleNavClick(item.name)}
               >
                 <Icon name={item.icon} />
-                <span>{item.name}</span>
+                <span>{item.label || item.name}</span>
                 {item.badge !== undefined && <span className="badge-count">{item.badge}</span>}
                 {item.walletBadge && <span className="badge-wallet">{item.walletBadge}</span>}
               </button>
             ))}
-            
 
 
             {onRoleChange && (
-              <button 
-                className="side-link-new" 
+              <button
+                className="side-link-new"
                 style={{ background: '#F0FDFA', color: '#0F766E', fontWeight: 700, margin: '0.5rem 0' }}
                 onClick={() => {
                   setIsSidebarOpen(false);
@@ -1520,13 +1759,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 }}
               >
                 <Icon name="briefcase" />
-                <span>{i18n.language === 'fr' ? 'Passer en Mode Prestataire 🔄' : 'Switch to Provider Mode 🔄'}</span>
+                <span>{i18n.language === 'fr' ? 'Prestataire' : 'Provider'}</span>
               </button>
             )}
 
-            <button className="side-link-new" onClick={() => onNavigate('login')}>
+            <button className="side-link-new" onClick={async () => { await logout(); onNavigate('home'); }}>
               <Icon name="logout" />
-              <span>Logout</span>
+              <span>{i18n.language === 'fr' ? 'Déconnexion' : 'Logout'}</span>
             </button>
           </nav>
 
@@ -1566,7 +1805,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 {isProfileDropdownOpen && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-2 z-50">
                     <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Switch Account</div>
-                    <button 
+                    <button
                       className="w-full text-left px-4 py-2 text-sm bg-teal-50 text-teal-700 flex items-center justify-between"
                       onClick={() => {
                         setIsProfileDropdownOpen(false);
@@ -1577,16 +1816,27 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                       <Icon name="check" />
                     </button>
                     {onRoleChange && (
-                      <button 
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 font-semibold"
                         onClick={() => {
                           setIsProfileDropdownOpen(false);
                           onRoleChange('pro');
                         }}
                       >
-                        <Icon name="briefcase" /> Switch to Provider
+                        <Icon name="briefcase" /> {i18n.language === 'fr' ? 'Prestataire' : 'Provider'}
                       </button>
                     )}
+                    <div className="border-t border-gray-100 my-1"></div>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-semibold"
+                      onClick={async () => {
+                        setIsProfileDropdownOpen(false);
+                        await logout();
+                        onNavigate('home');
+                      }}
+                    >
+                      <Icon name="logout" /> {i18n.language === 'fr' ? 'Déconnexion' : 'Logout'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1604,6 +1854,8 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 clientBookings={clientBookings}
                 setClientBookings={setClientBookings}
                 displayedPros={displayedPros}
+                favoriteProjectIds={favoriteProjectIds}
+                toggleFavoriteProject={toggleFavoriteProject}
               />
             ) : selectedProvider ? (
               <ProviderProfileDetail
@@ -1613,120 +1865,129 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 setClientBookings={setClientBookings}
                 setActiveTab={setActiveTab}
                 setActiveChatUser={setActiveChatUser}
+                savedProsState={savedProsState}
+                setSavedProsState={setSavedProsState}
               />
             ) : selectedBooking ? (
               <BookingDetail
                 selectedBooking={selectedBooking}
-                setSelectedBooking={setSelectedBooking}
+                setSelectedBooking={handleSetSelectedBooking}
                 setActiveTab={setActiveTab}
                 setActiveChatUser={setActiveChatUser}
               />
             ) : (
               <>
                 {activeTab === 'Dashboard' && (
-                    <ClientDashboard 
-                      setActiveTab={setActiveTab}
-                      setSelectedProvider={setSelectedProvider}
-                      setSelectedProject={setSelectedProject}
-                      setSelectedBooking={setSelectedBooking}
-                      services={services}
-                      displayedPros={displayedPros}
-                      clientBookings={clientBookings}
-                      walletBalance={walletBalance}
-                      clientTasks={clientTasks}
-                      setClientTasks={setClientTasks}
-                      onRoleChange={onRoleChange}
-                    />
+                  <ClientDashboard
+                    setActiveTab={setActiveTab}
+                    setSelectedProvider={setSelectedProvider}
+                    setSelectedProject={setSelectedProject}
+                    setSelectedBooking={handleSetSelectedBooking}
+                    services={services}
+                    displayedPros={displayedPros}
+                    clientBookings={clientBookings}
+                    walletBalance={walletBalance}
+                    clientTasks={clientTasks}
+                    setClientTasks={setClientTasks}
+                    onRoleChange={onRoleChange}
+                    favoriteProjectIds={favoriteProjectIds}
+                    toggleFavoriteProject={toggleFavoriteProject}
+                  />
                 )}
 
                 {activeTab === 'My Bookings' && (
-                  <MyBookings 
-                    clientBookings={clientBookings} 
-                    setClientBookings={setClientBookings} 
+                  <MyBookings
+                    clientBookings={clientBookings}
+                    setClientBookings={setClientBookings}
                     clientTasks={clientTasks}
                     setClientTasks={setClientTasks}
-                    setActiveTab={setActiveTab} 
-                    setActiveChatUser={setActiveChatUser} 
-                    setSelectedBooking={setSelectedBooking}
+                    setActiveTab={setActiveTab}
+                    setActiveChatUser={setActiveChatUser}
+                    setSelectedBooking={handleSetSelectedBooking}
                   />
                 )}
                 {activeTab === 'My Tasks' && (
-                  <MyTasks 
-                    clientTasks={clientTasks} 
-                    setClientTasks={setClientTasks} 
-                    setActiveTab={setActiveTab} 
+                  <MyTasks
+                    clientTasks={clientTasks}
+                    setClientTasks={setClientTasks}
+                    setActiveTab={setActiveTab}
                     walletBalance={walletBalance}
                     clientBookings={clientBookings}
-                    setSelectedBooking={setSelectedBooking}
+                    setSelectedBooking={handleSetSelectedBooking}
                   />
                 )}
                 {activeTab === 'Saved Providers' && (
-                  <SavedProviders 
-                    savedProsState={savedProsState} 
-                    setSavedProsState={setSavedProsState} 
-                    setActiveTab={setActiveTab} 
-                    setActiveChatUser={setActiveChatUser} 
+                  <SavedProviders
+                    savedProsState={savedProsState}
+                    setSavedProsState={setSavedProsState}
+                    setActiveTab={setActiveTab}
+                    setActiveChatUser={setActiveChatUser}
+                    setSelectedProvider={setSelectedProvider}
+                    setSelectedProject={setSelectedProject}
+                    favoriteProjectIds={favoriteProjectIds}
+                    toggleFavoriteProject={toggleFavoriteProject}
+                    displayedPros={displayedPros}
                   />
                 )}
                 {activeTab === 'Stats' && <Stats />}
                 {activeTab === 'Wallet' && (
-                  <WalletAndCoins 
-                    setActiveTab={setActiveTab} 
-                    walletBalance={walletBalance} 
+                  <WalletAndCoins
+                    setActiveTab={setActiveTab}
+                    walletBalance={walletBalance}
                     clientBookings={clientBookings}
                     clientTasks={clientTasks}
                   />
                 )}
                 {activeTab === 'Coin Purchase' && (
-                  <CoinPurchase 
-                    setActiveTab={setActiveTab} 
+                  <CoinPurchase
+                    setActiveTab={setActiveTab}
                   />
                 )}
-                {activeTab === 'Notifications' && <Notifications />}
+                {activeTab === 'Notifications' && <Notifications setActiveTab={setActiveTab} setSelectedBooking={handleSetSelectedBooking} />}
                 {activeTab === 'Messages' && (
-                  <Messages 
-                    chatMessages={chatMessages} 
-                    setChatMessages={setChatMessages} 
-                    activeChatUser={activeChatUser} 
-                    setActiveChatUser={setActiveChatUser} 
+                  <Messages
+                    chatMessages={chatMessages}
+                    setChatMessages={setChatMessages}
+                    activeChatUser={activeChatUser}
+                    setActiveChatUser={setActiveChatUser}
                   />
                 )}
                 {activeTab === 'Reviews' && <Reviews />}
                 {activeTab === 'Refer & Earn' && <Referrals />}
                 {activeTab === 'Settings' && (
-                  <Settings 
-                    savedProsState={savedProsState} 
-                    setSavedProsState={setSavedProsState} 
-                    setActiveTab={setActiveTab} 
-                    setActiveChatUser={setActiveChatUser} 
+                  <Settings
+                    savedProsState={savedProsState}
+                    setSavedProsState={setSavedProsState}
+                    setActiveTab={setActiveTab}
+                    setActiveChatUser={setActiveChatUser}
                   />
                 )}
                 {activeTab === 'My Profile' && (
-                  <MyProfile 
-                    setActiveTab={setActiveTab} 
+                  <MyProfile
+                    setActiveTab={setActiveTab}
                     onRoleChange={onRoleChange}
                     userRole={userRole}
                   />
                 )}
                 {activeTab === 'Verification' && (
-                  <VerificationPage 
-                    setActiveTab={setActiveTab} 
+                  <VerificationPage
+                    setActiveTab={setActiveTab}
                   />
                 )}
                 {activeTab === 'Find Services' && (
-                  <FindServices 
-                    setSelectedProvider={setSelectedProvider} 
-                    setActiveTab={setActiveTab} 
-                    clientBookings={clientBookings} 
-                    setClientBookings={setClientBookings} 
+                  <FindServices
+                    setSelectedProvider={setSelectedProvider}
+                    setActiveTab={setActiveTab}
+                    clientBookings={clientBookings}
+                    setClientBookings={setClientBookings}
                     setActiveChatUser={setActiveChatUser}
                     displayedPros={displayedPros}
                   />
                 )}
                 {activeTab === 'Support' && (
-                  <Support 
-                    setActiveTab={setActiveTab} 
-                    setActiveChatUser={setActiveChatUser} 
+                  <Support
+                    setActiveTab={setActiveTab}
+                    setActiveChatUser={setActiveChatUser}
                   />
                 )}
               </>
@@ -1739,17 +2000,17 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
   // Fallback / Pro Dashboard (integrated with the premium responsive shell)
   const providerNavItems = [
-    { name: 'Dashboard', icon: 'home' as IconName },
-    { name: 'Post a Project', icon: 'wrench' as IconName },
-    { name: 'My Jobs', icon: 'briefcase' as IconName },
-    { name: 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
-    { name: 'Notifications', icon: 'bell' as IconName, badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined },
-    { name: 'My Stats', icon: 'chart' as IconName },
-    { name: 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
-    { name: 'Reviews', icon: 'star' as IconName },
-    { name: 'My Profile', icon: 'user' as IconName },
-    { name: 'Settings', icon: 'wrench' as IconName },
-    { name: 'Support', icon: 'message' as IconName }
+    { name: 'Dashboard', label: i18n.language === 'fr' ? 'Tableau de bord' : 'Dashboard', icon: 'home' as IconName },
+    { name: 'Post a Project', label: i18n.language === 'fr' ? 'Publier un projet' : 'Post a Project', icon: 'wrench' as IconName },
+    { name: 'My Jobs', label: i18n.language === 'fr' ? 'Mes missions' : 'My Jobs', icon: 'briefcase' as IconName },
+    { name: 'Messages', label: i18n.language === 'fr' ? 'Messages' : 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
+    { name: 'Notifications', label: i18n.language === 'fr' ? 'Notifications' : 'Notifications', icon: 'bell' as IconName, badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined },
+    { name: 'My Stats', label: i18n.language === 'fr' ? 'Mes statistiques' : 'My Stats', icon: 'chart' as IconName },
+    { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
+    { name: 'Reviews', label: i18n.language === 'fr' ? 'Avis clients' : 'Reviews', icon: 'star' as IconName },
+    { name: 'My Profile', label: i18n.language === 'fr' ? 'Mon profil' : 'My Profile', icon: 'user' as IconName },
+    { name: 'Settings', label: i18n.language === 'fr' ? 'Paramètres' : 'Settings', icon: 'wrench' as IconName },
+    { name: 'Support', label: i18n.language === 'fr' ? 'Support' : 'Support', icon: 'message' as IconName }
   ];
 
   const proNewsMessages = [
@@ -1781,17 +2042,17 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   return (
     <main className={`dashboard-shell-new ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isSidebarOpen && (
-        <div 
-          className="sidebar-backdrop" 
-          onClick={() => setIsSidebarOpen(false)} 
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setIsSidebarOpen(false)}
           style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 998 }}
         ></div>
       )}
       {/* Left Sidebar */}
       <aside className={`dash-sidebar-new ${isSidebarOpen ? 'open' : ''}`}>
         <div className="brand-header" style={{ justifyContent: 'space-between' }}>
-          <div 
-            className="user-card-new" 
+          <div
+            className="user-card-new"
             style={{ cursor: 'pointer', padding: '0', background: 'transparent', border: 'none' }}
             onClick={() => handleNavClick(userRole === 'pro' ? 'My Profile' : 'My Profile')}
           >
@@ -1801,11 +2062,11 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 <h3 style={{ fontSize: '14px', margin: 0 }}>{user?.firstName || (userRole === 'pro' ? 'Provider' : 'Client')}</h3>
                 <div className="role-row" style={{ marginTop: '2px' }}>
                   <span className="role-text" style={{ background: '#E0F2FE', color: '#0369A1', fontSize: '10px', padding: '2px 6px' }}>
-                    {userRole === 'pro' ? 'Provider' : 'Client'}
+                    {userRole === 'pro' ? (i18n.language === 'fr' ? 'Prestataire' : 'Provider') : (i18n.language === 'fr' ? 'Client' : 'Client')}
                   </span>
                   <span className="verified-badge" style={{ fontSize: '10px' }}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ width: '0.6rem', height: '0.6rem' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Verified
+                    {i18n.language === 'fr' ? 'Vérifié' : 'Verified'}
                   </span>
                 </div>
               </div>
@@ -1813,7 +2074,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button className="sidebar-toggle-btn" style={{display: 'flex'}} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
+            <button className="sidebar-toggle-btn" style={{ display: 'flex' }} onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} title="Toggle Sidebar">
               {isSidebarCollapsed ? (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
               ) : (
@@ -1828,23 +2089,22 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
         <nav className="sidebar-links-new">
           {providerNavItems.map((item) => (
-            <button 
-              key={item.name} 
+            <button
+              key={item.name}
               className={`side-link-new ${activeTab === item.name ? 'active' : ''}`}
               onClick={() => handleNavClick(item.name)}
             >
               <Icon name={item.icon} />
-              <span>{item.name}</span>
+              <span>{item.label || item.name}</span>
               {item.badge && <span className="badge-count">{item.badge}</span>}
               {item.walletBadge && <span className="badge-wallet">{item.walletBadge}</span>}
             </button>
           ))}
-          
 
 
           {onRoleChange && (
-            <button 
-              className="side-link-new" 
+            <button
+              className="side-link-new"
               style={{ background: '#F0FDFA', color: '#0F766E', fontWeight: 700, margin: '0.5rem 0' }}
               onClick={() => {
                 setIsSidebarOpen(false);
@@ -1852,13 +2112,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
               }}
             >
               <Icon name="user" />
-              <span>{i18n.language === 'fr' ? 'Passer en Mode Client 🔄' : 'Switch to Client Mode 🔄'}</span>
+              <span>{i18n.language === 'fr' ? 'Espace Client' : 'Client'}</span>
             </button>
           )}
 
-          <button className="side-link-new" onClick={() => onNavigate('home')}>
-            <Icon name="x" />
-            <span>Logout</span>
+          <button className="side-link-new" onClick={async () => { await logout(); onNavigate('home'); }}>
+            <Icon name="logout" />
+            <span>{i18n.language === 'fr' ? 'Déconnexion' : 'Logout'}</span>
           </button>
         </nav>
       </aside>
@@ -1904,7 +2164,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-2 z-50">
                   <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Switch Account</div>
-                  <button 
+                  <button
                     className="w-full text-left px-4 py-2 text-sm bg-teal-50 text-teal-700 flex items-center justify-between"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
@@ -1915,16 +2175,27 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     <Icon name="check" />
                   </button>
                   {onRoleChange && (
-                    <button 
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 font-bold"
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 flex items-center gap-2 font-semibold"
                       onClick={() => {
                         setIsProfileDropdownOpen(false);
                         onRoleChange('client');
                       }}
                     >
-                      <Icon name="user" /> Switch to Client Mode
+                      <Icon name="user" /> Client
                     </button>
                   )}
+                  <div className="border-t border-gray-100 my-1"></div>
+                  <button
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-semibold"
+                    onClick={async () => {
+                      setIsProfileDropdownOpen(false);
+                      await logout();
+                      onNavigate('home');
+                    }}
+                  >
+                    <Icon name="logout" /> {i18n.language === 'fr' ? 'Déconnexion' : 'Logout'}
+                  </button>
                 </div>
               )}
             </div>
@@ -1933,45 +2204,60 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
 
         {/* Main Content Area */}
         <div className={`dash-content-premium`}>
-          {activeTab === 'Dashboard' && (
-            <ProviderDashboard 
+          {selectedBooking ? (
+            <BookingDetail
+              selectedBooking={selectedBooking}
+              setSelectedBooking={handleSetSelectedBooking}
               setActiveTab={setActiveTab}
-              onRoleChange={onRoleChange}
+              setActiveChatUser={setActiveChatUser}
             />
-          )}
+          ) : (
+            <>
+              {activeTab === 'Dashboard' && (
+                <ProviderDashboard
+                  setActiveTab={setActiveTab}
+                  onRoleChange={onRoleChange}
+                  setActiveChatUser={setActiveChatUser}
+                  setSelectedBooking={handleSetSelectedBooking}
+                />
+              )}
 
-          {activeTab === 'Post a Project' && (
-            <PostProject 
-              setActiveTab={setActiveTab}
-            />
-          )}
+              {activeTab === 'Post a Project' && (
+                <PostProject
+                  setActiveTab={setActiveTab}
+                />
+              )}
 
-          {activeTab === 'My Jobs' && (
-            <MyJobs 
-              setActiveTab={setActiveTab} 
-              setActiveChatUser={setActiveChatUser} 
-            />
-          )}
-          {activeTab === 'Wallet' && <ProviderWallet />}
-          {activeTab === 'Reviews' && <ProviderReviews />}
-          {activeTab === 'My Profile' && <ProviderProfile setActiveTab={setActiveTab} />}
-          {activeTab === 'Settings' && <Settings setActiveTab={setActiveTab} />}
-          {activeTab === 'My Stats' && <Stats />}
-          {activeTab === 'Support' && (
-            <ProviderSupport 
-              setActiveTab={setActiveTab} 
-              setActiveChatUser={setActiveChatUser} 
-            />
-          )}
-          {activeTab === 'Notifications' && <Notifications />}
-          {activeTab === 'Boost Profile' && <BoostProfile />}
-          {activeTab === 'Messages' && (
-            <Messages 
-              chatMessages={chatMessages} 
-              setChatMessages={setChatMessages} 
-              activeChatUser={activeChatUser} 
-              setActiveChatUser={setActiveChatUser} 
-            />
+              {activeTab === 'My Jobs' && (
+                <MyJobs
+                  setActiveTab={setActiveTab}
+                  setActiveChatUser={setActiveChatUser}
+                  setSelectedBooking={handleSetSelectedBooking}
+                />
+              )}
+              {activeTab === 'Wallet' && <ProviderWallet />}
+              {activeTab === 'Reviews' && <ProviderReviews />}
+              {activeTab === 'My Profile' && <ProviderProfile setActiveTab={setActiveTab} setSelectedProject={setSelectedProject} />}
+              {activeTab === 'Verification' && <VerificationPage setActiveTab={setActiveTab} />}
+              {activeTab === 'Settings' && <Settings setActiveTab={setActiveTab} />}
+              {activeTab === 'My Stats' && <Stats />}
+              {activeTab === 'Support' && (
+                <ProviderSupport
+                  setActiveTab={setActiveTab}
+                  setActiveChatUser={setActiveChatUser}
+                />
+              )}
+              {activeTab === 'Notifications' && <Notifications setActiveTab={setActiveTab} setSelectedBooking={handleSetSelectedBooking} />}
+              {activeTab === 'Boost Profile' && <BoostProfile />}
+              {activeTab === 'Messages' && (
+                <Messages
+                  chatMessages={chatMessages}
+                  setChatMessages={setChatMessages}
+                  activeChatUser={activeChatUser}
+                  setActiveChatUser={setActiveChatUser}
+                />
+              )}
+            </>
           )}
         </div>
       </section>
@@ -2055,35 +2341,35 @@ export function Footer({ onNavigate }: { onNavigate?: (page: Page) => void }) {
         <span className="separator">|</span>
         <button onClick={() => onNavigate?.('login')}>{t('nav.signin') || 'Sign In'}</button>
       </div>
-      
+
       <p className="footer-subtext">Fixam: Trusted Professional Services Platform</p>
 
       <div className="footer-download-section">
         <h4>DOWNLOAD THE FIXAM APP</h4>
         <p>Find real jobs, both on-site and remote, and manage tasks directly from your phone.</p>
         <div className="footer-app-badges">
-          <a 
-            href="https://apps.apple.com/app/com.fixam.app.iosapp" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href="https://apps.apple.com/app/com.fixam.app.iosapp"
+            target="_blank"
+            rel="noopener noreferrer"
             className="app-badge-btn"
           >
             <svg viewBox="0 0 384 512" fill="currentColor">
-              <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-48.4-19.2-77.5-19.2-38 0-77.3 22.8-96.6 57.5-39.6 71.1-10.1 176.4 28 232.4 18.7 27.1 40.5 56.6 69 52.8 26.9-3.5 37.2-20.3 69-20.3 31.8 0 41.4 20.3 69 20.3 28.5.3 48-26.7 66.8-54 21.6-31.5 30.5-62 31-63.6-.9-.3-59.7-23-60.2-91.8zM286.9 83c19.5-24 32.7-57.1 29.1-90.1-28 1.1-62.1 18.9-82.2 42.6-17.2 20.1-32.3 53.6-28.3 85.9 31.2 2.4 62.9-15.1 81.4-38.4z"/>
+              <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-48.4-19.2-77.5-19.2-38 0-77.3 22.8-96.6 57.5-39.6 71.1-10.1 176.4 28 232.4 18.7 27.1 40.5 56.6 69 52.8 26.9-3.5 37.2-20.3 69-20.3 31.8 0 41.4 20.3 69 20.3 28.5.3 48-26.7 66.8-54 21.6-31.5 30.5-62 31-63.6-.9-.3-59.7-23-60.2-91.8zM286.9 83c19.5-24 32.7-57.1 29.1-90.1-28 1.1-62.1 18.9-82.2 42.6-17.2 20.1-32.3 53.6-28.3 85.9 31.2 2.4 62.9-15.1 81.4-38.4z" />
             </svg>
             <div className="app-badge-text">
               <small>Download on the</small>
               <strong>App Store</strong>
             </div>
           </a>
-          <a 
-            href="https://play.google.com/store/apps/details?id=com.fixam.app.android" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <a
+            href="https://play.google.com/store/apps/details?id=com.fixam.app.android"
+            target="_blank"
+            rel="noopener noreferrer"
             className="app-badge-btn"
           >
             <svg viewBox="0 0 512 512" fill="currentColor">
-              <path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58 33.3-60.1-60.1 60.1-60.1 58 33.3c15.3 8.8 25.3 23.3 25.3 40.1s-10 31.3-25.3 40.1zm-82.1 63.8L104.6 499l220.7-126.7 60.1-60.1z"/>
+              <path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58 33.3-60.1-60.1 60.1-60.1 58 33.3c15.3 8.8 25.3 23.3 25.3 40.1s-10 31.3-25.3 40.1zm-82.1 63.8L104.6 499l220.7-126.7 60.1-60.1z" />
             </svg>
             <div className="app-badge-text">
               <small>GET IT ON</small>
@@ -2095,7 +2381,7 @@ export function Footer({ onNavigate }: { onNavigate?: (page: Page) => void }) {
 
       <div className="footer-bottom-bar">
         <p className="copyright">© 2026 Fixam. All rights reserved.</p>
-        
+
         <div className="footer-socials">
           <a href="#" onClick={(e) => e.preventDefault()} aria-label="Facebook"><Icon name="facebook" /></a>
           <a href="#" onClick={(e) => e.preventDefault()} aria-label="Twitter"><Icon name="twitter" /></a>
@@ -2106,11 +2392,11 @@ export function Footer({ onNavigate }: { onNavigate?: (page: Page) => void }) {
         <div className="footer-legal-links">
           <button onClick={() => onNavigate?.('terms')}>{t('footer.terms') || 'Terms of Service'}</button>
           <button onClick={() => onNavigate?.('privacy')}>{t('footer.privacy') || 'Privacy Policy'}</button>
-          <button onClick={() => { 
-            onNavigate?.('privacy'); 
-            setTimeout(() => document.getElementById('cookies')?.scrollIntoView({ behavior: 'smooth' }), 300); 
+          <button onClick={() => {
+            onNavigate?.('privacy');
+            setTimeout(() => document.getElementById('cookies')?.scrollIntoView({ behavior: 'smooth' }), 300);
           }}>Cookie Policy</button>
-          <button onClick={() => alert('Support flow coming soon!')}>{t('footer.help') || 'Support'}</button>
+          <button onClick={() => onNavigate?.('support')}>{t('footer.help') || 'Support'}</button>
         </div>
       </div>
     </footer>
@@ -2143,20 +2429,41 @@ function ServiceCard(service: (typeof services)[number]) {
 
 export function ProCard({ pro, mini = false, onNavigate }: { pro: any; mini?: boolean; onNavigate?: (page: Page) => void }) {
   const { t } = useTranslation();
+  const displayImage = pro.image ? getMediaUrl(pro.image) : '';
 
   return (
     <article className={mini ? 'top-rated-card mini' : 'top-rated-card'}>
       <div className="top-rated-cover">
-        {pro.image ? (
-          <img src={pro.image} alt={pro.name} className="top-rated-img" />
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={pro.name}
+            className="top-rated-img"
+            onError={(e) => {
+              (e.target as HTMLImageElement).onerror = null;
+              (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&auto=format&fit=crop&q=80`;
+            }}
+          />
         ) : (
           <div className="top-rated-img fallback-cover" style={{ backgroundColor: '#14b8a6', width: '100%', height: '100%' }}></div>
         )}
         <div className="top-rated-verified"><Icon name="shield" /> Verified</div>
       </div>
       <div className="top-rated-content">
-        <div className="top-rated-avatar">
-          {(pro.name || '').split(' ').map((n: string) => n[0]).join('')}
+        <div className="top-rated-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {displayImage ? (
+            <img
+              src={displayImage}
+              alt={pro.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).onerror = null;
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            (pro.name || '').split(' ').map((n: string) => n[0]).join('')
+          )}
         </div>
         <div className="top-rated-header">
           <h3>{pro.name}</h3>
@@ -2254,11 +2561,11 @@ export function DownloadPage() {
           {isFr ? 'Télécharger l\'application Fixam' : 'Download the Fixam App'}
         </h1>
         <p style={{ fontSize: '1.1rem', color: '#64748B', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          {isFr 
-            ? 'Gérez vos tâches, discutez avec des prestataires qualifiés et suivez vos projets en temps réel.' 
+          {isFr
+            ? 'Gérez vos tâches, discutez avec des prestataires qualifiés et suivez vos projets en temps réel.'
             : 'Manage your tasks, chat with qualified providers, and track your projects in real time.'}
         </p>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
           <a href="https://play.google.com/store/apps/details?id=com.fixam.app.android" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', width: '220px', padding: '1rem', backgroundColor: '#0F172A', color: 'white', fontWeight: 700, borderRadius: '8px', textDecoration: 'none', border: '1px solid #0F172A', transition: 'all 0.2s' }}>
             🤖 Google Play Store (Android)
@@ -2269,8 +2576,8 @@ export function DownloadPage() {
         </div>
 
         <div style={{ marginTop: '2.5rem', borderTop: '1px solid #E2E8F0', paddingTop: '1.5rem', color: '#94A3B8', fontSize: '0.9rem' }}>
-          {isFr 
-            ? 'Redirection automatique vers votre store...' 
+          {isFr
+            ? 'Redirection automatique vers votre store...'
             : 'Automatically redirecting you to your store...'}
         </div>
       </div>
@@ -2296,8 +2603,8 @@ export function ProfileViewPage({ profileId }: { profileId: string }) {
           {isFr ? 'Profil du Prestataire' : 'Provider Profile'}
         </h1>
         <p style={{ fontSize: '1rem', color: '#64748B', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          {isFr 
-            ? 'Vous consultez le profil d\'un prestataire vérifié sur Fixam. Pour voir ses avis complets et le réserver, ouvrez son profil directement dans l\'application.' 
+          {isFr
+            ? 'Vous consultez le profil d\'un prestataire vérifié sur Fixam. Pour voir ses avis complets et le réserver, ouvrez son profil directement dans l\'application.'
             : 'You are viewing a verified provider profile on Fixam. To see reviews and book them, open their profile in the app.'}
         </p>
 
@@ -2332,8 +2639,8 @@ export function JobViewPage({ jobId }: { jobId: string }) {
           {isFr ? 'Détails de la Mission' : 'Task Details'}
         </h1>
         <p style={{ fontSize: '1rem', color: '#64748B', marginBottom: '2.5rem', lineHeight: 1.6 }}>
-          {isFr 
-            ? 'Vous consultez les détails d\'une mission publiée sur Fixam. Pour postuler ou gérer cette tâche, ouvrez-la directement dans l\'application.' 
+          {isFr
+            ? 'Vous consultez les détails d\'une mission publiée sur Fixam. Pour postuler ou gérer cette tâche, ouvrez-la directement dans l\'application.'
             : 'You are viewing details of a task posted on Fixam. To apply or manage this job, open it in the app.'}
         </p>
 
@@ -2404,6 +2711,7 @@ export function Icon({ name }: { name: IconName }) {
     electrical: 'M13 2 4 14h7l-1 8 10-13h-7z',
     filter: 'M4 6h16 M7 12h10 M10 18h4',
     home: 'M3 11 12 3l9 8v10h-6v-6H9v6H3z',
+    heart: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
     location: 'M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z M12 10a2 2 0 1 0 0 .1z',
     menu: 'M4 7h16 M4 12h16 M4 17h16',
     message: 'M4 6h16v12H4z M4 7l8 6 8-6',

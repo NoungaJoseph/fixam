@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Icon, images, getMediaUrl, DEFAULT_AVATAR } from '../../App';
 import { api } from '../../services/api';
 import MyTasks from './MyTasks';
+import ReviewModal from '../../components/ReviewModal';
 
 interface MyBookingsProps {
   clientBookings: any[];
@@ -10,7 +11,7 @@ interface MyBookingsProps {
   clientTasks: any[];
   setClientTasks: (tasks: any[]) => void;
   setActiveTab: (tab: string) => void;
-  setActiveChatUser: (user: string) => void;
+  setActiveChatUser: (user: any) => void;
   walletBalance?: number;
   savedProsState?: any[];
   setSelectedBooking?: (bk: any) => void;
@@ -28,6 +29,7 @@ export default function MyBookings({
   setSelectedBooking
 }: MyBookingsProps) {
   const [activeSubTab, setActiveSubTab] = useState<'bookings' | 'tasks'>('bookings');
+  const [reviewTarget, setReviewTarget] = useState<{ jobId: string; targetUserId: string; targetName: string } | null>(null);
 
   return (
     <div className="bookings-tasks-tab-wrapper animate-fade-in" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -93,26 +95,47 @@ export default function MyBookings({
                     <Icon name="calendar" />
                     <span>{bkDate} • {bkTime}</span>
                   </div>
-                  <span className={`booking-status-badge ${bkStatus.toLowerCase()}`}>
-                    {bkStatus}
+                  <span className={`booking-status-badge ${bkStatus.toLowerCase()}`} style={bkStatus === 'COUNTER_PROPOSED' ? { background: '#FEF3C7', color: '#B45309', borderColor: '#FCD34D' } : {}}>
+                    {bkStatus === 'COUNTER_PROPOSED' ? 'Counter Offer Received' : bkStatus}
                   </span>
                 </div>
                 <div className="booking-card-actions">
+                  {bkStatus === 'COUNTER_PROPOSED' && (
+                    <button className="btn-chat-booking" style={{ backgroundColor: '#F59E0B', borderColor: '#F59E0B', color: '#FFFFFF', fontWeight: 'bold' }} onClick={(e) => {
+                      e.stopPropagation();
+                      if (setSelectedBooking) setSelectedBooking(bk);
+                      setActiveTab('Booking Details');
+                    }}>
+                      💡 Review Counter
+                    </button>
+                  )}
                   <button className="btn-chat-booking" onClick={() => {
+                    const targetId = bk.provider?.userId || bk.provider?.id || bk.providerId;
+                    setActiveChatUser({ id: targetId, name: bkProvider, avatar: bk.provider?.avatar || bk.image });
                     setActiveTab('Messages');
-                    setActiveChatUser(bkProvider);
                   }}>
                     <Icon name="chat" /> Chat
                   </button>
+                  {bk.status === 'COMPLETED' && (
+                    <button className="btn-chat-booking" style={{ backgroundColor: '#F59E0B', borderColor: '#F59E0B', color: '#FFFFFF' }} onClick={(e) => {
+                      e.stopPropagation();
+                      const targetUserId = bk.provider?.id || bk.provider?.userId || bk.providerId;
+                      setReviewTarget({ jobId: bk.id || bk._id, targetUserId, targetName: bkProvider });
+                    }}>
+                      ⭐ Review
+                    </button>
+                  )}
                   {bk.status !== 'COMPLETED' && bk.status !== 'CANCELLED' && (
                     <>
-                      <button className="btn-cancel-booking" onClick={async () => {
+                      <button className="btn-cancel-booking" onClick={async (e) => {
+                        e.stopPropagation();
+                        const bkId = bk.id || bk._id;
                         if (confirm("Cancel this booking?")) {
                           try {
-                            await api.patch(`/bookings/${bk._id}/status`, { status: 'CANCELLED' });
-                            setClientBookings(clientBookings.map(b => b._id === bk._id ? {...b, status: 'CANCELLED'} : b));
+                            await api.patch(`/bookings/${bkId}/status`, { status: 'CANCELLED' });
+                            setClientBookings(clientBookings.map(b => (b.id === bkId || b._id === bkId) ? {...b, status: 'CANCELLED'} : b));
                           } catch (err: any) {
-                            alert("Failed to cancel: " + err.response?.data?.message);
+                            alert("Failed to cancel: " + (err.response?.data?.message || err.message));
                           }
                         }
                       }}>Cancel</button>
@@ -131,6 +154,16 @@ export default function MyBookings({
           walletBalance={walletBalance}
           savedProsState={savedProsState}
           clientBookings={clientBookings}
+        />
+      )}
+
+      {reviewTarget && (
+        <ReviewModal
+          isOpen={Boolean(reviewTarget)}
+          onClose={() => setReviewTarget(null)}
+          jobId={reviewTarget.jobId}
+          targetUserId={reviewTarget.targetUserId}
+          targetName={reviewTarget.targetName}
         />
       )}
     </div>
