@@ -22,11 +22,14 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import TealSafeAreaView from '../../components/Common/TealSafeAreaView';
 import UserAvatar from '../../components/UserAvatar';
 import { getCurrencyForUser } from '../../constants/countries';
 import api, { getMediaUrl } from '../../services/api';
 import { optimizeImageForUpload } from '../../utils/imageOptimizer';
+
+const DRAFT_PROJECT_STORAGE_KEY = '@fixam_post_project_draft';
 
 const PostProjectScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
@@ -40,6 +43,8 @@ const PostProjectScreen = ({ navigation, route }) => {
   // Mode: 'LIST' (shows published projects) vs 'FORM' (create new project)
   const [viewMode, setViewMode] = useState(editProject ? 'FORM' : 'LIST');
   const [loading, setLoading] = useState(false);
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+  const isDraftLoadedRef = useRef(false);
 
   // Form States
   const [title, setTitle] = useState(editProject?.title || '');
@@ -50,6 +55,36 @@ const PostProjectScreen = ({ navigation, route }) => {
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
   const [modalKeyboardOffset, setModalKeyboardOffset] = useState(0);
   const categoryScrollRef = useRef(null);
+
+  // Restore draft on mount if not editing an existing project
+  useEffect(() => {
+    if (editProject) return;
+    const loadDraft = async () => {
+      try {
+        const savedDraftJson = await AsyncStorage.getItem(DRAFT_PROJECT_STORAGE_KEY);
+        if (savedDraftJson) {
+          const draft = JSON.parse(savedDraftJson);
+          if (draft && draft.hasDraftContent) {
+            if (draft.title) setTitle(draft.title);
+            if (draft.category) setCategory(draft.category);
+            if (draft.customCategory) setCustomCategory(draft.customCategory);
+            if (draft.isCustomCategorySelected !== undefined) setIsCustomCategorySelected(draft.isCustomCategorySelected);
+            if (draft.description) setDescription(draft.description);
+            if (Array.isArray(draft.imageUris)) setImageUris(draft.imageUris);
+            if (Array.isArray(draft.videoUris)) setVideoUris(draft.videoUris);
+            if (draft.tierData) setTierData(draft.tierData);
+            setHasRestoredDraft(true);
+            setViewMode('FORM');
+          }
+        }
+      } catch (e) {
+        console.log('[PostProjectScreen] Error loading draft:', e);
+      } finally {
+        isDraftLoadedRef.current = true;
+      }
+    };
+    loadDraft();
+  }, [editProject]);
 
   useEffect(() => {
     if (editProject) {
@@ -144,7 +179,35 @@ const PostProjectScreen = ({ navigation, route }) => {
 
   const currencyStr = getCurrencyForUser(user?.country || 'Cameroon');
 
-  const resetForm = () => {
+  // Auto-save project draft when fields change
+  useEffect(() => {
+    if (!isProjectDraftLoadedRef.current || editingId) return;
+    const hasContent = Boolean(
+      title.trim() ||
+      description.trim() ||
+      (imageUris && imageUris.length > 0) ||
+      (videoUris && videoUris.length > 0)
+    );
+
+    if (hasContent) {
+      const draftPayload = {
+        title,
+        category,
+        customCategory,
+        isCustomCategorySelected,
+        description,
+        imageUris,
+        videoUris,
+        tierData,
+        hasDraftContent: true,
+        savedAt: Date.now(),
+      };
+      AsyncStorage.setItem(DRAFT_PROJECT_STORAGE_KEY, JSON.stringify(draftPayload)).catch(() => {});
+      setHasRestoredDraft(true);
+    }
+  }, [title, category, customCategory, isCustomCategorySelected, description, imageUris, videoUris, tierData, editingId]);
+
+  const resetForm = async () => {
     setEditingId(null);
     setTitle('');
     setCategory(popularCategories?.[0]?.name || 'Web Development');
@@ -159,6 +222,8 @@ const PostProjectScreen = ({ navigation, route }) => {
       premium: { enabled: false, name: 'Premium Package', summary: '', price: '', deliveryDays: '', revisions: '', expressDeliveryDays: '', expressDeliveryPrice: '', features: [] },
     });
     setActiveTierId('standard');
+    setHasRestoredDraft(false);
+    await AsyncStorage.removeItem(DRAFT_PROJECT_STORAGE_KEY).catch(() => {});
   };
 
   // Filter provider's own projects
@@ -416,6 +481,8 @@ const PostProjectScreen = ({ navigation, route }) => {
       };
 
       await publishProject(projectPayload);
+      await AsyncStorage.removeItem(DRAFT_PROJECT_STORAGE_KEY).catch(() => {});
+      setHasRestoredDraft(false);
       const successMsg = editingId
         ? t('project.updatedSuccess', 'Your project has been successfully updated!')
         : t('project.publishedSuccess', 'Your project has been successfully published!');
