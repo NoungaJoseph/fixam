@@ -223,13 +223,6 @@ const PostProjectScreen = ({ navigation, route }) => {
   const handlePickImages = async () => {
     try {
       setPickingMedia(true);
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('common.error'), t('profileDetail.permissionDenied', 'Please grant photo library access in your device settings to select images.'));
-        setPickingMedia(false);
-        return;
-      }
-
       const mediaTypeOptions = ImagePicker.MediaTypeOptions?.Images || ['images'];
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: mediaTypeOptions,
@@ -258,13 +251,6 @@ const PostProjectScreen = ({ navigation, route }) => {
   const handlePickVideo = async () => {
     try {
       setPickingMedia(true);
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('common.error'), t('profileDetail.permissionDenied', 'Please grant video library access in your device settings to select videos.'));
-        setPickingMedia(false);
-        return;
-      }
-
       const mediaTypeOptions = ImagePicker.MediaTypeOptions?.Videos || ['videos'];
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: mediaTypeOptions,

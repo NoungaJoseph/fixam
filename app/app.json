@@ -100,7 +100,6 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your provider/client and for profile verification.",
           "cameraPermission": "The app accesses your camera to take profile photos and document proofs."
         }
       ],
@@ -117,6 +116,7 @@
       "@react-native-firebase/messaging",
       "./plugins/withAndroidFirebaseStabilization",
       "./plugins/withIosFirebaseStabilization",
+      "./plugins/withAndroidPhotoPickerClean",
       [
         "@sentry/react-native/expo",
         {

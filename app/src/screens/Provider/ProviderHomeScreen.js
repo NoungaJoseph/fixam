@@ -270,11 +270,6 @@ const ProviderHomeScreen = ({ navigation }) => {
 
   const handlePickAvatar = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('common.permissionNeeded', 'Permission Needed'), t('profile.permissionPhotoNeeded', 'Please allow access to your photos to upload a profile picture.'));
-        return;
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,

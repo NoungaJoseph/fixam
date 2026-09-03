@@ -132,12 +132,6 @@ const ProviderProfileEditItemScreen = ({ navigation, route }) => {
 
   const handleSelectMultipleMedia = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('profileDetail.permissionError', 'Permission Required'), t('profileDetail.permissionDenied', 'Please grant photo and video library access in your device settings.'));
-        return;
-      }
-
       const mediaTypeOptions = ImagePicker.MediaTypeOptions?.All || ['images', 'videos'];
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: mediaTypeOptions,
