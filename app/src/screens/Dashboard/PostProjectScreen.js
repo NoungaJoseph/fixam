@@ -637,6 +637,54 @@ const PostProjectScreen = ({ navigation, route }) => {
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
+          {/* In-Progress Draft Banner */}
+          {hasRestoredDraft && !editingId && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: isDarkMode ? '#134E4A' : '#CCFBF1',
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                marginBottom: 14,
+                borderWidth: 1,
+                borderColor: isDarkMode ? '#0D9488' : '#99F6E4',
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <MaterialCommunityIcons name="content-save-check-outline" size={18} color="#0D9488" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: isDarkMode ? '#5EEAD4' : '#0F766E' }}>
+                  {t('project.draftAutoSaved', 'In-progress draft auto-saved')}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    t('project.clearDraftTitle', 'Discard Draft?'),
+                    t('project.clearDraftBody', 'Are you sure you want to discard this project draft?'),
+                    [
+                      { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+                      {
+                        text: t('common.discard', 'Discard'),
+                        style: 'destructive',
+                        onPress: async () => {
+                          await resetForm();
+                        }
+                      }
+                    ]
+                  );
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>
+                  {t('common.clear', 'Clear')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Project Title */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('project.title', 'Project Title')} *</Text>
