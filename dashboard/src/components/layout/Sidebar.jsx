@@ -19,6 +19,8 @@ import {
   MessageSquare,
   Mail,
   ShieldCheck,
+  ShieldAlert,
+  FileText,
   LogOut,
   GraduationCap,
   Globe2
@@ -31,6 +33,8 @@ const menuItems = [
   { icon: ShieldCheck, label: "Verifications", href: "/dashboard/verifications" },
   { icon: Briefcase, label: "Jobs", href: "/dashboard/jobs" },
   { icon: AlertCircle, label: "Task Approval", href: "/dashboard/jobs/approval" },
+  { icon: ShieldAlert, label: "Dispute Center", href: "/dashboard/disputes" },
+  { icon: FileText, label: "Service Agreements", href: "/dashboard/agreements" },
   { icon: Wallet, label: "Wallet & Coins", href: "/dashboard/wallet" },
   { icon: MessagesSquare, label: "Messages", href: "/dashboard/messages" },
   { icon: Mail, label: "Broadcasts", href: "/dashboard/broadcasts" },
@@ -76,12 +80,19 @@ export function Sidebar({ collapsed = false }) {
 
   return (
     <div className={`${collapsed ? "w-20" : "w-[260px]"} flex h-full flex-col bg-[#F8FAFC] text-slate-700 border-r border-[#E2E8F0] transition-all duration-200`}>
-      <div className="flex h-[72px] items-center px-6">
+      <div className="flex h-[76px] items-center px-5 border-b border-slate-100">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-slate-200 rounded flex items-center justify-center">
-            <span className="text-slate-700 font-black text-sm">C</span>
-          </div>
-          {!collapsed && <span className="text-[15px] font-bold tracking-wide text-slate-800">FIXAM OS</span>}
+          <img 
+            src="/logo.png" 
+            alt="Fixam Pro Control Panel" 
+            className="h-10 w-10 rounded-full object-cover shadow-sm ring-2 ring-blue-500/20 shrink-0" 
+          />
+          {!collapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-[14px] font-black tracking-tight text-slate-800 leading-none">FIXAM PRO</span>
+              <span className="text-[9px] font-extrabold tracking-widest text-blue-600 uppercase mt-0.5">Control Panel</span>
+            </div>
+          )}
         </Link>
       </div>
       
@@ -93,6 +104,7 @@ export function Sidebar({ collapsed = false }) {
           if (item.label === "Verifications") badge = stats?.pendingVerifications || 0
           if (item.label === "Reports & Disputes") badge = stats?.openReports || 0
           if (item.label === "Feedback") badge = stats?.newFeedback || 0
+          if (item.label === "Wallet & Coins") badge = stats?.pendingTransactions || 0
           
           let isActive = pathname === item.href || (pathname.startsWith(item.href + "/") && item.href !== "/dashboard");
           if (item.href === "/dashboard/jobs" && pathname.startsWith("/dashboard/jobs/approval")) {

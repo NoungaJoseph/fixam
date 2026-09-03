@@ -52,7 +52,7 @@ export const dashboardService = {
   getCareerpathStats: () => api.get('/careerpath/stats'),
   getFinancialStats: () => api.get('/admin/financial-stats'),
   getBroadcasts: () => api.get('/admin/broadcasts'),
-  getUsers: () => api.get('/admin/users'),
+  getUsers: (params) => api.get('/admin/users', { params }),
   getUserDetails: (id) => api.get(`/admin/users/${id}`),
   updateUserStatus: (id, data) => api.put(`/admin/users/${id}/status`, data),
   getProviders: () => api.get('/admin/providers'),
@@ -88,6 +88,12 @@ export const dashboardService = {
   getUnreadMessageCount: () => api.get('/chat/unread-count'),
   sendChatMessage: (data) => api.post('/chat/send', data),
   getConversationBetweenUsers: (user1Id, user2Id) => api.get(`/admin/conversations/between/${user1Id}/${user2Id}`),
+  getDisputes: (params) => api.get('/admin/disputes', { params }),
+  getDisputeDetails: (id) => api.get(`/admin/disputes/${id}`),
+  requestDisputeEvidence: (id, data) => api.post(`/admin/disputes/${id}/request-evidence`, data),
+  resolveDispute: (id, data) => api.post(`/admin/disputes/${id}/resolve`, data),
+  getAgreements: (params) => api.get('/admin/agreements', { params }),
+  getAgreementDetails: (id) => api.get(`/admin/agreements/${id}`),
 };
 
 export default api;

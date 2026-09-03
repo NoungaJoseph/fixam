@@ -17,6 +17,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { translateService, translateStatus } from '../../i18n/translate';
+import MaterialsListEditor from '../../components/MaterialsListEditor';
 
 const tasksHeroImage = require('../../../assets/tasks_hero.png');
 
@@ -120,12 +121,20 @@ const formatCardDate = (job) => {
 
 const calculateJobCoinCost = (providersCount) => {
   const count = parseInt(providersCount) || 1;
-  if (count >= 1 && count <= 5) return 1;
-  if (count >= 6 && count <= 10) return 2;
-  if (count >= 11 && count <= 20) return 3;
-  if (count >= 21 && count <= 30) return 4;
-  return 5;
+  if (count === 1) return 1;
+  if (count === 2) return 2;
+  if (count >= 3 && count <= 6) return 3;
+  if (count >= 7 && count <= 9) return 4;
+  return 5; // 10 and above
 };
+
+const PROVIDER_TIERS = [
+  { id: '1', value: 1, label: '1', fullLabel: '1 Provider', coins: 1 },
+  { id: '2', value: 2, label: '2', fullLabel: '2 Providers', coins: 2 },
+  { id: '3', value: 3, label: '3+', fullLabel: '3+ Providers (3–6)', coins: 3 },
+  { id: '7', value: 7, label: '7+', fullLabel: '7+ Providers (7–9)', coins: 4 },
+  { id: '10', value: 10, label: '10+', fullLabel: '10+ Providers', coins: 5 },
+];
 
 const PostTaskScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
@@ -141,6 +150,9 @@ const PostTaskScreen = ({ route, navigation }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [budget, setBudget] = useState('50000');
   const [budgetMin, setBudgetMin] = useState('5000');
   const [budgetMax, setBudgetMax] = useState('15000');
@@ -151,7 +163,8 @@ const PostTaskScreen = ({ route, navigation }) => {
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [whatNeedsDone, setWhatNeedsDone] = useState('');
-  const [providersNeeded, setProvidersNeeded] = useState('');
+  const [providersNeeded, setProvidersNeeded] = useState('1');
+  const [showProvidersPicker, setShowProvidersPicker] = useState(false);
   const [importantDetails, setImportantDetails] = useState('');
   const [taskScope, setTaskScope] = useState('');
   const [selectedPreferences, setSelectedPreferences] = useState(['verified', 'fast', 'rated', 'today']);
@@ -163,6 +176,9 @@ const PostTaskScreen = ({ route, navigation }) => {
   const [scheduledTime, setScheduledTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const [materialsList, setMaterialsList] = useState([]);
+  const [requiresDiagnosis, setRequiresDiagnosis] = useState(false);
 
   useEffect(() => {
     if (route?.params?.startOnPost) {
@@ -194,6 +210,8 @@ const PostTaskScreen = ({ route, navigation }) => {
     setDetailEditor(null);
     setPriority('normal');
     setIsRemote(false);
+    setMaterialsList([]);
+    setRequiresDiagnosis(false);
     setScheduledDate(new Date());
     setScheduledTime(new Date());
   };
@@ -232,6 +250,8 @@ const PostTaskScreen = ({ route, navigation }) => {
     setDetailEditor(null);
     setPriority(job.priority || 'normal');
     setIsRemote(job.isRemote ?? false);
+    setMaterialsList(Array.isArray(job.materialsList) ? job.materialsList : []);
+    setRequiresDiagnosis(Boolean(job.requiresDiagnosis));
     setScheduledDate(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setScheduledTime(Number.isNaN(scheduled.getTime()) ? new Date() : scheduled);
     setTaskMode('post');
@@ -319,11 +339,6 @@ const PostTaskScreen = ({ route, navigation }) => {
   const pickTaskPhoto = async () => {
     if (selectedPhotos.length >= 5) return;
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert(t('jobs.permissionDenied'), t('jobs.photoPermissionBody'));
-        return;
-      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
@@ -410,21 +425,29 @@ const PostTaskScreen = ({ route, navigation }) => {
         scheduledTime.getHours(),
         scheduledTime.getMinutes()
       );
+      const parsedBudget = parseInt(budget, 10) || 5000;
+      const parsedMin = parseInt(budgetMin, 10) || parsedBudget;
+      const parsedMax = parseInt(budgetMax, 10) || parsedBudget;
+      const finalBudget = budgetMode === 'range' ? parsedMax : parsedBudget;
+
       const payload = {
-        title, description,
-        location: isRemote ? 'Remote / Online' : location,
-        budget: budgetMode === 'range' ? parseInt(budgetMax) : parseInt(budget),
-        budgetMin: budgetMode === 'range' ? parseInt(budgetMin) : parseInt(budget),
-        budgetMax: budgetMode === 'range' ? parseInt(budgetMax) : parseInt(budget),
-        providersNeeded: parseInt(providersNeeded),
-        category: locale === 'fr' ? getCategoryLabel(selectedCat) : selectedCat,
+        title: String(title || '').trim(),
+        description: String(description || '').trim(),
+        location: isRemote ? 'Remote / Online' : (String(location || '').trim() || 'Douala, Cameroon'),
+        budget: finalBudget,
+        budgetMin: budgetMode === 'range' ? parsedMin : parsedBudget,
+        budgetMax: budgetMode === 'range' ? parsedMax : parsedBudget,
+        providersNeeded: parseInt(providersNeeded, 10) || 1,
+        category: selectedCat || 'OTHER',
         scheduledTime: scheduledDateTime.toISOString(),
-        whatNeedsDone,
-        importantDetails,
-        taskScope,
-        preferences: selectedPreferences,
-        priority,
-        isRemote,
+        whatNeedsDone: whatNeedsDone || undefined,
+        importantDetails: importantDetails || undefined,
+        taskScope: taskScope || undefined,
+        preferences: Array.isArray(selectedPreferences) ? selectedPreferences : [],
+        priority: priority || 'NORMAL',
+        isRemote: Boolean(isRemote),
+        materialsList: Array.isArray(materialsList) ? materialsList : [],
+        requiresDiagnosis: Boolean(requiresDiagnosis),
       };
       if (editingJob) {
         await api.put(`/jobs/${editingJob.id}`, payload);
@@ -434,7 +457,8 @@ const PostTaskScreen = ({ route, navigation }) => {
       await fetchAppData?.(true);
       setStep('success');
     } catch (error) {
-      Alert.alert(t('common.error'), error.response?.data?.message || t('jobs.publishFailed'));
+      const errMsg = error.response?.data?.message || error.message || t('jobs.publishFailed');
+      Alert.alert(t('common.error'), errMsg);
     } finally {
       setLoading(false);
     }
@@ -835,17 +859,77 @@ const PostTaskScreen = ({ route, navigation }) => {
               )}
 
               <View style={styles.createFieldGroup}>
-                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.providersNeeded', 'Number of Providers Needed')}</Text>
-                <TextInput
-                  style={[styles.createInput, { color: colors.text, borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF' }]}
-                  placeholder={t('jobs.providersNeededPlaceholder', 'e.g. 2')}
-                  placeholderTextColor="#94A3B8"
-                  value={providersNeeded}
-                  onChangeText={setProvidersNeeded}
-                  keyboardType="numeric"
-                />
-                <Text style={styles.fieldHint}>{t('jobs.providersNeededHint', 'How many professionals do you need for this task?')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={[styles.createSectionLabel, { color: colors.text, marginBottom: 0 }]}>{t('jobs.providersNeeded', 'Number of Providers Needed')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.accent }}>
+                    {calculateJobCoinCost(providersNeeded)} {calculateJobCoinCost(providersNeeded) === 1 ? 'Coin' : 'Coins'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.createInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF' }]}
+                  onPress={() => setShowProvidersPicker(true)}
+                >
+                  <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>
+                    {PROVIDER_TIERS.find(t => String(t.value) === String(providersNeeded) || String(t.id) === String(providersNeeded))?.fullLabel || `${providersNeeded} Providers`}
+                  </Text>
+                  <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+                <Text style={styles.fieldHint}>{t('jobs.providersNeededTierHint', 'Cost: 1 = 1 coin, 2 = 2 coins, 3+ = 3 coins, 7+ = 4 coins, 10+ = 5 coins')}</Text>
               </View>
+
+              <Modal visible={showProvidersPicker} transparent animationType="fade" onRequestClose={() => setShowProvidersPicker(false)}>
+                <TouchableOpacity 
+                  style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 }} 
+                  activeOpacity={1} 
+                  onPress={() => setShowProvidersPicker(false)}
+                >
+                  <TouchableOpacity 
+                    activeOpacity={1} 
+                    style={{ width: '100%', maxWidth: 400, borderRadius: 20, padding: 20, backgroundColor: isDarkMode ? '#1E293B' : '#FFF', borderWidth: 1, borderColor: colors.border }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: isDarkMode ? '#334155' : '#E2E8F0' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>{t('jobs.selectProvidersNeeded', 'Select Number of Providers')}</Text>
+                      <TouchableOpacity onPress={() => setShowProvidersPicker(false)}>
+                        <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ paddingVertical: 4 }}>
+                      {PROVIDER_TIERS.map(tier => {
+                        const isSelected = String(providersNeeded) === String(tier.value) || String(providersNeeded) === String(tier.id);
+                        return (
+                          <TouchableOpacity
+                            key={tier.id}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              paddingVertical: 14,
+                              paddingHorizontal: 16,
+                              borderRadius: 12,
+                              backgroundColor: isSelected ? (isDarkMode ? 'rgba(13, 148, 136, 0.2)' : '#E6FDF3') : 'transparent',
+                              marginBottom: 6,
+                            }}
+                            onPress={() => {
+                              setProvidersNeeded(String(tier.value));
+                              setShowProvidersPicker(false);
+                            }}
+                          >
+                            <View>
+                              <Text style={{ fontSize: 15, fontWeight: '800', color: isSelected ? colors.accent : colors.text }}>
+                                {tier.fullLabel}
+                              </Text>
+                              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                                {tier.coins} {tier.coins === 1 ? 'Coin' : 'Coins'} deducted
+                              </Text>
+                            </View>
+                            {isSelected && <MaterialCommunityIcons name="check-circle" size={22} color={colors.accent} />}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </Modal>
 
               <View style={styles.createFieldGroup}>
                 <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.budget')}</Text>
@@ -1040,7 +1124,12 @@ const PostTaskScreen = ({ route, navigation }) => {
               })}
             </View>
 
-
+            <MaterialsListEditor
+              items={materialsList}
+              onChangeItems={setMaterialsList}
+              requiresDiagnosis={requiresDiagnosis}
+              onToggleDiagnosis={setRequiresDiagnosis}
+            />
 
             <View style={styles.descriptionActions}>
               <TouchableOpacity style={styles.descriptionBackBtn} onPress={() => setStep('details')}>

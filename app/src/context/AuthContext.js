@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import api, { getMediaUrl, setAuthToken, registerUnauthorizedListener } from '../services/api';
 import { requestStartupPermissions } from '../services/permissions';
+import { translate } from '../i18n/translate';
 
 const AuthContext = createContext();
 
@@ -194,13 +195,25 @@ export const AuthProvider = ({ children }) => {
     return freshUser;
   };
 
-  const uploadFile = async (formData, endpoint = '/upload') => {
+  const uploadFile = async (formData, endpoint = '/upload', options = {}) => {
     try {
       const res = await api.post(endpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: options.timeout || 60000, // 60s timeout for file uploads on low-speed networks
+        transformRequest: (data) => data,
       });
       return res.data;
     } catch (error) {
+      console.error('[uploadFile Error]:', error?.response?.data || error?.message);
+      const code = error?.response?.data?.code || error?.response?.data?.errorCode;
+      if (code) {
+        const translatedMessage = translate(`errors.${code}`);
+        if (translatedMessage && translatedMessage !== code) {
+          error.userMessage = translatedMessage;
+        }
+      }
       throw error;
     }
   };

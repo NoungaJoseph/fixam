@@ -18,6 +18,10 @@ import { getCurrencyForUser } from '../../constants/countries';
 import UserAvatar from '../../components/UserAvatar';
 import VerificationRequiredModal from '../../components/VerificationRequiredModal';
 import { getVerificationMessageKey, isIdentityVerified, translateApiError } from '../../utils/eligibilityMessages';
+import MaterialsListDisplay from '../../components/MaterialsListDisplay';
+import MaterialsListEditor from '../../components/MaterialsListEditor';
+import DisputeDetailsCard from '../../components/DisputeDetailsCard';
+import ServiceAgreementCard from '../../components/ServiceAgreementCard';
 
 const formatDate = (value, locale = 'en') => {
   if (!value) return null;
@@ -41,6 +45,7 @@ const CATEGORY_ICONS = {
 const TaskDetailsScreen = ({ route, navigation }) => {
   const { isDarkMode, colors } = useTheme();
   const task = route.params?.task || route.params?.job || {};
+  const currentTaskId = task.id || route.params?.taskId || route.params?.jobId;
   const { walletBalance, appliedJobIds, markJobApplied, favoriteJobIds, toggleFavoriteJob, isProviderOnline } = useAppContext();
   const { user } = useAuth();
   const { on } = useSocket();
@@ -58,70 +63,119 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const [applied, setApplied] = useState(false);
   const coinCost = 1;
   const isBooking = Boolean(route.params?.isBooking || task?.isBooking || task?.bookingDate);
-  const isFavorite = favoriteJobIds?.includes(task.id);
-  const clientName = typeof task.client === 'object' ? (task.client?.fullName || t('common.client')) : (task.client || t('common.client'));
-  const clientId = typeof task.client === 'object' ? task.client?.id : task.clientId;
-  const clientAvatar = getMediaUrl(typeof task.client === 'object' ? task.client?.avatar : null);
-  const isClientVerified = task.client?.isVerified === true || task.clientVerified === true || task.client?.providerProfile?.verification === 'VERIFIED';
-  const budgetMin = Number(task.budgetMin || task.budget || 0);
-  const budgetMax = Number(task.budgetMax || task.budget || 0);
+  const isFavorite = favoriteJobIds?.includes(currentTaskId);
+  
+  // Reset state whenever the active task/job changes
+  React.useEffect(() => {
+    setJobDetails(task);
+    setApplied(false);
+    setShowConfirm(false);
+    setBoostCoins('');
+    setCoverLetter('');
+    setApplicationCount(task.assignments?.length || task.proposals || 0);
+    setActiveDispute(task.disputes?.[0] || null);
+  }, [currentTaskId]);
+
+  // Only use jobDetails if it matches the current active taskId to prevent stale previous task leak
+  const displayTask = (jobDetails && (!currentTaskId || jobDetails.id === currentTaskId))
+    ? { ...task, ...jobDetails }
+    : (task || {});
+
+  const clientObj = typeof displayTask.client === 'object' ? displayTask.client : (typeof task.client === 'object' ? task.client : null);
+  const clientName = clientObj?.fullName || (typeof displayTask.client === 'string' ? displayTask.client : (typeof task.client === 'string' ? task.client : t('common.client')));
+  const clientId = clientObj?.id || displayTask.clientId || task.clientId;
+  const clientAvatar = getMediaUrl(clientObj?.avatar);
+  const isClientVerified = clientObj?.isVerified === true || displayTask.clientVerified === true || task.clientVerified === true || clientObj?.providerProfile?.verification === 'VERIFIED';
+  
+  const budgetMin = Number(displayTask.budgetMin || displayTask.budget || task.budgetMin || task.budget || 0);
+  const budgetMax = Number(displayTask.budgetMax || displayTask.budget || task.budgetMax || task.budget || 0);
   const budget = budgetMax;
-  const jobCurrency = getCurrencyForUser(task.country || user?.country || 'Cameroon');
+  const jobCurrency = getCurrencyForUser(displayTask.country || task.country || user?.country || 'Cameroon');
   const budgetLabel = budgetMin && budgetMax && budgetMin !== budgetMax
     ? `${budgetMin.toLocaleString()} - ${budgetMax.toLocaleString()} ${jobCurrency}`
     : `${budget.toLocaleString()} ${jobCurrency}`;
-  const photos = task.photos?.length ? task.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : [];
-  const fallbackIcon = CATEGORY_ICONS[String(task.category || '').toUpperCase()] || 'briefcase-outline';
-  const postedOn = formatDate(task.createdAt, locale);
-  const preferredDate = formatDate(task.scheduledTime, locale);
-  const hasApplied = applied || appliedJobIds?.includes(task.id) || task.assignments?.some((assignment) => (
+    
+  const taskBookingDate = displayTask.bookingDate || task.bookingDate;
+  const taskBookingTime = displayTask.bookingTime || task.bookingTime || displayTask.time || task.time;
+  const taskDuration = displayTask.bookingDuration || displayTask.duration || task.bookingDuration || task.duration;
+  const taskUrgency = displayTask.urgencyLevel || task.urgencyLevel;
+  const taskLocation = displayTask.location || displayTask.address || task.location || task.address;
+  const taskCategory = displayTask.category || task.category;
+  const taskServiceType = displayTask.serviceType || task.serviceType;
+  const taskMaterialsProvider = displayTask.materialsProvider || task.materialsProvider;
+  const taskDescription = displayTask.notes || displayTask.description || task.notes || task.description;
+
+  const photos = displayTask.photos?.length ? displayTask.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : (task.photos?.length ? task.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : []);
+  const fallbackIcon = CATEGORY_ICONS[String(taskCategory || '').toUpperCase()] || 'briefcase-outline';
+  const postedOn = formatDate(displayTask.createdAt || task.createdAt, locale);
+  const preferredDate = isBooking
+    ? (taskBookingDate 
+        ? `${new Date(taskBookingDate).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')}${taskBookingTime ? ` @ ${taskBookingTime}` : ''}`
+        : (displayTask.scheduledTime ? formatDate(displayTask.scheduledTime, locale) : null))
+    : (displayTask.scheduledTime ? formatDate(displayTask.scheduledTime, locale) : null);
+  const hasApplied = applied || appliedJobIds?.includes(currentTaskId) || displayTask.assignments?.some((assignment) => (
     assignment.providerId === user?.providerProfile?.id ||
     assignment.provider?.userId === user?.id ||
     assignment.provider?.user?.id === user?.id
-  )) || (isBooking && ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(String(task.status || '').toUpperCase()));
-  const providerAssignment = task.assignments?.find((assignment) => (
+  )) || (isBooking && ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'].includes(String(displayTask.status || task.status || '').toUpperCase()));
+  const providerAssignment = displayTask.assignments?.find((assignment) => (
     assignment.providerId === user?.providerProfile?.id ||
     assignment.provider?.userId === user?.id ||
     assignment.provider?.user?.id === user?.id ||
     assignment.id === task.assignmentId
   ));
-  const assignmentStatus = String(task.assignmentStatus || providerAssignment?.status || '').toUpperCase();
-  const canMessageClient = assignmentStatus === 'ACCEPTED' && ['ASSIGNED', 'IN_PROGRESS'].includes(String(task.status || '').toUpperCase());
-  const hasLocationCoords = task.latitude != null && task.longitude != null;
-  const canViewLocation = canMessageClient && ['ASSIGNED', 'IN_PROGRESS'].includes(String(task.status || '').toUpperCase()) && hasLocationCoords;
+  const assignmentStatus = String(displayTask.assignmentStatus || task.assignmentStatus || providerAssignment?.status || '').toUpperCase();
+  const isSelectedProvider = isBooking || assignmentStatus === 'ACCEPTED' || Boolean(
+    (displayTask.assignedProviderId && (displayTask.assignedProviderId === user?.providerProfile?.id || displayTask.assignedProviderId === user?.id)) ||
+    (task.assignedProviderId && (task.assignedProviderId === user?.providerProfile?.id || task.assignedProviderId === user?.id)) ||
+    (jobDetails?.assignedProviderId && (jobDetails.assignedProviderId === user?.providerProfile?.id || jobDetails.assignedProviderId === user?.id))
+  );
+  const canMessageClient = (isBooking && ['ACCEPTED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase())) || (assignmentStatus === 'ACCEPTED' && ['ASSIGNED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase()));
+  const [activeDispute, setActiveDispute] = useState(task.disputes?.[0] || null);
+
+  React.useEffect(() => {
+    if (currentTaskId) {
+      const endpoint = isBooking ? `/disputes?bookingId=${currentTaskId}` : `/disputes?jobId=${currentTaskId}`;
+      api.get(endpoint)
+        .then(res => {
+          if (res.data?.data && res.data.data.length > 0) {
+            setActiveDispute(res.data.data[0]);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentTaskId, isBooking]);
 
   React.useEffect(() => {
     const off = on('job:application-count', ({ jobId, applicationCount: count }) => {
-      if (jobId === task.id) setApplicationCount(count);
+      if (jobId === currentTaskId) setApplicationCount(count);
     });
     return () => off?.();
-  }, [on, task.id]);
+  }, [on, currentTaskId]);
 
   React.useEffect(() => {
     let active = true;
     const fetchDetails = async () => {
+      if (!currentTaskId) return;
       try {
         setFetching(true);
-        const res = await api.get(`/jobs/${task.id}`);
+        const endpoint = isBooking ? `/bookings/${currentTaskId}` : `/jobs/${currentTaskId}`;
+        const res = await api.get(endpoint);
         if (res.data?.success && active) {
           setJobDetails(res.data.data);
-          setApplicationCount(res.data.data.assignments?.length || 0);
+          if (!isBooking) {
+            setApplicationCount(res.data.data.assignments?.length || 0);
+          }
         }
       } catch (err) {
-        console.log('Error fetching job details:', err);
+        console.log('Error fetching task details:', err);
       } finally {
         if (active) setFetching(false);
       }
     };
-    if (task.id) {
-      fetchDetails();
-    }
+    fetchDetails();
     return () => { active = false; };
-  }, [task.id]);
-
-  const goToCoins = () => {
-    navigation.getParent()?.getParent()?.navigate('Wallet', { screen: 'CoinSystem' });
-  };
+  }, [currentTaskId, isBooking]);
 
   const handleAccept = () => {
     if (hasApplied) {
@@ -143,47 +197,28 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     }
 
     if (isBooking) {
-      confirmAccept();
+      Alert.alert(
+        t('jobs.acceptBookingTitle', 'Accept Booking'),
+        t('jobs.acceptBookingCoinNotice', 'Accepting this booking will deduct 1 coin from your wallet. Do you want to proceed?'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('jobs.accept', 'Accept'), onPress: confirmAcceptBooking }
+        ]
+      );
       return;
     }
 
-    if (walletBalance < coinCost) {
-      Alert.alert(t('jobs.insufficientCoins'), t('jobs.needCoinsToApply', { count: coinCost }), [
-        { text: t('common.cancel') },
-        { text: t('jobs.buyCoins'), onPress: goToCoins }
-      ]);
-      return;
-    }
-    setShowConfirm(true);
+    navigation.navigate('JobProposal', { task: displayTask, taskId: currentTaskId });
   };
 
-  const confirmAccept = async () => {
+  const confirmAcceptBooking = async () => {
     try {
       setSubmitting(true);
-      setShowConfirm(false);
-      if (isBooking) {
-        await api.patch(`/bookings/${task.id}/status`, { status: 'ACCEPTED' });
-        setApplied(true);
-        Alert.alert(t('common.success', 'Success'), t('jobs.bookingAccepted', 'You have successfully accepted this booking.'), [
-          { text: t('common.close') }
-        ]);
-      } else {
-        const boostVal = Number(boostCoins) || 0;
-        const res = await api.post(`/jobs/${task.id}/apply`, { 
-          boostCoins: boostVal,
-          coverLetter: coverLetter.trim() || undefined
-        });
-        setApplied(true);
-        setCoverLetter('');
-        await markJobApplied?.(task.id);
-        setApplicationCount(res.data.applicationCount || applicationCount + 1);
-
-        const alertTitle = boostVal > 0 ? t('jobs.boostedProposalSent') : t('jobs.proposalSent');
-        const alertBody = boostVal > 0 ? t('jobs.boostedProposalSentBody', { coins: boostVal }) : t('jobs.proposalSentBody');
-        Alert.alert(alertTitle, alertBody, [
-          { text: t('common.close') }
-        ]);
-      }
+      await api.patch(`/bookings/${task.id}/status`, { status: 'ACCEPTED' });
+      setApplied(true);
+      Alert.alert(t('common.success', 'Success'), t('jobs.bookingAccepted', 'You have successfully accepted this booking. 1 coin was deducted.'), [
+        { text: t('common.close') }
+      ]);
     } catch (error) {
       const message = translateApiError(error, t);
       Alert.alert(t('jobs.couldNotApply'), message);
@@ -208,17 +243,6 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     } catch (error) {
       Alert.alert(t('common.error'), translateApiError(error, t, 'messages.sendFailed'));
     }
-  };
-
-  const openJobLocation = () => {
-    navigation.navigate('LiveTaskMap', {
-      task: {
-        ...task,
-        latitude: task.latitude,
-        longitude: task.longitude,
-        location: task.location,
-      },
-    });
   };
 
   const handleShare = async () => {
@@ -308,126 +332,162 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         <View style={styles.overviewCard}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.overview')}</Text>
           <View style={styles.inlineFacts}>
-            {task.id ? <Fact icon="clipboard-text-outline" label={t('jobs.jobId')} value={`#JOB-${String(task.id).slice(-7)}`} colors={colors} /> : null}
+            {task.id ? <Fact icon="clipboard-text-outline" label={isBooking ? t('jobs.bookingId', 'Booking ID') : t('jobs.jobId')} value={`#${isBooking ? 'BKG' : 'JOB'}-${String(task.id).slice(-7)}`} colors={colors} /> : null}
             {postedOn ? <Fact icon="calendar-month-outline" label={t('jobs.posted')} value={postedOn} colors={colors} /> : null}
-            {preferredDate ? <Fact icon="clock-outline" label={t('jobs.preferred')} value={preferredDate} colors={colors} /> : null}
-            <Fact icon="star-cog-outline" label={t('jobs.proposals')} value={t('jobs.receivedCount', { count: applicationCount })} colors={colors} />
+            {preferredDate ? <Fact icon="clock-outline" label={isBooking ? t('jobs.scheduled', 'Scheduled') : t('jobs.preferred')} value={preferredDate} colors={colors} /> : null}
+            {!isBooking ? (
+              <Fact icon="star-cog-outline" label={t('jobs.proposals')} value={t('jobs.receivedCount', { count: applicationCount })} colors={colors} />
+            ) : null}
           </View>
 
-          {/* Top Bids Leaderboard */}
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24, marginBottom: 12 }]}>
-            {t('jobs.topBids', 'Top Application Bids')}
-          </Text>
-          
-          {fetching ? (
-            <ActivityIndicator size="small" color={colors.accent} style={{ marginVertical: 12 }} />
-          ) : !jobDetails.assignments || jobDetails.assignments.length === 0 ? (
-            <View style={[styles.emptyLeaderboard, { borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="trophy-outline" size={24} color={colors.textSecondary} />
-              <Text style={[styles.emptyLeaderboardText, { color: colors.textSecondary }]}>
-                {t('jobs.noBidsYet', 'No applications boosted yet. Apply with a bid to secure the top spot!')}
+          {/* Top Bids Leaderboard - Only for Open Jobs, never for Direct Bookings */}
+          {!isBooking && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24, marginBottom: 12 }]}>
+                {t('jobs.topBids', 'Top Application Bids')}
               </Text>
-            </View>
-          ) : (
-            <View style={[styles.leaderboardContainer, { borderColor: colors.border, backgroundColor: colors.card, borderBlockColor: colors.border }]}>
-              {jobDetails.assignments.slice(0, 5).map((assignment, index) => {
-                const isOwn = assignment.provider?.userId === user?.id;
-                const displayName = isOwn ? (user?.fullName || 'You') : (assignment.provider?.user?.fullName || `Provider #${index + 1}`);
-                const avatarUri = isOwn ? getMediaUrl(user?.avatar) : null;
-                const isAnon = assignment.isAnonymous;
-                const bidAmount = assignment.boostCoins || 0;
+              
+              {fetching ? (
+                <ActivityIndicator size="small" color={colors.accent} style={{ marginVertical: 12 }} />
+              ) : !jobDetails.assignments || jobDetails.assignments.length === 0 ? (
+                <View style={[styles.emptyLeaderboard, { borderColor: colors.border }]}>
+                  <MaterialCommunityIcons name="trophy-outline" size={24} color={colors.textSecondary} />
+                  <Text style={[styles.emptyLeaderboardText, { color: colors.textSecondary }]}>
+                    {t('jobs.noBidsYet', 'No applications boosted yet. Apply with a bid to secure the top spot!')}
+                  </Text>
+                </View>
+              ) : (
+                <View style={[styles.leaderboardContainer, { borderColor: colors.border, backgroundColor: colors.card, borderBlockColor: colors.border }]}>
+                  {jobDetails.assignments.slice(0, 5).map((assignment, index) => {
+                    const isOwn = assignment.provider?.userId === user?.id;
+                    const displayName = isOwn ? (user?.fullName || 'You') : (assignment.provider?.user?.fullName || `Provider #${index + 1}`);
+                    const avatarUri = isOwn ? getMediaUrl(user?.avatar) : null;
+                    const isAnon = assignment.isAnonymous;
+                    const bidAmount = assignment.boostCoins || 0;
 
-                return (
-                  <View key={assignment.id || index} style={[styles.leaderboardRow, { borderBottomColor: index < 4 ? colors.border : 'transparent' }]}>
-                    {/* Rank Badge */}
-                    <View style={styles.rankCol}>
-                      {index === 0 ? (
-                        <MaterialCommunityIcons name="crown" size={20} color="#F59E0B" />
-                      ) : (
-                        <Text style={[styles.rankText, { color: colors.textSecondary }]}>#{index + 1}</Text>
-                      )}
-                    </View>
-
-                    {/* Avatar */}
-                    <View style={[styles.leaderboardAvatar, { backgroundColor: isDarkMode ? '#334155' : '#E2E8F0' }]}>
-                      {avatarUri ? (
-                        <Image source={{ uri: avatarUri }} style={styles.leaderboardAvatarImg} />
-                      ) : (
-                        <MaterialCommunityIcons name="account" size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
-                      )}
-                    </View>
-
-                    {/* Name (blurred if anonymous) */}
-                    <View style={styles.nameCol}>
-                      <Text 
-                        style={[
-                          styles.leaderboardName, 
-                          { color: colors.text },
-                          isAnon && {
-                            color: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.15)',
-                            textShadowColor: isDarkMode ? '#CBD5E1' : '#64748B',
-                            textShadowRadius: 7,
-                            textShadowOffset: { width: 0, height: 0 }
-                          }
-                        ]}
-                      >
-                        {displayName}
-                      </Text>
-                      {isOwn && (
-                        <View style={[styles.ownBadge, { backgroundColor: colors.accent + '20' }]}>
-                          <Text style={[styles.ownBadgeText, { color: colors.accent }]}>{t('common.you', 'You')}</Text>
+                    return (
+                      <View key={assignment.id || index} style={[styles.leaderboardRow, { borderBottomColor: index < 4 ? colors.border : 'transparent' }]}>
+                        {/* Rank Badge */}
+                        <View style={styles.rankCol}>
+                          {index === 0 ? (
+                            <MaterialCommunityIcons name="crown" size={20} color="#F59E0B" />
+                          ) : (
+                            <Text style={[styles.rankText, { color: colors.textSecondary }]}>#{index + 1}</Text>
+                          )}
                         </View>
-                      )}
-                    </View>
 
-                    {/* Bid Coins */}
-                    <View style={[styles.bidBadge, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
-                      <MaterialCommunityIcons name="rocket-launch" size={14} color="#0D9488" style={{ marginRight: 4 }} />
-                      <Text style={[styles.bidText, { color: colors.text }]}>{bidAmount} {t('payments.coins', 'Coins')}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+                        {/* Avatar */}
+                        <View style={[styles.leaderboardAvatar, { backgroundColor: isDarkMode ? '#334155' : '#E2E8F0' }]}>
+                          {avatarUri ? (
+                            <Image source={{ uri: avatarUri }} style={styles.leaderboardAvatarImg} />
+                          ) : (
+                            <MaterialCommunityIcons name="account" size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
+                          )}
+                        </View>
 
-          {task.description ? (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.description')}</Text>
-              <Text style={[styles.longText, { color: colors.textSecondary }]}>{task.description}</Text>
-              <TouchableOpacity style={[styles.shareJobBtn, { borderColor: colors.border, backgroundColor: isDarkMode ? '#134E4A' : '#E6FDF3' }]} onPress={handleShare}>
-                <MaterialCommunityIcons name="share-variant" size={20} color="#0D9488" />
-                <Text style={[styles.shareJobText, { color: colors.text }]}>{t('jobs.shareJob', 'Share this job')}</Text>
-              </TouchableOpacity>
+                        {/* Name */}
+                        <View style={styles.nameCol}>
+                          <Text 
+                            style={[
+                              styles.leaderboardName, 
+                              { color: colors.text },
+                              isAnon && {
+                                color: isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.15)',
+                                textShadowColor: isDarkMode ? '#CBD5E1' : '#64748B',
+                                textShadowRadius: 7,
+                                textShadowOffset: { width: 0, height: 0 }
+                              }
+                            ]}
+                          >
+                            {displayName}
+                          </Text>
+                          {isOwn && (
+                            <View style={[styles.ownBadge, { backgroundColor: colors.accent + '20' }]}>
+                              <Text style={[styles.ownBadgeText, { color: colors.accent }]}>{t('common.you', 'You')}</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Bid Coins */}
+                        <View style={[styles.bidBadge, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
+                          <MaterialCommunityIcons name="rocket-launch" size={14} color="#0D9488" style={{ marginRight: 4 }} />
+                          <Text style={[styles.bidText, { color: colors.text }]}>{bidAmount} {t('payments.coins', 'Coins')}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </>
-          ) : (
-            <TouchableOpacity style={[styles.shareJobBtn, { borderColor: colors.border, backgroundColor: isDarkMode ? '#134E4A' : '#E6FDF3', marginTop: 16 }]} onPress={handleShare}>
-              <MaterialCommunityIcons name="share-variant" size={20} color="#0D9488" />
-              <Text style={[styles.shareJobText, { color: colors.text }]}>{t('jobs.shareJob', 'Share this job')}</Text>
-            </TouchableOpacity>
           )}
 
-          {(jobDetails.importantDetails || task.importantDetails) ? (
+          {taskDescription ? (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>{t('jobs.importantDetails')}</Text>
-              <View style={[styles.todoBox, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: 'row', gap: 10, padding: 12, borderRadius: 8, alignItems: 'center' }]}>
-                <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="#0D9488" />
-                <Text style={[styles.todoText, { color: colors.textSecondary, flex: 1, marginLeft: 0 }]}>{jobDetails.importantDetails || task.importantDetails}</Text>
-              </View>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 18 }]}>{t('jobs.description')}</Text>
+              <Text style={[styles.longText, { color: colors.textSecondary }]}>{taskDescription}</Text>
             </>
           ) : null}
 
           {(jobDetails.whatNeedsDone || task.whatNeedsDone) ? (
             <>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.whatNeedsDone')}</Text>
-              <View style={[styles.todoBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#0D9488" />
-                <Text style={[styles.todoText, { color: colors.textSecondary }]}>{jobDetails.whatNeedsDone || task.whatNeedsDone}</Text>
-              </View>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 18 }]}>{t('jobs.whatNeedsDone')}</Text>
+              <Text style={[styles.longText, { color: colors.textSecondary }]}>{jobDetails.whatNeedsDone || task.whatNeedsDone}</Text>
             </>
           ) : null}
 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.photos')}</Text>
+          {(jobDetails.importantDetails || task.importantDetails) ? (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 18 }]}>{t('jobs.importantDetails')}</Text>
+              <Text style={[styles.longText, { color: colors.textSecondary }]}>{jobDetails.importantDetails || task.importantDetails}</Text>
+            </>
+          ) : null}
+
+          <MaterialsListDisplay
+            materialsList={displayTask.materialsList || task.materialsList}
+            materialsStatus={displayTask.materialsStatus || task.materialsStatus}
+            materialsVersion={displayTask.materialsVersion || task.materialsVersion}
+            requiresDiagnosis={displayTask.requiresDiagnosis || task.requiresDiagnosis}
+            agreements={displayTask.agreements || task.agreements || []}
+            isProvider={true}
+            isClient={false}
+          />
+
+          {Boolean(activeDispute) && (
+            <DisputeDetailsCard
+              dispute={activeDispute}
+              isClient={false}
+              isProvider={true}
+              onRefresh={async () => {
+                try {
+                  const res = await api.get(`/disputes/${activeDispute.id}`);
+                  if (res.data?.data) setActiveDispute(res.data.data);
+                } catch (_) {}
+              }}
+            />
+          )}
+
+          {isSelectedProvider && (
+            <ServiceAgreementCard
+              agreement={(jobDetails || task)?.serviceAgreement || (jobDetails || task)?.serviceAgreements?.[0] || (jobDetails || task)?.agreements?.[0]}
+              booking={jobDetails || task}
+              isClient={false}
+              isProvider={true}
+              onRefresh={async () => {
+                try {
+                  const endpoint = isBooking ? `/bookings/${task.id}` : `/jobs/${task.id}`;
+                  const res = await api.get(endpoint);
+                  if (res.data?.data) setJobDetails(res.data.data);
+                } catch (_) {}
+              }}
+            />
+          )}
+
+          <TouchableOpacity style={[styles.shareJobBtn, { borderColor: colors.border, backgroundColor: isDarkMode ? '#134E4A' : '#E6FDF3' }]} onPress={handleShare}>
+            <MaterialCommunityIcons name="share-variant" size={20} color="#0D9488" />
+            <Text style={[styles.shareJobText, { color: colors.text }]}>{t('jobs.shareJob', 'Share this job')}</Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>{t('jobs.photos')}</Text>
           <View style={styles.photoRow}>
             {photos.length > 0 ? (
               <>
@@ -441,25 +501,23 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             ) : (
               <View style={[styles.photoFallback, { backgroundColor: isDarkMode ? 'rgba(13,148,136,0.16)' : '#E6FDF3', borderColor: colors.border }]}>
                 <MaterialCommunityIcons name={fallbackIcon} size={38} color={colors.accent} />
-                <Text style={[styles.photoFallbackText, { color: colors.textSecondary }]}>{translateService(task.category || t('jobs.taskDetails'))}</Text>
+                <Text style={[styles.photoFallbackText, { color: colors.textSecondary }]}>{translateService(taskCategory || t('jobs.taskDetails'))}</Text>
               </View>
             )}
           </View>
 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('jobs.details')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 20 }]}>{t('jobs.details')}</Text>
           <View style={styles.detailList}>
-            {task.category ? <DetailLine label={t('jobs.category')} value={translateService(task.category)} colors={colors} /> : null}
-            {task.serviceType ? <DetailLine label={t('jobs.serviceType')} value={translateService(task.serviceType)} colors={colors} /> : null}
+            {taskCategory ? <DetailLine label={t('jobs.category')} value={translateService(taskCategory)} colors={colors} /> : null}
+            {taskServiceType ? <DetailLine label={t('jobs.serviceType')} value={translateService(taskServiceType)} colors={colors} /> : null}
+            {taskBookingDate ? <DetailLine label={t('jobs.scheduledDate', 'Scheduled Date')} value={new Date(taskBookingDate).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')} colors={colors} /> : null}
+            {taskBookingTime ? <DetailLine label={t('jobs.scheduledTime', 'Time / Hours')} value={taskBookingTime} colors={colors} /> : null}
+            {taskDuration ? <DetailLine label={t('jobs.duration', 'Duration')} value={taskDuration} colors={colors} /> : null}
+            {taskUrgency ? <DetailLine label={t('jobs.urgency', 'Urgency Level')} value={taskUrgency} colors={colors} /> : null}
+            {taskLocation ? <DetailLine label={t('jobs.location', 'Location')} value={taskLocation} colors={colors} /> : null}
             {budget > 0 ? <DetailLine label={t('jobs.budget')} value={budgetLabel} colors={colors} /> : null}
-            {task.materialsProvider ? <DetailLine label={t('jobs.materials')} value={task.materialsProvider === 'client' ? t('jobs.clientWillProvide') : t('jobs.professionalWillProvide')} colors={colors} /> : null}
-            {task.duration ? <DetailLine label={t('jobs.duration')} value={task.duration} colors={colors} /> : null}
+            {taskMaterialsProvider ? <DetailLine label={t('jobs.materials')} value={taskMaterialsProvider === 'client' ? t('jobs.clientWillProvide') : t('jobs.professionalWillProvide')} colors={colors} /> : null}
           </View>
-          {canViewLocation && (
-            <TouchableOpacity style={[styles.viewLocationBtn, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={openJobLocation}>
-              <MaterialCommunityIcons name="map-marker" size={21} color={colors.accent} />
-              <Text style={[styles.viewLocationText, { color: colors.text }]}>{t('jobs.viewLocation')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </ScrollView>
 
@@ -473,14 +531,11 @@ const TaskDetailsScreen = ({ route, navigation }) => {
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <>
-              <Text style={styles.proposalTitle}>
-                {isBooking 
-                  ? (hasApplied ? t('jobs.bookingAccepted', 'Booking Accepted') : t('jobs.acceptBooking', 'Accept Booking')) 
-                  : (hasApplied ? t('jobs.alreadyApplied') : t('jobs.sendProposal'))}
-              </Text>
-              {!isBooking && !hasApplied && <Text style={styles.proposalSub}>{t('wallet.coinCount', { count: coinCost })}</Text>}
-            </>
+            <Text style={styles.proposalTitle}>
+              {isBooking 
+                ? (hasApplied ? t('jobs.bookingAccepted', 'Booking Accepted') : t('jobs.acceptBookingCoins', 'Accept Booking (1 Coin)')) 
+                : (hasApplied ? t('jobs.alreadyApplied', 'Proposal Submitted') : t('jobs.sendProposalFree', 'Send Proposal (FREE)'))}
+            </Text>
           )}
         </TouchableOpacity>
         <TouchableOpacity style={styles.footerIcon} onPress={() => toggleFavoriteJob?.(task.id)}>
@@ -491,71 +546,6 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         <MaterialCommunityIcons name="lock" size={18} color="#64748B" />
         <Text style={[styles.secureText, { color: colors.textSecondary }]}>{t('jobs.proposalSecure')}</Text>
       </View>
-
-      <Modal visible={showConfirm} transparent animationType="fade" onRequestClose={() => setShowConfirm(false)}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#111827' : '#FFFFFF' }]}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('jobs.sendProposalQuestion')}</Text>
-                <Text style={[styles.modalText, { color: colors.textSecondary, marginBottom: 12 }]}>{t('jobs.applyCoinNotice', { count: coinCost })}</Text>
-                
-                <Text style={[styles.boostLabel, { color: colors.textSecondary }]}>
-                  {t('jobs.proposalPitchLabel', 'Proposal Pitch / Cover Note (Optional)')}
-                </Text>
-                <TextInput
-                  style={[styles.coverLetterInput, { color: colors.text, borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC' }]}
-                  placeholder={t('jobs.proposalPitchPlaceholder', 'Explain why you are the best fit for this job...')}
-                  placeholderTextColor={colors.placeholder}
-                  multiline
-                  numberOfLines={4}
-                  value={coverLetter}
-                  onChangeText={setCoverLetter}
-                />
-
-                <Text style={[styles.boostLabel, { color: colors.textSecondary, marginTop: 12 }]}>
-                  {t('profile.bidBoostTitle')}
-                </Text>
-                <TextInput
-                  style={[styles.boostInput, { color: colors.text, borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#F8FAFC' }]}
-                  placeholder={t('profile.bidBoostPlaceholder')}
-                  placeholderTextColor={colors.placeholder}
-                  keyboardType="numeric"
-                  value={boostCoins}
-                  onChangeText={(val) => setBoostCoins(val.replace(/[^0-9]/g, ''))}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                
-                <View style={[styles.totalCostBadge, { backgroundColor: isDarkMode ? '#1E293B' : '#ECFDF5' }]}>
-                  <Text style={[styles.totalCostText, { color: colors.accent }]}>
-                    Total: {coinCost + (Number(boostCoins) || 0)} Credits
-                  </Text>
-                </View>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={[
-                      styles.cancelBtn, 
-                      { 
-                        borderColor: colors.border, 
-                        backgroundColor: isDarkMode ? '#1F2937' : '#F1F5F9',
-                        borderWidth: isDarkMode ? 1 : 0
-                      }
-                    ]} 
-                    onPress={() => setShowConfirm(false)}
-                  >
-                    <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.confirmBtn} onPress={confirmAccept}>
-                    <Text style={styles.confirmBtnText}>{t('jobs.yesApply')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
 
       <VerificationRequiredModal 
         visible={showVerificationModal} 

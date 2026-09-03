@@ -11,6 +11,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { getVerificationMessageKey, isIdentityVerified, translateApiError } from '../../utils/eligibilityMessages';
+import MaterialsListEditor from '../../components/MaterialsListEditor';
 
 const formatAddressLabel = (address) => {
   if (!address) return '';
@@ -53,6 +54,8 @@ const BookingFormScreen = ({ route, navigation }) => {
     notes: task?.description || '',
     bookingDuration: 'DAY',
     urgencyLevel: 'NORMAL',
+    materialsList: task?.materialsList || [],
+    requiresDiagnosis: task?.requiresDiagnosis || false,
   });
   const [submitting, setSubmitting] = useState(false);
   const { walletBalance } = useAppContext();
@@ -66,11 +69,7 @@ const BookingFormScreen = ({ route, navigation }) => {
   };
 
   const getCoinCost = () => {
-    switch(form.urgencyLevel) {
-      case 'EMERGENCY': return 3;
-      case 'URGENT': return 2;
-      default: return 1;
-    }
+    return form.urgencyLevel === 'HIGH_PRIORITY' ? 1 : 0;
   };
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -181,17 +180,16 @@ const BookingFormScreen = ({ route, navigation }) => {
       return;
     }
 
-    const isUrgentOrEmergency = ['URGENT', 'EMERGENCY'].includes(form.urgencyLevel);
-    if (!providerId || !form.bookingDate || !form.bookingTime || !form.location || (!isUrgentOrEmergency && !form.budget)) {
+    if (!providerId || !form.bookingDate || !form.bookingTime || !form.location) {
       Alert.alert(t('errors.required'), t('validation.bookingRequired'));
       return;
     }
 
     const coinCost = getCoinCost();
-    if (walletBalance < coinCost) {
+    if (coinCost > 0 && walletBalance < coinCost) {
       Alert.alert(
         t('bookings.insufficientCoins', 'Insufficient coins'),
-        t('bookings.coinsRequired', `You need ${coinCost} coins for this booking. Top up your wallet.`),
+        t('bookings.highPriorityCoinsRequired', `High Priority booking requires 1 coin. Please top up your wallet.`),
         [
           { text: t('common.cancel', 'Cancel'), style: 'cancel' },
           { text: t('bookings.topUpWallet', 'Top Up Wallet'), onPress: () => navigation.navigate('Wallet') }
@@ -202,19 +200,35 @@ const BookingFormScreen = ({ route, navigation }) => {
 
     try {
       setSubmitting(true);
-      const bookingBudget = isUrgentOrEmergency ? 0 : (Number(String(form.budget || 0).replace(/[^\d.]/g, '')) || 0);
+      const durationMap = {
+        '1 Hour': 'HOURLY',
+        '2-3 Hours': 'HOURLY',
+        'Half Day (4 Hours)': 'HALF_DAY',
+        'Full Day (8 Hours)': 'DAY',
+        'Multi-Day Project': 'DAY',
+        'Flexible': 'FIXED',
+        'DAY': 'DAY',
+        'HALF_DAY': 'HALF_DAY',
+        'HOURLY': 'HOURLY',
+        'FIXED': 'FIXED'
+      };
+      const mappedDuration = durationMap[form.bookingDuration] || 'HOURLY';
+      let bookingBudget = Number(String(form.budget || 0).replace(/[^\d.]/g, '')) || 0;
+
       const res = await api.post('/bookings', {
         providerId,
         taskId: task?.id,
         bookingDate: form.bookingDate,
         bookingTime: form.bookingTime,
-        bookingDuration: form.bookingDuration,
+        bookingDuration: mappedDuration,
         urgencyLevel: form.urgencyLevel,
         budget: bookingBudget,
-        location: form.location || '',
+        location: form.location || 'Location Not Specified',
         latitude: form.latitude,
         longitude: form.longitude,
         notes: form.notes || '',
+        requiresDiagnosis: form.requiresDiagnosis,
+        materialsList: form.materialsList,
       });
       Alert.alert(t('bookings.sent'), t('bookings.sentBody'));
       handleSafeGoBack();
@@ -271,24 +285,28 @@ const BookingFormScreen = ({ route, navigation }) => {
               </View>
             </View>
 
-            {/* SECTION 2 — Urgency Level */}
+            {/* SECTION 2 — Priority / Urgency Level */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.text }]}>{t('bookings.urgencyLevel', 'How urgent is this?')}</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('bookings.priorityLevel', 'Booking Priority')}</Text>
               <View style={styles.urgencyContainer}>
                 {[
-                  { id: 'NORMAL', cost: 1, title: t('bookings.normalUrgency', 'Normal'), desc: t('bookings.normalDesc', 'Standard booking, scheduled in advance') },
-                  { id: 'URGENT', cost: 2, title: t('bookings.urgentUrgency', 'Urgent'), desc: t('bookings.urgentDesc', 'Same day or next day service') },
-                  { id: 'EMERGENCY', cost: 3, title: t('bookings.emergencyUrgency', 'Emergency'), desc: t('bookings.emergencyDesc', 'Immediate service required') },
+                  { id: 'NORMAL', cost: 0, title: t('bookings.normalPriority', 'Standard'), desc: t('bookings.normalPriorityDesc', 'Standard booking — Free (0 Coins)') },
+                  { id: 'HIGH_PRIORITY', cost: 1, title: t('bookings.highPriority', 'High Priority'), desc: t('bookings.highPriorityDesc', 'Expedited response & top priority — 1 Coin') },
                 ].map((urg) => {
                   const isSelected = form.urgencyLevel === urg.id;
                   return (
                     <TouchableOpacity
                       key={urg.id}
-                      style={[styles.urgencyCard, { backgroundColor: isSelected ? colors.accent + '10' : colors.card, borderColor: isSelected ? colors.accent : colors.border }]}
+                      style={[styles.urgencyCard, { backgroundColor: isSelected ? colors.accent + '12' : colors.card, borderColor: isSelected ? colors.accent : colors.border }]}
                       onPress={() => setForm({ ...form, urgencyLevel: urg.id })}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.urgencyTitle, { color: isSelected ? colors.accent : colors.text }]}>{urg.title}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={[styles.urgencyTitle, { color: isSelected ? colors.accent : colors.text }]}>{urg.title}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: urg.cost > 0 ? '#F59E0B' : '#10B981' }}>
+                            {urg.cost > 0 ? `1 Coin` : `FREE`}
+                          </Text>
+                        </View>
                         <Text style={[styles.urgencyDesc, { color: colors.textSecondary }]}>{urg.desc}</Text>
                       </View>
                     </TouchableOpacity>
@@ -343,34 +361,69 @@ const BookingFormScreen = ({ route, navigation }) => {
               </View>
             </View>
 
-            {['URGENT', 'EMERGENCY'].includes(form.urgencyLevel) ? (
-              <View style={[styles.field, { backgroundColor: isDarkMode ? '#1E293B' : '#F8FAFC', padding: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.border }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <MaterialCommunityIcons name="information-outline" size={18} color={colors.accent} />
-                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>
-                    {t('bookings.emergencyPricingTitle', 'Urgent/Emergency Pricing')}
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, lineHeight: 18 }}>
-                  {t('bookings.emergencyPricingDesc', 'For urgent and emergency requests, you do not set a budget. The service provider will review your request and quote their price first.')}
-                </Text>
-              </View>
-            ) : (
-              <Input label={t('bookings.budget')} placeholder="15000" value={form.budget} onChangeText={(budget) => setForm({ ...form, budget })} keyboardType="numeric" colors={colors} />
-            )}
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>{t('bookings.durationLabel', 'Service Duration')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                {[
+                  { key: '1 Hour', label: '1 Hour' },
+                  { key: '2-3 Hours', label: '2-3 Hours' },
+                  { key: 'Half Day (4 Hours)', label: 'Half Day (4h)' },
+                  { key: 'Full Day (8 Hours)', label: 'Full Day (8h)' },
+                  { key: 'Multi-Day Project', label: 'Multi-Day' },
+                  { key: 'Flexible', label: 'Flexible' }
+                ].map((opt) => {
+                  const isSel = form.bookingDuration === opt.key || (form.bookingDuration === 'DAY' && opt.key === 'Full Day (8 Hours)');
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      onPress={() => setForm({ ...form, bookingDuration: opt.key })}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        backgroundColor: isSel ? colors.accent : (isDarkMode ? '#1E293B' : '#F1F5F9'),
+                        borderColor: isSel ? colors.accent : colors.border
+                      }}
+                    >
+                      <Text style={{ color: isSel ? '#FFFFFF' : colors.text, fontSize: 13, fontWeight: '700' }}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <Input label={t('bookings.budget')} placeholder="15000" value={form.budget} onChangeText={(budget) => setForm({ ...form, budget })} keyboardType="numeric" colors={colors} />
             <Input label={t('bookings.details')} placeholder={t('bookings.detailsPlaceholder')} value={form.notes} onChangeText={(notes) => setForm({ ...form, notes })} multiline colors={colors} />
+
+            <MaterialsListEditor
+              items={form.materialsList}
+              onChangeItems={(items) => setForm(prev => ({ ...prev, materialsList: items }))}
+              requiresDiagnosis={form.requiresDiagnosis}
+              onToggleDiagnosis={(val) => setForm(prev => ({ ...prev, requiresDiagnosis: val }))}
+            />
 
             <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.summaryTitle, { color: colors.text }]}>{t('bookings.bookingSummary', 'Booking Summary')}</Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{t('bookings.durationLabel', 'Duration:')} {t(`bookings.${form.bookingDuration.toLowerCase()}Option`, form.bookingDuration)}</Text>
-              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{t('bookings.typeLabel', 'Type:')} {t(`bookings.${form.urgencyLevel.toLowerCase()}Urgency`, form.urgencyLevel)}</Text>
+              <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{t('bookings.priorityLabel', 'Priority:')} {form.urgencyLevel === 'HIGH_PRIORITY' ? t('bookings.highPriority', 'High Priority') : t('bookings.normalPriority', 'Standard')}</Text>
               <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{t('bookings.dateLabel', 'Date:')} {form.bookingDate || t('bookings.notSelected', 'Not selected')}</Text>
-              <Text style={[styles.summaryCost, { color: colors.accent }]}>{t('bookings.costLabel', 'Cost:')} {getCoinCost()} {t('bookings.coinsDeducted', 'coins will be deducted')}</Text>
+              <Text style={[styles.summaryCost, { color: getCoinCost() > 0 ? '#F59E0B' : '#10B981' }]}>
+                {t('bookings.costLabel', 'Cost:')} {getCoinCost() > 0 ? `1 Coin (${t('bookings.highPriority', 'High Priority')})` : `FREE (0 Coins)`}
+              </Text>
             </View>
 
             <TouchableOpacity onPress={submit} disabled={submitting} style={[styles.submitBtn, { opacity: submitting ? 0.65 : 1, marginTop: 12 }]}>
               {submitting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <MaterialCommunityIcons name="calendar-check" size={20} color="#FFFFFF" />}
-              <Text style={styles.submitText}>{submitting ? t('bookings.scheduling') : t('bookings.bookNowCoins', { coins: getCoinCost() }).replace('{{coins}}', getCoinCost())}</Text>
+              <Text style={styles.submitText}>
+                {submitting 
+                  ? t('bookings.scheduling') 
+                  : (getCoinCost() > 0 
+                      ? t('bookings.bookNowHighPriority', 'Book Now (1 Coin)')
+                      : t('bookings.bookNowFree', 'Book Now (Free)'))}
+              </Text>
             </TouchableOpacity>
           </ScrollView>
 

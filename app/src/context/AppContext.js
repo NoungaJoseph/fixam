@@ -11,6 +11,7 @@ const hiddenJobsKey = (userId) => `fixam:hidden-jobs:${userId || 'guest'}`;
 const favoriteJobsKey = (userId) => `fixam:favorite-jobs:${userId || 'guest'}`;
 const appliedJobsKey = (userId) => `fixam:applied-jobs:${userId || 'guest'}`;
 const favoriteProvidersKey = (userId) => `fixam:favorite-providers:${userId || 'guest'}`;
+const favoriteProjectsKey = (userId) => `fixam:favorite-projects:${userId || 'guest'}`;
 
 const normalizeUserMedia = (item) => item ? ({
   ...item,
@@ -50,7 +51,7 @@ const normalizeConversation = (conversation) => conversation ? ({
 
 export const AppProvider = ({ children }) => {
   const { token, user, updateProfile } = useAuth();
-  const { on } = useSocket();
+  const { on, isConnected } = useSocket();
   const [providers, setProviders] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -60,6 +61,7 @@ export const AppProvider = ({ children }) => {
   const [hiddenJobIds, setHiddenJobIds] = useState([]);
   const [favoriteJobIds, setFavoriteJobIds] = useState([]);
   const [favoriteProviderIds, setFavoriteProviderIds] = useState([]);
+  const [favoriteProjectIds, setFavoriteProjectIds] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [myTasksList, setMyTasksList] = useState([]);
   const [myBookingsList, setMyBookingsList] = useState([]);
@@ -80,8 +82,16 @@ export const AppProvider = ({ children }) => {
   }, [hasLoadedData]);
 
   useEffect(() => {
-    if (user?.role?.toUpperCase() === 'PROVIDER') {
-      setIsProviderOnline(Boolean(user?.isOnline));
+    if (user?.role?.toUpperCase() === 'PROVIDER' && user?.id) {
+      AsyncStorage.getItem(`fixam:provider-online:${user.id}`).then((stored) => {
+        if (stored !== null) {
+          setIsProviderOnline(stored === 'true');
+        } else {
+          setIsProviderOnline(Boolean(user?.isOnline ?? user?.providerProfile?.isAvailable ?? true));
+        }
+      }).catch(() => {
+        setIsProviderOnline(Boolean(user?.isOnline ?? user?.providerProfile?.isAvailable ?? true));
+      });
     }
 
     if (token) {
@@ -136,18 +146,31 @@ export const AppProvider = ({ children }) => {
     });
 
     const pollInterval = setInterval(() => {
-      if (token) {
+      // If WebSocket is active, live events handle updates; only poll if disconnected to save 2G/3G data
+      if (token && !isConnected) {
         fetchNotifications();
         fetchConversations();
         fetchAppData(false);
       }
-    }, 60 * 1000);
+    }, 90 * 1000);
 
     return () => {
       subscription.remove();
       clearInterval(pollInterval);
     };
-  }, [token, user?.role]);
+  }, [token, user?.role, isConnected]);
+
+  useEffect(() => {
+    const off = on('provider:status-changed', ({ isOnline, isAvailable }) => {
+      const statusVal = isAvailable !== undefined ? Boolean(isAvailable) : Boolean(isOnline);
+      setIsProviderOnline(statusVal);
+      if (user) {
+        user.isOnline = statusVal;
+        if (user.providerProfile) user.providerProfile.isAvailable = statusVal;
+      }
+    });
+    return () => off?.();
+  }, [on, user?.id]);
 
   useEffect(() => {
     const loadProviderJobPrefs = async () => {
@@ -155,21 +178,24 @@ export const AppProvider = ({ children }) => {
         setHiddenJobIds([]);
         setFavoriteJobIds([]);
         setFavoriteProviderIds([]);
+        setFavoriteProjectIds([]);
         setAppliedJobIds([]);
         return;
       }
 
       try {
-        const [hidden, favorites, applied, providerFavorites] = await Promise.all([
+        const [hidden, favorites, applied, providerFavorites, projectFavorites] = await Promise.all([
           AsyncStorage.getItem(hiddenJobsKey(user.id)),
           AsyncStorage.getItem(favoriteJobsKey(user.id)),
           AsyncStorage.getItem(appliedJobsKey(user.id)),
           AsyncStorage.getItem(favoriteProvidersKey(user.id)),
+          AsyncStorage.getItem(favoriteProjectsKey(user.id)),
         ]);
         setHiddenJobIds(hidden ? JSON.parse(hidden) : []);
         setFavoriteJobIds(favorites ? JSON.parse(favorites) : []);
         setAppliedJobIds(applied ? JSON.parse(applied) : []);
         setFavoriteProviderIds(providerFavorites ? JSON.parse(providerFavorites) : []);
+        setFavoriteProjectIds(projectFavorites ? JSON.parse(projectFavorites) : []);
       } catch (error) {
         console.log('Error loading job preferences:', error.message);
       }
@@ -525,6 +551,23 @@ export const AppProvider = ({ children }) => {
     return providers.filter((provider) => favorites.has(provider.id));
   }, [providers, favoriteProviderIds]);
 
+  const mappedPublishedProjects = useMemo(() => {
+    const favorites = new Set(favoriteProjectIds);
+    return publishedProjects.map((p) => {
+      const isLiked = favorites.has(p.id);
+      return {
+        ...p,
+        isLikedByMe: isLiked,
+        likesCount: Math.max(0, (p.likesCount || 0) + (isLiked ? 1 : 0)),
+      };
+    });
+  }, [publishedProjects, favoriteProjectIds]);
+
+  const favoriteProjects = useMemo(() => {
+    const favorites = new Set(favoriteProjectIds);
+    return mappedPublishedProjects.filter((proj) => favorites.has(proj.id) && proj.providerId !== user?.id && proj.provider?.user?.id !== user?.id);
+  }, [mappedPublishedProjects, favoriteProjectIds, user?.id]);
+
   const fetchFavoriteProviders = async () => {
     if (!token) return [];
     try {
@@ -596,6 +639,15 @@ export const AppProvider = ({ children }) => {
     await AsyncStorage.setItem(appliedJobsKey(user?.id), JSON.stringify(next));
   };
 
+  const uploadFile = async (formData, endpoint = '/upload') => {
+    try {
+      const res = await api.post(endpoint, formData);
+      return res.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const postJob = async (newJob) => {
     try {
       const res = await api.post('/jobs', newJob);
@@ -606,12 +658,20 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const updateProviderStatus = (status) => {
+  const updateProviderStatus = async (status) => {
     setIsProviderOnline(status);
-    api.put('/providers/status', { isOnline: status }).catch((error) => {
+    if (user?.id) {
+      AsyncStorage.setItem(`fixam:provider-online:${user.id}`, String(status)).catch(() => {});
+    }
+    if (user) {
+      user.isOnline = status;
+      if (user.providerProfile) user.providerProfile.isAvailable = status;
+    }
+    try {
+      await api.put('/providers/status', { isOnline: status, isAvailable: status });
+    } catch (error) {
       console.log('Error updating provider status:', error.message);
-      setIsProviderOnline(prev => !prev);
-    });
+    }
   };
 
   const buyCoins = (amount) => {
@@ -683,18 +743,13 @@ export const AppProvider = ({ children }) => {
   };
 
   const toggleLikeProject = async (projectId) => {
-    const updated = publishedProjects.map(p => {
-      if (p.id === projectId) {
-        const isLiked = p.isLikedByMe;
-        return {
-          ...p,
-          isLikedByMe: !isLiked,
-          likesCount: Math.max(0, (p.likesCount || 0) + (isLiked ? -1 : 1))
-        };
-      }
-      return p;
-    });
-    setPublishedProjects(updated);
+    if (!projectId) return;
+    const exists = favoriteProjectIds.includes(projectId);
+    const next = exists
+      ? favoriteProjectIds.filter((id) => id !== projectId)
+      : [...favoriteProjectIds, projectId];
+    setFavoriteProjectIds(next);
+    await AsyncStorage.setItem(favoriteProjectsKey(user?.id), JSON.stringify(next));
   };
 
   const deleteProject = async (projectId) => {
@@ -720,7 +775,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{ 
       providers, 
       jobs, 
-      publishedProjects,
+      publishedProjects: mappedPublishedProjects,
       publishProject,
       toggleLikeProject,
       deleteProject,
@@ -729,6 +784,8 @@ export const AppProvider = ({ children }) => {
       favoriteJobIds,
       favoriteProviders,
       favoriteProviderIds,
+      favoriteProjects,
+      favoriteProjectIds,
       myReviews,
       appliedJobIds,
       hiddenJobIds,

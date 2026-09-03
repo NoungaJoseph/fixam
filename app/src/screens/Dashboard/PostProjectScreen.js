@@ -26,6 +26,7 @@ import TealSafeAreaView from '../../components/Common/TealSafeAreaView';
 import UserAvatar from '../../components/UserAvatar';
 import { getCurrencyForUser } from '../../constants/countries';
 import api, { getMediaUrl } from '../../services/api';
+import { optimizeImageForUpload } from '../../utils/imageOptimizer';
 
 const PostProjectScreen = ({ navigation, route }) => {
   const { colors, isDarkMode } = useTheme();
@@ -166,29 +167,46 @@ const PostProjectScreen = ({ navigation, route }) => {
   );
 
   // Helper to upload a single local file URI to the backend storage
-  const uploadMediaToBackend = async (uri, type = 'file') => {
-    if (!uri || typeof uri !== 'string') return null;
-    if (!uri.startsWith('file:') && !uri.startsWith('content:')) {
-      return uri; // Already a remote backend/cloud URL
+  // Helper to upload a single local file URI to the backend storage
+  const uploadMediaToBackend = async (rawUri, type = 'file') => {
+    if (!rawUri || typeof rawUri !== 'string') return null;
+    // If it's already a remote HTTP/S or data URL, we don't need to upload it
+    if (rawUri.startsWith('http://') || rawUri.startsWith('https://') || rawUri.startsWith('data:')) {
+      return rawUri;
     }
     try {
+      let uri = rawUri;
+      if (type === 'image') {
+        try {
+          const optimized = await optimizeImageForUpload(rawUri, { maxWidth: 1200, quality: 0.75 });
+          if (optimized?.uri) uri = optimized.uri;
+        } catch (optErr) {
+          console.warn('[Image Optimizer] Skipped optimization:', optErr.message);
+          uri = rawUri;
+        }
+      }
       const formData = new FormData();
       const filename = uri.split('/').pop() || (type === 'video' ? 'video.mp4' : 'image.jpg');
       const match = /\.(\w+)$/.exec(filename);
       const ext = match ? match[1].toLowerCase() : (type === 'video' ? 'mp4' : 'jpg');
       const mimeType = type === 'video'
         ? `video/${ext === 'mov' ? 'quicktime' : (ext === '3gp' ? '3gpp' : ext)}`
-        : `image/${ext === 'png' ? 'png' : 'jpeg'}`;
+        : `image/${ext === 'png' ? 'png' : (ext === 'webp' ? 'webp' : 'jpeg')}`;
 
       formData.append('file', {
-        uri,
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
         name: filename,
         type: mimeType,
       });
 
       const res = await api.post('/upload/portfolio', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 90000,
+        transformRequest: (data) => data,
       });
+
       const serverUrl = res.data?.url || res.data?.data?.url;
       if (!serverUrl) {
         throw new Error('Server did not return a valid media URL.');
@@ -196,32 +214,36 @@ const PostProjectScreen = ({ navigation, route }) => {
       return serverUrl;
     } catch (err) {
       console.log('[Media Upload Error]:', err?.response?.data || err.message);
-      throw new Error(`Failed to upload ${type}: ${err?.response?.data?.message || err.message}`);
+      const serverMsg = err?.response?.data?.message || err?.response?.data?.publicMessage || err.message;
+      throw new Error(`Failed to upload ${type}: ${serverMsg}`);
     }
   };
 
   // Pick Images from device
   const handlePickImages = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('common.error'), t('permissions.mediaLibraryRequired', 'Media library permission is required to select photos.'));
+      setPickingMedia(true);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('common.error'), t('profileDetail.permissionDenied', 'Please grant photo library access in your device settings to select images.'));
+        setPickingMedia(false);
         return;
       }
 
-      setPickingMedia(true);
+      const mediaTypeOptions = ImagePicker.MediaTypeOptions?.Images || ['images'];
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: mediaTypeOptions,
         allowsMultipleSelection: true,
         quality: 0.8,
         allowsEditing: false,
       });
 
       if (!result.canceled && result.assets) {
-        const picked = result.assets.map(a => a.uri);
+        const picked = result.assets.map(a => a.uri).filter(Boolean);
         setImageUris(prev => [...prev, ...picked]);
       }
     } catch (err) {
+      console.error('[Pick Images Error]:', err);
       Alert.alert(t('common.error'), err.message || t('common.tryAgain'));
     } finally {
       setPickingMedia(false);
@@ -232,18 +254,20 @@ const PostProjectScreen = ({ navigation, route }) => {
     setImageUris(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // Pick Multiple Videos from device (Max 1 min duration per video, NO file size limit)
+  // Pick Multiple Videos from device (Max 1 min duration per video)
   const handlePickVideo = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(t('common.error'), t('permissions.mediaLibraryRequired', 'Media library permission is required to select video.'));
+      setPickingMedia(true);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t('common.error'), t('profileDetail.permissionDenied', 'Please grant video library access in your device settings to select videos.'));
+        setPickingMedia(false);
         return;
       }
 
-      setPickingMedia(true);
+      const mediaTypeOptions = ImagePicker.MediaTypeOptions?.Videos || ['videos'];
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['videos'],
+        mediaTypes: mediaTypeOptions,
         allowsMultipleSelection: true,
         videoMaxDuration: 60,
         quality: 0.8,
@@ -261,11 +285,14 @@ const PostProjectScreen = ({ navigation, route }) => {
             setPickingMedia(false);
             return;
           }
-          validVideos.push(asset.uri);
+          if (asset.uri) {
+            validVideos.push(asset.uri);
+          }
         }
         setVideoUris(prev => [...prev, ...validVideos]);
       }
     } catch (err) {
+      console.error('[Pick Video Error]:', err);
       Alert.alert(t('common.error'), err.message || t('common.tryAgain'));
     } finally {
       setPickingMedia(false);
@@ -371,8 +398,8 @@ const PostProjectScreen = ({ navigation, route }) => {
         if (uploadedUrl) uploadedVideos.push(uploadedUrl);
       }
 
-      const finalImages = uploadedImages.length > 0 ? uploadedImages : (imageUris.length > 0 ? imageUris : [user?.avatar].filter(Boolean));
-      const finalVideos = uploadedVideos.length > 0 ? uploadedVideos : videoUris;
+      const finalImages = uploadedImages.length > 0 ? uploadedImages : [user?.avatar].filter(Boolean);
+      const finalVideos = uploadedVideos;
       const primaryVideo = finalVideos[0] || null;
 
       const projectPayload = {

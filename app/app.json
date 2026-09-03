@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fixam",
     "slug": "Fixam",
-    "version": "1.0.1",
+    "version": "1.0.9",
     "scheme": "fixam",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.fixam.app.iosapp",
       "googleServicesFile": "./firebase/GoogleService-Info.plist",
-      "buildNumber": "14",
+      "buildNumber": "23",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -31,7 +31,7 @@
     "android": {
       "package": "com.fixam.app.android",
       "googleServicesFile": "./firebase/google-services.json",
-      "versionCode": 8,
+      "versionCode": 17,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
@@ -83,9 +83,6 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.NOTIFICATIONS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.USE_BIOMETRIC",

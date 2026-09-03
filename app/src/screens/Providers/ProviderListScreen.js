@@ -161,10 +161,17 @@ const ProviderListScreen = ({ route, navigation }) => {
       if (p.user?.country && user?.country && p.user.country !== user.country) {
         return false;
       }
-      const clientCity = (user?.location || '').toLowerCase().trim();
-      const providerCity = (p.serviceArea || '').toLowerCase().trim();
-      if (clientCity && providerCity && !providerCity.includes(clientCity) && !clientCity.includes(providerCity)) {
-        return false;
+      const clientLoc = (user?.location || '').toLowerCase().trim();
+      const providerArea = (p.serviceArea || '').toLowerCase().trim();
+      if (clientLoc && providerArea) {
+        const clientParts = clientLoc.split(',').map(s => s.trim()).filter(Boolean);
+        const providerParts = providerArea.split(',').map(s => s.trim()).filter(Boolean);
+        const hasOverlap = clientParts.some(cp => providerArea.includes(cp)) || 
+                           providerParts.some(pp => clientLoc.includes(pp)) ||
+                           providerArea.includes('all');
+        if (!hasOverlap && !providerArea.includes('douala') && !providerArea.includes('yaoundé') && !providerArea.includes('buea') && !providerArea.includes('bamenda')) {
+          return false;
+        }
       }
     }
 
@@ -179,15 +186,25 @@ const ProviderListScreen = ({ route, navigation }) => {
     if (isBoostedA && !isBoostedB) return -1;
     if (!isBoostedA && isBoostedB) return 1;
 
-    // Prioritize provider in client's city for physical jobs
+    // Prioritize provider in client's quarter/city for physical jobs
     const isRemote = isRemoteSkill(category || search);
     if (!isRemote) {
-      const clientCity = (user?.location || '').toLowerCase().trim();
-      if (clientCity) {
+      const clientLoc = (user?.location || '').toLowerCase().trim();
+      if (clientLoc) {
+        const quartersA = (a.serviceArea || '').toLowerCase().split(',').map(s => s.trim());
+        const quartersB = (b.serviceArea || '').toLowerCase().split(',').map(s => s.trim());
+        
+        // Exact quarter match priority (e.g. client is in "Kotto", provider operates in "Kotto")
+        const exactA = quartersA.some(q => q.length > 2 && clientLoc.includes(q));
+        const exactB = quartersB.some(q => q.length > 2 && clientLoc.includes(q));
+        if (exactA && !exactB) return -1;
+        if (!exactA && exactB) return 1;
+
+        // General city overlap priority
         const cityA = (a.serviceArea || '').toLowerCase();
         const cityB = (b.serviceArea || '').toLowerCase();
-        const matchesA = cityA.includes(clientCity);
-        const matchesB = cityB.includes(clientCity);
+        const matchesA = cityA.includes(clientLoc) || clientLoc.includes(cityA);
+        const matchesB = cityB.includes(clientLoc) || clientLoc.includes(cityB);
         if (matchesA && !matchesB) return -1;
         if (!matchesA && matchesB) return 1;
       }
@@ -215,14 +232,11 @@ const ProviderListScreen = ({ route, navigation }) => {
   }), [providers, search, category, verifiedOnly, favoritesOnly, favoriteProviderIds, activeFilter]);
 
   const renderProvider = ({ item }) => {
-    const rawImage = item.portfolio?.[0]?.imageUrl 
-      || item.portfolio?.[0]?.url 
-      || item.portfolio?.[0]?.image 
-      || item.image 
+    const rawAvatar = item.user?.avatar 
       || item.avatar 
-      || item.user?.avatar 
-      || item.user?.image;
-    const bannerUri = getMediaUrl(rawImage);
+      || item.image 
+      || (typeof item.portfolio?.[0] === 'string' ? item.portfolio[0] : (item.portfolio?.[0]?.imageUrl || item.portfolio?.[0]?.url || item.portfolio?.[0]?.image));
+    const avatarUri = getMediaUrl(rawAvatar);
     const isFavorite = favoriteProviderIds?.includes(item.id);
     const isVerified = item.verification === 'VERIFIED' || (item.boostExpiresAt && new Date(item.boostExpiresAt) > new Date());
     const ratingVal = Number(item.rating || 0).toFixed(1);
@@ -238,19 +252,15 @@ const ProviderListScreen = ({ route, navigation }) => {
         onPress={() => navigation.navigate('ProviderProfile', { provider: item })}
         activeOpacity={0.88}
       >
-        {/* Left Thumbnail Banner Image Column */}
+        {/* Left Provider Avatar Column */}
         <View style={styles.cardImageContainer}>
-          {bannerUri ? (
-            <Image source={{ uri: bannerUri }} style={styles.cardImage} resizeMode="cover" />
-          ) : (
-            <UserAvatar
-              uri={getMediaUrl(item.user?.avatar || item.avatar || item.image)}
-              name={item.user?.fullName || 'User'}
-              size={110}
-              radius={0}
-              style={styles.cardImage}
-            />
-          )}
+          <UserAvatar
+            uri={avatarUri}
+            name={item.user?.fullName || item.name || 'User'}
+            size={110}
+            radius={12}
+            style={styles.cardImage}
+          />
 
           {isVerified && (
             <View style={styles.proBadge}>

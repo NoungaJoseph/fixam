@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator, TextInput, Modal, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator, TextInput, Modal, TouchableWithoutFeedback, Keyboard, Linking, Image } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +12,10 @@ import { translateStatus } from '../../i18n/translate';
 import UserAvatar from '../../components/UserAvatar';
 import { useAppContext } from '../../context/AppContext';
 import { translateApiError } from '../../utils/eligibilityMessages';
+import MaterialsListDisplay from '../../components/MaterialsListDisplay';
+import DisputeModal from '../../components/DisputeModal';
+import DisputeDetailsCard from '../../components/DisputeDetailsCard';
+import ServiceAgreementCard from '../../components/ServiceAgreementCard';
 
 const getProviderFromAssignment = (assignment) => {
   if (!assignment) return null;
@@ -32,12 +37,66 @@ const JobStatusScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const { t, locale } = useLanguage();
   const { fetchAppData } = useAppContext();
-  const [job, setJob] = useState(route.params?.job || {});
+  const incomingJob = route.params?.job || {};
+  const currentJobId = incomingJob.id || route.params?.jobId || route.params?.id;
+  const isBooking = Boolean(route.params?.isBooking || incomingJob.isBooking || incomingJob.bookingDate);
+
+  const [job, setJob] = useState(incomingJob);
+  const [hasReviewedLocally, setHasReviewedLocally] = useState(false);
   const [selectingAssignmentId, setSelectingAssignmentId] = useState(null);
+  const [activeDispute, setActiveDispute] = useState(incomingJob.disputes?.[0] || null);
+  const [disputeModalVisible, setDisputeModalVisible] = useState(false);
+  const [previewImageUri, setPreviewImageUri] = useState(null);
+
+  const handleOpenAttachment = async (mediaUrl, isPdf) => {
+    try {
+      if (isPdf) {
+        const canOpen = await Linking.canOpenURL(mediaUrl).catch(() => true);
+        if (canOpen) {
+          await Linking.openURL(mediaUrl);
+        } else {
+          Alert.alert(t('common.error'), t('jobs.cannotOpenFile', 'Unable to open file link.'));
+        }
+      } else {
+        setPreviewImageUri(mediaUrl);
+      }
+    } catch (err) {
+      console.error('Error opening attachment:', err);
+      Linking.openURL(mediaUrl).catch(() => {
+        Alert.alert(t('common.error'), t('jobs.cannotOpenFile', 'Unable to open file link.'));
+      });
+    }
+  };
+
+  // Sync state whenever the active job ID or incoming job changes
+  useEffect(() => {
+    if (incomingJob && incomingJob.id) {
+      setJob(incomingJob);
+      setHasReviewedLocally(false);
+      setActiveDispute(incomingJob.disputes?.[0] || null);
+    }
+  }, [currentJobId]);
 
   const normalizedStatus = String(job.status || 'PENDING').toUpperCase();
   const displayStatus = translateStatus(normalizedStatus);
-  const isBooking = Boolean(route.params?.isBooking || job?.isBooking || job?.bookingDate);
+
+  const isReviewed = hasReviewedLocally ||
+    job.isReviewed ||
+    job.hasReviewed ||
+    Boolean(Array.isArray(job.reviews) && job.reviews.some(r => (r.reviewerId && r.reviewerId === user?.id) || (r.userId && r.userId === user?.id)));
+
+  useEffect(() => {
+    if (currentJobId) {
+      const endpoint = isBooking ? `/disputes?bookingId=${currentJobId}` : `/disputes?jobId=${currentJobId}`;
+      api.get(endpoint)
+        .then(res => {
+          if (res.data?.data && res.data.data.length > 0) {
+            setActiveDispute(res.data.data[0]);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentJobId, isBooking]);
   const selectedAssignment = job.assignments?.find((assignment) => assignment.id === job.selectedAssignmentId) || job.assignments?.find((assignment) => assignment.status === 'ACCEPTED');
   const assignedProviderUser = job.provider || selectedAssignment?.provider?.user;
   const assignedProvider = assignedProviderUser ? {
@@ -79,6 +138,23 @@ const JobStatusScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleRespondMaterials = async (action) => {
+    try {
+      setUpdatingStatus(true);
+      const endpoint = isBooking ? `/bookings/${job.id}/materials/respond` : `/jobs/${job.id}/materials/respond`;
+      const res = await api.post(endpoint, { action });
+      if (res.data?.data) {
+        setJob(res.data.data);
+      }
+      Alert.alert(t('common.success'), action === 'ACCEPT' ? 'Materials list accepted!' : 'Materials proposal rejected.');
+      await fetchAppData?.(true);
+    } catch (err) {
+      Alert.alert(t('common.error'), translateApiError(err, t));
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const [counterModalVisible, setCounterModalVisible] = useState(false);
   const [counterBudget, setCounterBudget] = useState('');
   const [counterNotes, setCounterNotes] = useState('');
@@ -113,33 +189,38 @@ const JobStatusScreen = ({ route, navigation }) => {
     }
   };
 
-  React.useEffect(() => {
-    if (!route.params?.job?.id) return;
+  const refreshJobDetails = useCallback(async () => {
+    const targetId = currentJobId;
+    if (!targetId) return;
 
-    let isMounted = true;
-    
-    if (isBooking) {
-      api.get(`/bookings/check?id=${route.params.job.id}`)
-        .then((res) => {
-          if (isMounted && res.data?.data) {
-            setJob(res.data.data);
+    try {
+      if (isBooking) {
+        const res = await api.get(`/bookings/check?id=${targetId}`);
+        if (res.data?.data) {
+          setJob(res.data.data);
+          const rList = res.data.data.reviews || [];
+          if (res.data.data.isReviewed || res.data.data.hasReviewed || rList.some(r => r.reviewerId === user?.id || r.userId === user?.id)) {
+            setHasReviewedLocally(true);
           }
-        })
-        .catch(() => {});
-    } else {
-      api.get(`/jobs/${route.params.job.id}`)
-        .then((res) => {
-          if (isMounted && res.data?.data) {
-            setJob(res.data.data);
+        }
+      } else {
+        const res = await api.get(`/jobs/${targetId}`);
+        if (res.data?.data) {
+          setJob(res.data.data);
+          const rList = res.data.data.reviews || [];
+          if (res.data.data.isReviewed || res.data.data.hasReviewed || rList.some(r => r.reviewerId === user?.id || r.userId === user?.id)) {
+            setHasReviewedLocally(true);
           }
-        })
-        .catch(() => {});
-    }
+        }
+      }
+    } catch (_) {}
+  }, [currentJobId, isBooking, user?.id]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [route.params?.job?.id, isBooking]);
+  useFocusEffect(
+    useCallback(() => {
+      refreshJobDetails();
+    }, [refreshJobDetails])
+  );
 
 
   const chooseProvider = (assignment) => {
@@ -159,8 +240,7 @@ const JobStatusScreen = ({ route, navigation }) => {
               setJob(res.data.data);
               await fetchAppData?.(true);
               Alert.alert(t('jobs.providerSelected'), t('jobs.providerSelectedBody', { name: providerName }), [
-                { text: t('common.close') },
-                { text: t('jobs.trackProvider'), onPress: () => navigation.navigate('LiveTaskMap', { task: res.data.data }) }
+                { text: t('common.close') }
               ]);
             } catch (error) {
               Alert.alert(t('jobs.couldNotChooseProvider'), translateApiError(error, t));
@@ -264,6 +344,18 @@ const JobStatusScreen = ({ route, navigation }) => {
             </View>
           </View>
 
+          <MaterialsListDisplay
+            materialsList={job.materialsList}
+            materialsStatus={job.materialsStatus}
+            materialsVersion={job.materialsVersion}
+            requiresDiagnosis={job.requiresDiagnosis}
+            agreements={job.agreements || []}
+            isClient={true}
+            isProvider={false}
+            onAcceptProposal={() => handleRespondMaterials('ACCEPT')}
+            onRejectProposal={() => handleRespondMaterials('REJECT')}
+          />
+
           {job.assignments?.length > 0 && normalizedStatus === 'PENDING' && (
             <View style={styles.applicationsSection}>
               <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>{t('jobs.applicationsCount', { count: job.assignments.length })}</Text>
@@ -312,6 +404,20 @@ const JobStatusScreen = ({ route, navigation }) => {
                       </View>
                     </TouchableOpacity>
 
+                    {/* Proposed Price / Budget */}
+                    {Boolean(assignment.proposedBudget) && (
+                      <View style={[styles.proposedBudgetBadge, { backgroundColor: isDarkMode ? 'rgba(13, 148, 136, 0.15)' : '#E6FDF3', borderColor: colors.accent }]}>
+                        <MaterialCommunityIcons name="cash" size={16} color={colors.accent} />
+                        <Text style={[styles.proposedBudgetLabel, { color: colors.textSecondary }]}>
+                          {t('jobs.proposedPrice', 'Proposed Price')}:
+                        </Text>
+                        <Text style={[styles.proposedBudgetValue, { color: colors.accent }]}>
+                          {Number(assignment.proposedBudget).toLocaleString()} {getCurrencyForUser(job.country || user?.country || 'Cameroon')}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Cover Letter */}
                     {assignment.coverLetter ? (
                       <View style={[styles.coverLetterContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: colors.border }]}>
                         <Text style={[styles.coverLetterTitle, { color: colors.textSecondary }]}>
@@ -322,6 +428,60 @@ const JobStatusScreen = ({ route, navigation }) => {
                         </Text>
                       </View>
                     ) : null}
+
+                    {/* Attached CV / Documents / Photos */}
+                    {(() => {
+                      let mediaList = [];
+                      if (Array.isArray(assignment.proposalMedia)) {
+                        mediaList = assignment.proposalMedia;
+                      } else if (typeof assignment.proposalMedia === 'string') {
+                        try {
+                          mediaList = JSON.parse(assignment.proposalMedia);
+                        } catch (_) {}
+                      }
+
+                      if (!mediaList || mediaList.length === 0) return null;
+
+                      return (
+                        <View style={[styles.proposalMediaContainer, { borderColor: colors.border, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }]}>
+                          <Text style={[styles.coverLetterTitle, { color: colors.textSecondary, marginBottom: 8 }]}>
+                            {t('jobs.attachedDocuments', 'Attached CV / Portfolio / Documents')}
+                          </Text>
+                          <View style={{ gap: 8 }}>
+                            {mediaList.map((media, idx) => {
+                              const rawUrl = media?.url || (typeof media === 'string' ? media : '');
+                              const mediaUrl = getMediaUrl(rawUrl);
+                              const isPdf = (media?.type && media.type.includes('pdf')) || (media?.name && media.name.toLowerCase().endsWith('.pdf')) || rawUrl.toLowerCase().endsWith('.pdf');
+                              const fileName = media?.name || (isPdf ? 'PDF Resume / CV' : `Photo Attachment ${idx + 1}`);
+
+                              return (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[styles.mediaAttachmentItem, { backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF', borderColor: colors.border }]}
+                                  onPress={() => handleOpenAttachment(mediaUrl, isPdf)}
+                                  activeOpacity={0.7}
+                                >
+                                  <MaterialCommunityIcons
+                                    name={isPdf ? 'file-pdf-box' : 'file-image'}
+                                    size={26}
+                                    color={isPdf ? '#EF4444' : '#0D9488'}
+                                  />
+                                  <View style={{ flex: 1, marginLeft: 10 }}>
+                                    <Text style={[styles.mediaItemName, { color: colors.text }]} numberOfLines={1}>
+                                      {fileName}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                                      {isPdf ? t('jobs.tapToOpenPdf', 'Tap to open & view PDF document') : t('jobs.tapToViewPhoto', 'Tap to view full image')}
+                                    </Text>
+                                  </View>
+                                  <MaterialCommunityIcons name="open-in-new" size={18} color={colors.accent} />
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      );
+                    })()}
                     
                     <View style={styles.applicationActionRow}>
                       <TouchableOpacity style={[styles.outlineBtn, { borderColor: colors.border, flex: 1 }]} onPress={() => navigation.navigate('ProviderProfile', { provider })}>
@@ -364,11 +524,14 @@ const JobStatusScreen = ({ route, navigation }) => {
               )}
             </View>
 
-            <Detail icon="map-marker-radius" label={t('jobs.location')} value={job.location || t('jobs.onSite')} colors={colors} isDarkMode={isDarkMode} />
-            <Detail icon="calendar-clock" label={t('jobs.scheduled')} value={isBooking ? `${new Date(job.bookingDate).toLocaleDateString()} ${job.bookingTime}` : (job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : t('jobs.asap'))} colors={colors} isDarkMode={isDarkMode} />
-            {isBooking && job.urgencyLevel && (
+            <Detail icon="map-marker-radius" label={t('jobs.location')} value={job.location || job.address || t('jobs.onSite')} colors={colors} isDarkMode={isDarkMode} />
+            <Detail icon="calendar-clock" label={t('jobs.scheduled')} value={isBooking ? `${new Date(job.bookingDate).toLocaleDateString()} ${job.bookingTime || ''}` : (job.scheduledTime ? new Date(job.scheduledTime).toLocaleString() : t('jobs.asap'))} colors={colors} isDarkMode={isDarkMode} />
+            {(job.bookingDuration || job.duration) ? (
+              <Detail icon="timer-outline" label={t('jobs.duration', 'Duration')} value={job.bookingDuration || job.duration} colors={colors} isDarkMode={isDarkMode} />
+            ) : null}
+            {job.urgencyLevel ? (
               <Detail icon="alert-circle-outline" label={t('jobs.urgency', 'Urgency')} value={job.urgencyLevel} colors={colors} isDarkMode={isDarkMode} />
-            )}
+            ) : null}
             <Detail icon="text-box-outline" label={t('jobs.description')} value={(isBooking ? job.notes : job.description) || t('jobs.noAdditionalDetails')} colors={colors} isDarkMode={isDarkMode} />
             {job.importantDetails ? (
               <Detail icon="alert-decagram-outline" label={t('jobs.importantDetails')} value={job.importantDetails} colors={colors} isDarkMode={isDarkMode} />
@@ -468,43 +631,92 @@ const JobStatusScreen = ({ route, navigation }) => {
           })()}
 
           <View style={styles.actions}>
-            {canViewLocation && (
-              <TouchableOpacity style={[styles.secondaryActionBtn, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => navigation.navigate('LiveTaskMap', { task: job })}>
-                <MaterialCommunityIcons name="crosshairs-gps" size={22} color={colors.accent} />
-                <Text style={[styles.secondaryActionText, { color: colors.text }]}>{t('jobs.viewLocation')}</Text>
-              </TouchableOpacity>
-            )}
-
             {user?.role === 'CLIENT' && assignedProvider && ['ACCEPTED', 'IN_PROGRESS'].includes(normalizedStatus) && (
-              <TouchableOpacity
-                style={[styles.mainActionBtn, { backgroundColor: colors.success }]}
-                onPress={() => Alert.alert(
-                  t('jobs.markCompleted'),
-                  t('jobs.completeAndFinalizeBody'),
-                  [
-                    { text: t('common.cancel'), style: 'cancel' },
-                    {
-                      text: t('jobs.completeAndRate'),
-                      onPress: async () => {
-                        try {
-                          await updateStatus('COMPLETED');
-                          navigation.navigate('Rating', {
-                            jobId: job.id,
-                            targetUser: assignedProviderUser,
-                            mode: 'rate_provider',
-                          });
-                        } catch (err) {
-                          // Handled by helper
+              <View style={{ gap: 8, width: '100%' }}>
+                <TouchableOpacity
+                  style={[styles.mainActionBtn, { backgroundColor: colors.success }]}
+                  onPress={() => Alert.alert(
+                    t('jobs.markCompleted'),
+                    t('jobs.completeAndFinalizeBody'),
+                    [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      {
+                        text: t('jobs.completeAndRate'),
+                        onPress: async () => {
+                          try {
+                            await updateStatus('COMPLETED');
+                            navigation.navigate('Rating', {
+                              jobId: job.id,
+                              targetUser: assignedProviderUser,
+                              mode: 'rate_provider',
+                              onReviewSuccess: () => {
+                                setHasReviewedLocally(true);
+                                refreshJobDetails();
+                              }
+                            });
+                          } catch (err) {
+                            // Handled by helper
+                          }
                         }
                       }
-                    }
-                  ]
+                    ]
+                  )}
+                >
+                  <MaterialCommunityIcons name="check-decagram" size={22} color="#FFF" />
+                  <Text style={styles.mainActionText}>{t('bookings.acceptAndComplete', 'Accept & Complete')}</Text>
+                </TouchableOpacity>
+
+                {!activeDispute && (
+                  <TouchableOpacity
+                    style={[styles.secondaryActionBtn, { borderColor: '#EF4444', backgroundColor: '#FEF2F2' }]}
+                    onPress={() => setDisputeModalVisible(true)}
+                  >
+                    <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="#EF4444" />
+                    <Text style={[styles.secondaryActionText, { color: '#EF4444', fontWeight: '700' }]}>
+                      {t('bookings.reportProblem', 'Report a Problem')}
+                    </Text>
+                  </TouchableOpacity>
                 )}
-              >
-                <MaterialCommunityIcons name="check-decagram" size={22} color="#FFF" />
-                <Text style={styles.mainActionText}>{t('jobs.markCompletedAndRate')}</Text>
-              </TouchableOpacity>
+              </View>
             )}
+
+            {(Boolean(job.serviceAgreement || (job.serviceAgreements && job.serviceAgreements[0]) || (job.agreements && job.agreements[0])) || ['ACCEPTED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(normalizedStatus)) && (
+              <ServiceAgreementCard
+                agreement={job.serviceAgreement || (job.serviceAgreements && job.serviceAgreements[0]) || (job.agreements && job.agreements[0])}
+                booking={job}
+                isClient={user?.role === 'CLIENT'}
+                isProvider={user?.role === 'PROVIDER'}
+                onRefresh={async () => {
+                  try {
+                    const res = await api.get(`/bookings/${job.id}`);
+                    if (res.data?.data) setJob(res.data.data);
+                  } catch (_) {}
+                }}
+              />
+            )}
+
+            {Boolean(activeDispute) && (
+              <DisputeDetailsCard
+                dispute={activeDispute}
+                isClient={user?.role === 'CLIENT'}
+                isProvider={user?.role === 'PROVIDER'}
+                onRefresh={async () => {
+                  try {
+                    const res = await api.get(`/disputes/${activeDispute.id}`);
+                    if (res.data?.data) setActiveDispute(res.data.data);
+                  } catch (_) {}
+                }}
+              />
+            )}
+
+            <DisputeModal
+              visible={disputeModalVisible}
+              onClose={() => setDisputeModalVisible(false)}
+              bookingId={job.id}
+              onSuccess={(newDispute) => {
+                setActiveDispute(newDispute);
+              }}
+            />
 
             {user?.role === 'CLIENT' && job.status === 'PENDING' && (
               <TouchableOpacity 
@@ -534,20 +746,50 @@ const JobStatusScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
 
-            {user?.role === 'CLIENT' && normalizedStatus === 'COMPLETED' && !(job.reviews?.some(r => r.reviewerId === job.clientId)) && (
-              <TouchableOpacity
-                style={[styles.mainActionBtn, { backgroundColor: '#F59E0B' }]}
-                onPress={() => {
-                  navigation.navigate('Rating', {
-                    jobId: job.id,
-                    targetUser: assignedProviderUser || job.provider,
-                    mode: 'rate_provider',
-                  });
-                }}
-              >
-                <MaterialCommunityIcons name="star-outline" size={22} color="#FFF" />
-                <Text style={styles.mainActionText}>{t('jobs.leaveReview', 'Leave a Review')}</Text>
-              </TouchableOpacity>
+            {user?.role === 'CLIENT' && normalizedStatus === 'COMPLETED' && (
+              !isReviewed ? (
+                <TouchableOpacity
+                  style={[styles.mainActionBtn, { backgroundColor: '#F59E0B' }]}
+                  onPress={() => {
+                    navigation.navigate('Rating', {
+                      jobId: job.id,
+                      targetUser: assignedProviderUser || job.provider,
+                      mode: 'rate_provider',
+                      onReviewSuccess: () => {
+                        setHasReviewedLocally(true);
+                        refreshJobDetails();
+                      }
+                    });
+                  }}
+                >
+                  <MaterialCommunityIcons name="star-outline" size={22} color="#FFF" />
+                  <Text style={styles.mainActionText}>{t('reviews.leaveReview', 'Leave a Review')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#064E3B20' : '#ECFDF5',
+                  borderWidth: 1.5,
+                  borderColor: '#10B981',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  gap: 10,
+                  width: '100%',
+                  marginTop: 6
+                }}>
+                  <MaterialCommunityIcons name="star-check" size={24} color="#10B981" />
+                  <Text style={{
+                    color: '#10B981',
+                    fontSize: 15,
+                    fontWeight: '800'
+                  }}>
+                    {t('reviews.reviewSubmittedBadge', 'Review submitted successfully ⭐')}
+                  </Text>
+                </View>
+              )
             )}
 
             {user?.role === 'PROVIDER' && isBooking && normalizedStatus === 'PENDING' && (
@@ -661,6 +903,24 @@ const JobStatusScreen = ({ route, navigation }) => {
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Fullscreen Photo Preview Modal */}
+      <Modal visible={Boolean(previewImageUri)} transparent animationType="fade" onRequestClose={() => setPreviewImageUri(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => setPreviewImageUri(null)}
+          >
+            <MaterialCommunityIcons name="close" size={26} color="#FFF" />
+          </TouchableOpacity>
+          {previewImageUri && (
+            <Image
+              source={{ uri: previewImageUri }}
+              style={{ width: '100%', height: '80%', resizeMode: 'contain' }}
+            />
+          )}
+        </View>
       </Modal>
     </View>
   );
@@ -778,6 +1038,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
+  },
+  proposedBudgetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 6,
+  },
+  proposedBudgetLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  proposedBudgetValue: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  proposalMediaContainer: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 15,
+    width: '100%',
+  },
+  mediaAttachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  mediaItemName: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
 
