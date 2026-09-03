@@ -94,6 +94,14 @@ if (sentryGradleFile.exists()) {
     apply from: "../../node_modules/@sentry/react-native/sentry.gradle"
 }
 
+gradle.taskGraph.whenReady { taskGraph ->
+    taskGraph.allTasks.each { task ->
+        if (task.name.contains("SentryUpload") && (System.getenv('SENTRY_AUTH_TOKEN') == null || System.getenv('SENTRY_AUTH_TOKEN').isEmpty())) {
+            task.enabled = false
+        }
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
