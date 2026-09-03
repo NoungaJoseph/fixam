@@ -33,6 +33,14 @@
       "googleServicesFile": "./firebase/google-services.json",
       "versionCode": 18,
       "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#14B8A6"
@@ -116,7 +124,6 @@
       "@react-native-firebase/messaging",
       "./plugins/withAndroidFirebaseStabilization",
       "./plugins/withIosFirebaseStabilization",
-      "./plugins/withAndroidPhotoPickerClean",
       [
         "@sentry/react-native/expo",
         {
