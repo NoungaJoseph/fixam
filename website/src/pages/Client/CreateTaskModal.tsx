@@ -29,18 +29,75 @@ const PRIORITY_OPTIONS = [
 ];
 
 const PROVIDER_TIERS = [
-  { value: '1', label: '1 Provider (1 Coin)', fr: '1 Prestataire (1 Pièce)', coins: 1 },
-  { value: '2', label: '2 Providers (2 Coins)', fr: '2 Prestataires (2 Pièces)', coins: 2 },
-  { value: '3', label: '3+ Providers (3 Coins)', fr: '3+ Prestataires (3 Pièces)', coins: 3 },
-  { value: '7', label: '7+ Providers (4 Coins)', fr: '7+ Prestataires (4 Pièces)', coins: 4 },
-  { value: '10', label: '10+ Providers (5 Coins)', fr: '10+ Prestataires (5 Pièces)', coins: 5 },
+  { value: '1', label: '1 Provider (1 Coin)', fr: '1 Prestataire (1 Pièce)', coins: 1, desc: 'Needs 1 provider', defaultCount: 1 },
+  { value: '2', label: '2 Providers (2 Coins)', fr: '2 Prestataires (2 Pièces)', coins: 2, desc: 'Needs 2 providers', defaultCount: 2 },
+  { value: '3', label: '3+ Providers (3 Coins)', fr: '3+ Prestataires (3 Pièces)', coins: 3, desc: 'This job needs at least 3 to 6 providers (e.g. 5–6 people)', defaultCount: 5 },
+  { value: '7', label: '7+ Providers (4 Coins)', fr: '7+ Prestataires (4 Pièces)', coins: 4, desc: 'This job needs 7 to 9 providers', defaultCount: 7 },
+  { value: '10', label: '10+ Providers (5 Coins)', fr: '10+ Prestataires (5 Pièces)', coins: 5, desc: 'This job needs more than 10 people', defaultCount: 10 },
+  { value: 'custom', label: 'Custom Number of Providers...', fr: 'Nombre personnalisé de prestataires...', coins: 0, desc: 'Enter the exact number of people needed', defaultCount: 5 },
 ];
+
+const calculateJobCoinCost = (count: number) => {
+  const c = parseInt(String(count), 10) || 1;
+  if (c <= 1) return 1;
+  if (c === 2) return 2;
+  if (c >= 3 && c <= 6) return 3;
+  if (c >= 7 && c <= 9) return 4;
+  return 5; // 10 and above
+};
 
 const SCOPE_OPTIONS = [
   { value: 'SMALL', label: 'Small - Less than a day', fr: 'Petit - Moins d\'une journée' },
   { value: 'MEDIUM', label: 'Medium - 1 to 3 days', fr: 'Moyen - 1 à 3 jours' },
   { value: 'LARGE', label: 'Large - More than 3 days', fr: 'Grand - Plus de 3 jours' },
 ];
+
+export const deriveCategoryFromTitle = (title: string): { value: string; label: string; fr: string; icon: string } => {
+  const t = (title || '').toLowerCase();
+  if (/plumb|leak|pipe|drain|water|faucet|toilet|sink|robinet|tuyau|fuite|chasse|évier|lavabo|chauffe-eau/i.test(t)) {
+    return { value: 'plumbing', label: 'Plumbing', fr: 'Plomberie', icon: '🔧' };
+  }
+  if (/electr|wire|light|power|breaker|socket|prise|disjoncteur|lumière|câble|ampoule|fusible|compteur/i.test(t)) {
+    return { value: 'electrical', label: 'Electrical', fr: 'Électricité', icon: '⚡' };
+  }
+  if (/clean|wash|laundry|housekeeping|maid|nettoy|ménage|propreté|laver|décapage/i.test(t)) {
+    return { value: 'cleaning', label: 'Cleaning', fr: 'Nettoyage', icon: '🧹' };
+  }
+  if (/paint|peint|wall|mur|plafond|couleur|vernis|enduit/i.test(t)) {
+    return { value: 'painting', label: 'Painting', fr: 'Peinture', icon: '🎨' };
+  }
+  if (/carpent|wood|furniture|table|chair|door|menuiserie|bois|porte|meuble|placard|serrur/i.test(t)) {
+    return { value: 'carpentry', label: 'Carpentry', fr: 'Menuiserie', icon: '🪚' };
+  }
+  if (/ac|air condition|clim|froid|ventilat/i.test(t)) {
+    return { value: 'ac', label: 'AC & Cooling', fr: 'Climatisation', icon: '❄️' };
+  }
+  if (/appliance|fridge|refrigerator|washer|oven|stove|réfrigérateur|four|micro-onde|machine à laver|télé/i.test(t)) {
+    return { value: 'appliance', label: 'Appliance Repair', fr: 'Réparation d\'appareils', icon: '🔌' };
+  }
+  if (/garden|lawn|grass|tree|plant|jardin|pelouse|haie|tonte/i.test(t)) {
+    return { value: 'gardening', label: 'Gardening', fr: 'Jardinage', icon: '🌿' };
+  }
+  if (/mov|relocat|pack|delivery|déménag|transport|colis|livrais/i.test(t)) {
+    return { value: 'moving', label: 'Moving & Delivery', fr: 'Déménagement', icon: '📦' };
+  }
+  if (/tile|tiling|carrelage|carreleur/i.test(t)) {
+    return { value: 'tiling', label: 'Tiling', fr: 'Carrelage', icon: '🏠' };
+  }
+  if (/camera|cctv|surveillance|sécurité/i.test(t)) {
+    return { value: 'cctv', label: 'CCTV Installation', fr: 'Installation CCTV', icon: '📷' };
+  }
+  if (/it|computer|laptop|network|wifi|software|ordinateur|wifi|réseau|informatique/i.test(t)) {
+    return { value: 'it_support', label: 'IT Support', fr: 'Support informatique', icon: '💻' };
+  }
+  if (/tutor|teach|lesson|cours|soutien|enseign/i.test(t)) {
+    return { value: 'tutoring', label: 'Tutoring', fr: 'Cours particuliers', icon: '📚' };
+  }
+  if (/photo|video|camera|shoot|mariage|shooting/i.test(t)) {
+    return { value: 'photography', label: 'Photography', fr: 'Photographie', icon: '📸' };
+  }
+  return { value: 'general', label: 'General Service', fr: 'Service général', icon: '🛠️' };
+};
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -49,11 +106,11 @@ interface CreateTaskModalProps {
   isFr?: boolean;
 }
 
-type Step = 'category' | 'details' | 'budget' | 'schedule' | 'review';
+type Step = 'details' | 'budget' | 'schedule' | 'review';
 
 export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = false }: CreateTaskModalProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>('category');
+  const [step, setStep] = useState<Step>('details');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +128,8 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
     budgetMin: '',
     budgetMax: '',
     providersNeeded: '1',
+    providerTier: '1',
+    exactProviders: '1',
     priority: 'NORMAL',
     taskScope: 'SMALL',
     scheduledTime: '',
@@ -81,7 +140,7 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
   useEffect(() => {
     if (isOpen) {
       // Reset when opening
-      setStep('category');
+      setStep('details');
       setError('');
       setSearchQuery('');
       setShowConfirmClose(false);
@@ -97,6 +156,8 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
         budgetMin: '',
         budgetMax: '',
         providersNeeded: '1',
+        providerTier: '1',
+        exactProviders: '1',
         priority: 'NORMAL',
         taskScope: 'SMALL',
         scheduledTime: '',
@@ -110,11 +171,10 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
 
   const t = {
     title: isFr ? 'Créer une tâche' : 'Create a New Task',
-    step1: isFr ? 'Catégorie' : 'Category',
-    step2: isFr ? 'Détails' : 'Details',
-    step3: isFr ? 'Budget' : 'Budget',
-    step4: isFr ? 'Planning' : 'Schedule',
-    step5: isFr ? 'Aperçu' : 'Review',
+    step1: isFr ? 'Détails' : 'Details',
+    step2: isFr ? 'Budget' : 'Budget',
+    step3: isFr ? 'Planning' : 'Schedule',
+    step4: isFr ? 'Aperçu' : 'Review',
     next: isFr ? 'Suivant' : 'Next',
     back: isFr ? 'Retour' : 'Back',
     cancel: isFr ? 'Annuler' : 'Cancel',
@@ -167,12 +227,12 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
     });
   };
 
-  const steps: Step[] = ['category', 'details', 'budget', 'schedule', 'review'];
+  const steps: Step[] = ['details', 'budget', 'schedule', 'review'];
   const stepIndex = steps.indexOf(step);
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   const hasEnteredData = () => {
-    return !!form.category || !!form.title || !!form.description || !!form.location || !!form.budgetMin;
+    return !!form.title || !!form.description || !!form.location || !!form.budgetMin;
   };
 
   const handleCloseAttempt = () => {
@@ -184,13 +244,8 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
   };
 
   const canProceed = () => {
-    if (step === 'category') {
-      if (!form.category) return false;
-      if (form.category === 'other' && !form.customCategoryName.trim()) return false;
-      return true;
-    }
     if (step === 'details') {
-      return form.title.length >= 5 && form.description.length >= 10 && form.location.trim().length > 0;
+      return form.title.trim().length >= 5 && form.description.trim().length >= 10 && form.location.trim().length > 0;
     }
     if (step === 'budget') {
       return Number(form.budgetMin) > 0 && Number(form.budgetMax) >= Number(form.budgetMin);
@@ -212,26 +267,60 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
     setIsSubmitting(true);
     setError('');
     try {
-      const selectedCategory = form.category === 'other' ? form.customCategoryName : form.category;
+      const derived = deriveCategoryFromTitle(form.title);
+      const selectedCategory = derived.label || derived.value || 'General Service';
+
+      // 1. Clean up materials list: filter out empty names and attach suppliedBy
+      const cleanedMaterialsList = (form.materialsList || [])
+        .filter((item: any) => item && typeof item.name === 'string' && item.name.trim().length > 0)
+        .map((item: any) => ({
+          id: item.id || undefined,
+          name: item.name.trim(),
+          quantity: item.quantity ? String(item.quantity).trim() : null,
+          suppliedBy: (item.suppliedBy === 'PROVIDER' || item.suppliedBy === 'CLIENT') ? item.suppliedBy : 'CLIENT'
+        }));
+
+      const numProviders = parseInt(form.exactProviders || form.providersNeeded, 10) || 1;
+
+      // 2. Append workforce requirements note to description if 3+, 7+, 10+
+      let providerNote = '';
+      if (numProviders >= 10) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite plus de 10 personnes (${numProviders} prestataires demandés).]` 
+          : `\n\n[Workforce Required: This job needs more than 10 people (${numProviders} providers requested).]`;
+      } else if (numProviders >= 7) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite 7 à 9 prestataires (${numProviders} demandés).]` 
+          : `\n\n[Workforce Required: This job needs 7 to 9 providers (${numProviders} requested).]`;
+      } else if (numProviders >= 3) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite au moins 3 à 6 prestataires (${numProviders} demandés).]` 
+          : `\n\n[Workforce Required: This job needs at least 3 to 6 providers (${numProviders} requested).]`;
+      }
+
+      const finalDescription = form.description.trim() + (providerNote && !form.description.includes('Workforce Required') && !form.description.includes('Effectif requis') ? providerNote : '');
+
+      const bMin = Number(form.budgetMin) || 0;
+      const bMax = Number(form.budgetMax) || bMin;
+
       const payload: any = {
         category: selectedCategory,
-        title: form.title,
-        description: form.description,
-        location: form.location,
-        isRemote: form.isRemote,
-        budgetMin: Number(form.budgetMin),
-        budgetMax: Number(form.budgetMax),
-        budget: Number(form.budgetMax),
-        providersNeeded: Number(form.providersNeeded),
-        priority: form.priority,
-        taskScope: form.taskScope,
-        scheduledTime: form.scheduledTime || undefined,
-        materialsList: form.materialsList,
-        requiresDiagnosis: form.requiresDiagnosis,
+        title: form.title.trim(),
+        description: finalDescription,
+        location: form.location.trim(),
+        isRemote: Boolean(form.isRemote),
+        budgetMin: bMin > 0 ? bMin : bMax,
+        budgetMax: bMax > 0 ? bMax : bMin,
+        budget: bMax > 0 ? bMax : bMin,
+        providersNeeded: numProviders,
+        priority: form.priority || 'NORMAL',
+        taskScope: form.taskScope || 'SMALL',
+        scheduledTime: form.scheduledTime ? new Date(form.scheduledTime).toISOString() : undefined,
+        materialsList: cleanedMaterialsList.length > 0 ? cleanedMaterialsList : undefined,
+        requiresDiagnosis: Boolean(form.requiresDiagnosis),
       };
-      if (form.whatNeedsDone) payload.whatNeedsDone = form.whatNeedsDone;
-      if (form.importantDetails) payload.importantDetails = form.importantDetails;
-      if (form.scheduledTime) payload.scheduledTime = new Date(form.scheduledTime).toISOString();
+      if (form.whatNeedsDone) payload.whatNeedsDone = form.whatNeedsDone.trim();
+      if (form.importantDetails) payload.importantDetails = form.importantDetails.trim();
 
       const res = await api.post('/jobs', payload);
       if (res.data.success) {
@@ -239,25 +328,18 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
         onClose();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || (isFr ? 'Échec de la publication.' : 'Failed to publish job.');
-      setError(msg);
+      const backendErrors = err.response?.data?.errors;
+      let msg = err.response?.data?.message;
+      if (Array.isArray(backendErrors) && backendErrors.length > 0) {
+        msg = backendErrors.map((e: any) => `${e.message} (${e.path})`).join(' • ');
+      }
+      setError(msg || (isFr ? 'Échec de la publication de la tâche.' : 'Failed to publish job.'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Filter categories based on search input
-  const filteredCategories = SERVICE_CATEGORIES.filter(cat => {
-    const term = searchQuery.toLowerCase();
-    const labelMatches = cat.label.toLowerCase().includes(term);
-    const frMatches = cat.fr.toLowerCase().includes(term);
-    return labelMatches || frMatches;
-  });
-
-  // If search matches nothing or user wants other, they can select "Other"
-  const isOtherVisible = filteredCategories.some(c => c.value === 'other') || searchQuery.trim().length > 0;
-
-  const currentCategoryObj = SERVICE_CATEGORIES.find(c => c.value === form.category);
+  const derivedCategoryObj = deriveCategoryFromTitle(form.title);
 
   return (
     <div
@@ -309,7 +391,7 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                 ))}
               </div>
               <span style={{ fontSize: '0.75rem', color: '#14b8a6', fontWeight: 600 }}>
-                {step === 'category' ? t.step1 : step === 'details' ? t.step2 : step === 'budget' ? t.step3 : step === 'schedule' ? t.step4 : t.step5}
+                {step === 'details' ? t.step1 : step === 'budget' ? t.step2 : step === 'schedule' ? t.step3 : t.step4}
               </span>
             </div>
 
@@ -323,93 +405,6 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
 
             {/* Body contents */}
             <div style={{ padding: '1.25rem 1.75rem', flex: 1, overflowY: 'auto' }}>
-              
-              {/* STEP 1: Search & Category */}
-              {step === 'category' && (
-                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <p style={{ margin: 0, color: '#475569', fontSize: '0.875rem' }}>{t.selectCategory}</p>
-                  
-                  {/* Search Box */}
-                  <div style={{ position: 'relative', width: '100%' }}>
-                    <input
-                      type="text"
-                      placeholder={t.searchPlaceholder}
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      style={{
-                        width: '100%', padding: '0.75rem 1rem 0.75rem 2.5rem',
-                        border: '1px solid #CBD5E1', borderRadius: '10px',
-                        fontSize: '0.9rem', outline: 'none', background: '#F8FAFC'
-                      }}
-                    />
-                    <span style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }}>🔍</span>
-                  </div>
-
-                  {/* Filtered category list */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', padding: '2px' }}>
-                    {filteredCategories.map(cat => {
-                      if (cat.value === 'other') return null; // handle other below
-                      const isSel = form.category === cat.value;
-                      return (
-                        <button
-                          key={cat.value}
-                          onClick={() => update('category', cat.value)}
-                          style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center',
-                            gap: '6px', padding: '12px 6px', border: `2px solid ${isSel ? '#14b8a6' : '#e2e8f0'}`,
-                            borderRadius: '12px', background: isSel ? '#f0fdfa' : '#fff',
-                            cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                            color: isSel ? '#0f766e' : '#334155'
-                          }}
-                        >
-                          <span style={{ fontSize: '1.5rem' }}>{cat.icon}</span>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{isFr ? cat.fr : cat.label}</span>
-                        </button>
-                      );
-                    })}
-
-                    {/* Fallback/Other option always available if query is typed or other list item */}
-                    {isOtherVisible && (
-                      <button
-                        onClick={() => update('category', 'other')}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center',
-                          gap: '6px', padding: '12px 6px', border: `2px solid ${form.category === 'other' ? '#14b8a6' : '#e2e8f0'}`,
-                          borderRadius: '12px', background: form.category === 'other' ? '#f0fdfa' : '#fff',
-                          cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                          color: form.category === 'other' ? '#0f766e' : '#334155'
-                        }}
-                      >
-                        <span style={{ fontSize: '1.5rem' }}>🔩</span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{isFr ? 'Autre' : 'Other'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {filteredCategories.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '1.5rem', color: '#64748B', fontSize: '0.85rem' }}>
-                      {isFr ? 'Aucun résultat trouvé. Sélectionnez "Autre" pour entrer le vôtre.' : 'No matches found. Select "Other" to write your own.'}
-                    </div>
-                  )}
-
-                  {/* Input for custom category */}
-                  {form.category === 'other' && (
-                    <div className="animate-fade-in" style={{ marginTop: '0.5rem', padding: '1rem', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC' }}>
-                      <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: '#334155', marginBottom: '0.5rem' }}>{t.customCategoryLabel} *</label>
-                      <input
-                        type="text"
-                        placeholder={t.customCategoryPlaceholder}
-                        value={form.customCategoryName}
-                        onChange={e => update('customCategoryName', e.target.value)}
-                        style={{
-                          width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #CBD5E1',
-                          borderRadius: '8px', fontSize: '0.875rem', outline: 'none', background: '#fff'
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* STEP 2: Details & Type */}
               {step === 'details' && (
@@ -577,10 +572,23 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>{t.providersNeeded}</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>{t.providersNeeded}</label>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0D9488', backgroundColor: '#E6F7F5', padding: '2px 8px', borderRadius: '6px' }}>
+                        {calculateJobCoinCost(Number(form.exactProviders || form.providersNeeded))} {calculateJobCoinCost(Number(form.exactProviders || form.providersNeeded)) === 1 ? (isFr ? 'Pièce' : 'Coin') : (isFr ? 'Pièces' : 'Coins')}
+                      </span>
+                    </div>
+
                     <select
-                      value={form.providersNeeded}
-                      onChange={(e) => update('providersNeeded', e.target.value)}
+                      value={form.providerTier}
+                      onChange={(e) => {
+                        const tierVal = e.target.value;
+                        const selectedTier = PROVIDER_TIERS.find(t => t.value === tierVal);
+                        const defCount = selectedTier?.defaultCount || (tierVal === 'custom' ? 5 : Number(tierVal));
+                        update('providerTier', tierVal);
+                        update('providersNeeded', String(tierVal));
+                        update('exactProviders', String(defCount));
+                      }}
                       style={{
                         width: '100%',
                         padding: '0.7rem 1rem',
@@ -600,6 +608,52 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                         </option>
                       ))}
                     </select>
+
+                    {/* Tier Description Hint */}
+                    {(() => {
+                      const currTier = PROVIDER_TIERS.find(t => t.value === form.providerTier);
+                      if (currTier?.desc) {
+                        return (
+                          <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#0D9488', fontWeight: 600 }}>
+                            ℹ️ {isFr 
+                              ? (form.providerTier === '3' ? 'Cette tâche nécessite au moins 3 à 6 prestataires (ex: 5–6 personnes).' 
+                                 : form.providerTier === '7' ? 'Cette tâche nécessite 7 à 9 prestataires.' 
+                                 : form.providerTier === '10' ? 'Cette tâche nécessite plus de 10 personnes.' 
+                                 : currTier.desc)
+                              : currTier.desc}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Exact count input for 3+, 7+, 10+, or custom */}
+                    {(form.providerTier === '3' || form.providerTier === '7' || form.providerTier === '10' || form.providerTier === 'custom') && (
+                      <div style={{ marginTop: '0.6rem', padding: '0.6rem 0.8rem', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.3rem' }}>
+                          {isFr ? 'Nombre exact de personnes nécessaires pour cette tâche :' : 'Exact number of people needed for this job:'}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={form.exactProviders}
+                          onChange={(e) => update('exactProviders', e.target.value)}
+                          placeholder="e.g. 5"
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '8px',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            color: '#0F172A',
+                            background: '#FFF',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -680,11 +734,11 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center', paddingBottom: '10px', borderBottom: '1px solid #E2E8F0' }}>
-                      <span style={{ fontSize: '1.75rem' }}>{currentCategoryObj?.icon || '🔩'}</span>
+                      <span style={{ fontSize: '1.75rem' }}>{derivedCategoryObj.icon}</span>
                       <div>
                         <p style={{ margin: 0, fontWeight: 800, color: '#0F172A' }}>{form.title}</p>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748B' }}>
-                          {form.category === 'other' ? form.customCategoryName : (currentCategoryObj ? (isFr ? currentCategoryObj.fr : currentCategoryObj.label) : '')}
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#0D9488', fontWeight: 600 }}>
+                          🏷️ {isFr ? derivedCategoryObj.fr : derivedCategoryObj.label}
                         </p>
                       </div>
                     </div>
@@ -693,7 +747,10 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
                     {form.importantDetails && <ReviewRow label={t.importantDetails} value={form.importantDetails} />}
                     <ReviewRow label={t.location} value={`${form.location}${form.isRemote ? (isFr ? ' (À distance)' : ' (Remote)') : ''}`} />
                     <ReviewRow label={t.budgetMin} value={`XAF ${Number(form.budgetMin).toLocaleString()} - ${Number(form.budgetMax).toLocaleString()}`} />
-                    <ReviewRow label={t.providersNeeded} value={form.providersNeeded} />
+                    <ReviewRow 
+                      label={t.providersNeeded} 
+                      value={`${form.exactProviders || form.providersNeeded} ${Number(form.exactProviders || form.providersNeeded) > 1 ? (isFr ? 'prestataires' : 'providers') : (isFr ? 'prestataire' : 'provider')} (${calculateJobCoinCost(Number(form.exactProviders || form.providersNeeded))} ${calculateJobCoinCost(Number(form.exactProviders || form.providersNeeded)) === 1 ? (isFr ? 'pièce' : 'coin') : (isFr ? 'pièces' : 'coins')})`} 
+                    />
                     <ReviewRow label={t.priority} value={PRIORITY_OPTIONS.find(o => o.value === form.priority)?.[isFr ? 'fr' : 'label'] || form.priority} />
                     <ReviewRow label={t.taskScope} value={SCOPE_OPTIONS.find(o => o.value === form.taskScope)?.[isFr ? 'fr' : 'label'] || form.taskScope} />
                     {form.scheduledTime && <ReviewRow label={t.scheduledTime} value={new Date(form.scheduledTime).toLocaleString()} />}
@@ -714,7 +771,7 @@ export default function CreateTaskModal({ isOpen, onClose, onSuccess, isFr = fal
 
             {/* Footer */}
             <div style={{ padding: '1rem 1.75rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', background: '#F8FAFC', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
-              {step !== 'category' ? (
+              {step !== 'details' ? (
                 <button
                   type="button"
                   onClick={goBack}

@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const createJobSchema = z.object({
-  category: z.string(),
+  category: z.string().optional().default('General Service'),
   title: z.string().min(5),
   description: z.string().min(10),
   location: z.string(),
@@ -21,10 +21,10 @@ const createJobSchema = z.object({
   requiresDiagnosis: z.boolean().optional(),
   materialsList: z.array(
     z.object({
-      id: z.string().optional(),
-      name: z.string(),
+      id: z.string().optional().nullable(),
+      name: z.string().optional().nullable(),
       quantity: z.string().optional().nullable(),
-      suppliedBy: z.enum(["CLIENT", "PROVIDER"])
+      suppliedBy: z.enum(["CLIENT", "PROVIDER"]).default("CLIENT").optional().nullable()
     })
   ).optional().nullable(),
 }).superRefine((data, ctx) => {

@@ -81,6 +81,22 @@ const STATUS_STYLES = {
   REJECTED: { label: 'Cancelled', icon: 'close-circle-outline', text: '#EF4444', bg: '#FEE2E2' },
 };
 
+export const deriveCategoryFromTitle = (title) => {
+  if (!title || typeof title !== 'string') return 'OTHER';
+  const t = title.toLowerCase();
+  if (/plumb|leak|pipe|drain|water|faucet|toilet|sink|robinet|tuyau|fuite|chasse|évier|lavabo|chauffe-eau/i.test(t)) return 'PLUMBING';
+  if (/electr|wire|light|power|breaker|socket|prise|disjoncteur|lumière|câble|ampoule|fusible|compteur/i.test(t)) return 'ELECTRICAL';
+  if (/clean|wash|laundry|housekeeping|maid|nettoy|ménage|propreté|laver|décapage/i.test(t)) return 'CLEANING';
+  if (/paint|peint|wall|mur|plafond|couleur|vernis|enduit/i.test(t)) return 'PAINTING';
+  if (/carpent|wood|furniture|table|chair|door|menuiserie|bois|porte|meuble|placard|serrur/i.test(t)) return 'CARPENTRY';
+  if (/ac|air condition|clim|froid|ventilat/i.test(t)) return 'APPLIANCE';
+  if (/appliance|fridge|refrigerator|washer|oven|stove|réfrigérateur|four|micro-onde|machine à laver|télé/i.test(t)) return 'APPLIANCE';
+  if (/garden|lawn|grass|tree|plant|jardin|pelouse|haie|tonte/i.test(t)) return 'GARDENING';
+  if (/mov|relocat|pack|delivery|déménag|transport|colis|livrais/i.test(t)) return 'MOVING';
+  if (/repair|fix|dépan|répar/i.test(t)) return 'REPAIR';
+  return 'OTHER';
+};
+
 const pad2 = (value) => String(value).padStart(2, '0');
 
 const formatDateInput = (date) => {
@@ -437,7 +453,6 @@ const PostTaskScreen = ({ route, navigation }) => {
   };
 
   const validateForm = () => {
-    if (!selectedCat) return t('jobs.categoryRequired', 'Please select a category');
     if (!title.trim()) return t('jobs.taskTitleRequired');
     if (!isRemote && !location.trim()) return t('jobs.locationRequired');
     const min = budgetMode === 'range' ? parseInt(budgetMin) : parseInt(budget);
@@ -562,15 +577,47 @@ const PostTaskScreen = ({ route, navigation }) => {
       const parsedMax = parseInt(budgetMax, 10) || parsedBudget;
       const finalBudget = budgetMode === 'range' ? parsedMax : parsedBudget;
 
+      const numProviders = parseInt(providersNeeded, 10) || 1;
+
+      // 1. Append workforce requirements note to description if 3+, 7+, 10+
+      let providerNote = '';
+      const isFr = locale === 'fr';
+      if (numProviders >= 10) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite plus de 10 personnes (${numProviders} prestataires demandés).]` 
+          : `\n\n[Workforce Required: This job needs more than 10 people (${numProviders} providers requested).]`;
+      } else if (numProviders >= 7) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite 7 à 9 prestataires (${numProviders} demandés).]` 
+          : `\n\n[Workforce Required: This job needs 7 to 9 providers (${numProviders} requested).]`;
+      } else if (numProviders >= 3) {
+        providerNote = isFr 
+          ? `\n\n[Effectif requis : Cette tâche nécessite au moins 3 à 6 prestataires (${numProviders} demandés).]` 
+          : `\n\n[Workforce Required: This job needs at least 3 to 6 providers (${numProviders} requested).]`;
+      }
+
+      const rawDesc = String(description || '').trim();
+      const finalDescription = rawDesc + (providerNote && !rawDesc.includes('Workforce Required') && !rawDesc.includes('Effectif requis') ? providerNote : '');
+
+      // 2. Clean materials list
+      const cleanedMaterialsList = (Array.isArray(materialsList) ? materialsList : [])
+        .filter(item => item && typeof item.name === 'string' && item.name.trim().length > 0)
+        .map(item => ({
+          id: item.id || undefined,
+          name: item.name.trim(),
+          quantity: item.quantity ? String(item.quantity).trim() : undefined,
+          suppliedBy: (item.suppliedBy === 'PROVIDER' || item.suppliedBy === 'CLIENT') ? item.suppliedBy : 'CLIENT'
+        }));
+
       const payload = {
         title: String(title || '').trim(),
-        description: String(description || '').trim(),
+        description: finalDescription,
         location: isRemote ? 'Remote / Online' : (String(location || '').trim() || 'Douala, Cameroon'),
         budget: finalBudget,
         budgetMin: budgetMode === 'range' ? parsedMin : parsedBudget,
         budgetMax: budgetMode === 'range' ? parsedMax : parsedBudget,
-        providersNeeded: parseInt(providersNeeded, 10) || 1,
-        category: selectedCat || 'OTHER',
+        providersNeeded: numProviders,
+        category: selectedCat || deriveCategoryFromTitle(title) || 'OTHER',
         scheduledTime: scheduledDateTime.toISOString(),
         whatNeedsDone: whatNeedsDone || undefined,
         importantDetails: importantDetails || undefined,
@@ -578,7 +625,7 @@ const PostTaskScreen = ({ route, navigation }) => {
         preferences: Array.isArray(selectedPreferences) ? selectedPreferences : [],
         priority: priority || 'NORMAL',
         isRemote: Boolean(isRemote),
-        materialsList: Array.isArray(materialsList) ? materialsList : [],
+        materialsList: cleanedMaterialsList,
         requiresDiagnosis: Boolean(requiresDiagnosis),
       };
       if (editingJob) {
@@ -916,39 +963,6 @@ const PostTaskScreen = ({ route, navigation }) => {
               <Image source={tasksHeroImage} style={styles.createHeroImage} resizeMode="contain" />
             </LinearGradient>
 
-              <View style={styles.sectionTitleRow}>
-                <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.category')}</Text>
-                <TouchableOpacity onPress={() => setShowCategoryPicker((value) => !value)}>
-                  <Text style={styles.viewAllText}>{t('jobs.viewAll')}</Text>
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity 
-                style={[styles.categorySearchWrap, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}
-                onPress={() => setShowCategoryPicker(!showCategoryPicker)}
-              >
-                <MaterialCommunityIcons name="shape-outline" size={21} color="#0D9488" />
-                <Text style={[styles.categorySearchInput, { color: colors.text }]}>
-                  {getCategoryLabel(selectedCat) || t('jobs.selectCategory')}
-                </Text>
-                <MaterialCommunityIcons name={showCategoryPicker ? 'chevron-up' : 'chevron-right'} size={24} color="#64748B" />
-              </TouchableOpacity>
-              {showCategoryPicker && (
-                <View style={[styles.categoryResults, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderColor: colors.border }]}>
-                  {TASK_CATS.map((cat) => {
-                    const active = selectedCat === cat.name;
-                    return (
-                      <TouchableOpacity key={cat.id} style={[styles.categoryResultItem, { backgroundColor: isDarkMode ? '#1F2937' : '#FFF', borderBottomColor: colors.border }]} onPress={() => selectCategory(cat)}>
-                        <View style={[styles.categoryResultIcon, active && styles.categoryResultIconActive]}>
-                          <MaterialCommunityIcons name={cat.icon} size={18} color={active ? '#FFF' : '#0D9488'} />
-                        </View>
-                        <Text style={[styles.categoryResultText, { color: colors.text }]}>{getCategoryLabel(cat.name)}</Text>
-                        {active && <MaterialCommunityIcons name="check-circle" size={20} color="#0D9488" />}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
               <View style={styles.createFieldGroup}>
                 <Text style={[styles.createSectionLabel, { color: colors.text }]}>{t('jobs.taskType', 'Task Type')}</Text>
                 <View style={styles.budgetModeRow}>
@@ -1037,6 +1051,33 @@ const PostTaskScreen = ({ route, navigation }) => {
                   </Text>
                   <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textSecondary} />
                 </TouchableOpacity>
+
+                {parseInt(providersNeeded, 10) >= 3 && (
+                  <View style={{ marginTop: 8, padding: 10, borderRadius: 10, backgroundColor: isDarkMode ? '#0F172A' : '#F0FDFA', borderWidth: 1, borderColor: isDarkMode ? '#1E293B' : '#CCFBF1' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+                      {t('jobs.exactHeadcountLabel', 'Exact number of workers needed:')}
+                    </Text>
+                    <TextInput
+                      style={[styles.createInput, { height: 42, borderColor: colors.border, backgroundColor: isDarkMode ? '#1F2937' : '#FFF', color: colors.text, paddingHorizontal: 10 }]}
+                      keyboardType="number-pad"
+                      value={String(providersNeeded)}
+                      onChangeText={(val) => {
+                        const num = val.replace(/[^0-9]/g, '');
+                        if (num) setProvidersNeeded(num);
+                      }}
+                      placeholder="e.g. 5 or 6"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                      {parseInt(providersNeeded, 10) >= 10
+                        ? t('jobs.tier10Note', 'Tier 10+: Needs more than 10 people (5 coins)')
+                        : parseInt(providersNeeded, 10) >= 7
+                        ? t('jobs.tier7Note', 'Tier 7+: Needs 7 to 9 people (4 coins)')
+                        : t('jobs.tier3Note', 'Tier 3+: Needs at least 3 to 6 people (3 coins)')}
+                    </Text>
+                  </View>
+                )}
+
                 <Text style={styles.fieldHint}>{t('jobs.providersNeededTierHint', 'Cost: 1 = 1 coin, 2 = 2 coins, 3+ = 3 coins, 7+ = 4 coins, 10+ = 5 coins')}</Text>
               </View>
 
@@ -1374,7 +1415,7 @@ const PostTaskScreen = ({ route, navigation }) => {
 
             <View style={[styles.reviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.catBadge, { backgroundColor: isDarkMode ? 'rgba(96, 165, 250, 0.1)' : colors.accentSoft }]}>
-                <Text style={[styles.catBadgeText, { color: colors.accent }]}>{getCategoryLabel(selectedCat)}</Text>
+                <Text style={[styles.catBadgeText, { color: colors.accent }]}>{getCategoryLabel(selectedCat || deriveCategoryFromTitle(title))}</Text>
               </View>
               <Text style={[styles.reviewTitle, { color: colors.text }]}>{title}</Text>
               <Text style={[styles.reviewDescription, { color: colors.textSecondary }]}>{description}</Text>
