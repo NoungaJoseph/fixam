@@ -207,16 +207,26 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
       return;
     }
 
-    // Send images if attached
+    // Send attached files (images, videos, documents)
     if (selectedImages.length > 0) {
-      const imagesToSend = [...selectedImages];
+      const filesToSend = [...selectedImages];
       setSelectedImages([]);
-      for (const imgUrl of imagesToSend) {
+      for (const fileUrl of filesToSend) {
+        // Detect file type from data URL mime type
+        let fileType = 'IMAGE';
+        let fileLabel = 'Sent an image';
+        if (fileUrl.startsWith('data:video/')) {
+          fileType = 'VIDEO';
+          fileLabel = 'Sent a video';
+        } else if (fileUrl.startsWith('data:application/pdf') || fileUrl.startsWith('data:application/msword') || fileUrl.startsWith('data:application/vnd.openxmlformats') || fileUrl.startsWith('data:text/')) {
+          fileType = 'FILE';
+          fileLabel = 'Sent a document';
+        }
         const tempMsg = {
           id: Date.now().toString() + Math.random(),
-          content: 'Sent an image',
-          mediaUrl: imgUrl,
-          type: 'IMAGE',
+          content: fileLabel,
+          mediaUrl: fileUrl,
+          type: fileType,
           senderId: user?.id,
           createdAt: new Date().toISOString()
         };
@@ -225,13 +235,13 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
           await api.post('/chat/send', {
             conversationId: currentConvId,
             receiverId,
-            content: 'Sent an image',
-            mediaUrl: imgUrl,
-            type: 'IMAGE'
+            content: fileLabel,
+            mediaUrl: fileUrl,
+            type: fileType
           });
         } catch (err: any) {
-          console.error('Failed to send image', err);
-          alert(err.response?.data?.message || 'Failed to send image');
+          console.error('Failed to send file', err);
+          alert(err.response?.data?.message || 'Failed to send file');
         }
       }
     }
@@ -249,13 +259,13 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
 
       try {
         await api.post('/chat/send', {
-          conversationId: activeConv.id,
+          conversationId: currentConvId,
           receiverId,
           content: contentToSend,
           mediaUrl: mediaUrl || null,
           type: customType
         });
-        const res = await api.get(`/chat/${activeConv.id}/messages`);
+        const res = await api.get(`/chat/${currentConvId}/messages`);
         setMessages(res.data.data || []);
       } catch (err: any) {
         console.error('Failed to send msg', err);
@@ -277,18 +287,21 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
   const handleSendMsg = async (e?: React.FormEvent, customContent?: string, customType: string = 'TEXT', mediaUrl?: string) => {
     if (e) e.preventDefault();
     const contentToSend = customContent || newMsgText;
-    if ((!contentToSend.trim() && !mediaUrl && selectedImages.length === 0) || !activeConv) return;
+    if (!contentToSend.trim() && !mediaUrl && selectedImages.length === 0) return;
+    if (!activeConv && !activeDetails.other?.id) return;
 
     // ── Feature 2: External contact detection (TEXT only) ─────────────────────
     if (customType === 'TEXT' && contentToSend.trim()) {
       const detectedPattern = detectExternalContact(contentToSend);
       if (detectedPattern) {
         // Log warning event immediately (fire-and-forget)
-        api.post(`/chat/${activeConv.id}/log-contact-warning`, {
-          detectedPattern,
-          sentAnyway: false,
-          platform: 'web',
-        }).catch(() => {});
+        if (activeConv?.id) {
+          api.post(`/chat/${activeConv.id}/log-contact-warning`, {
+            detectedPattern,
+            sentAnyway: false,
+            platform: 'web',
+          }).catch(() => {});
+        }
 
         // Surface the inline confirmation dialog — do NOT send yet
         setContactWarning({
@@ -308,13 +321,15 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
 
   /** Called when the user clicks "Send Anyway" in the contact-warning dialog. */
   const handleSendAnyway = async () => {
-    if (!contactWarning || !activeConv) return;
+    if (!contactWarning) return;
     // Log that the user chose to send
-    api.post(`/chat/${activeConv.id}/log-contact-warning`, {
-      detectedPattern: contactWarning.detectedPattern,
-      sentAnyway: true,
-      platform: 'web',
-    }).catch(() => {});
+    if (activeConv?.id) {
+      api.post(`/chat/${activeConv.id}/log-contact-warning`, {
+        detectedPattern: contactWarning.detectedPattern,
+        sentAnyway: true,
+        platform: 'web',
+      }).catch(() => {});
+    }
     const { pendingContent, pendingType, pendingMediaUrl } = contactWarning;
     setContactWarning(null);
     setNewMsgText('');
@@ -577,7 +592,7 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
 
             {/* ── Tracking button ─────────────────────────────── */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
-              {!activeConv.isSystem && (
+              {activeConv && !activeConv.isSystem && user?.role !== 'PROVIDER' && (
                 <div style={{ marginLeft: 'auto' }}>
                   <button 
                     type="button"
@@ -838,7 +853,7 @@ export default function Messages({ activeChatUser, setActiveChatUser }: Messages
                       type="file" 
                       ref={fileInputRef} 
                       multiple 
-                      accept="image/*" 
+                      accept="image/*,video/*,application/pdf,.doc,.docx,.txt" 
                       style={{ display: 'none' }} 
                       onChange={handleImagePick} 
                     />

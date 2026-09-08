@@ -36,6 +36,10 @@ type JobLead = {
   clientSpendingTier?: string;
   applications?: any[];
   assignments?: any[];
+  hasApplied?: boolean;
+  hasBoosted?: boolean;
+  myBoostCoins?: number;
+  myAssignment?: any;
 };
 
 const formatBudget = (job: JobLead) => {
@@ -67,6 +71,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [dislikedJobIds, setDislikedJobIds] = useState<string[]>([]);
+  const [expandedJobIds, setExpandedJobIds] = useState<Record<string, boolean>>({});
 
   // Proposal modal states
   const [proposalModalJob, setProposalModalJob] = useState<JobLead | null>(null);
@@ -77,7 +82,14 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
   const [isUploadingProposalFile, setIsUploadingProposalFile] = useState<boolean>(false);
   const [isSubmittingProposal, setIsSubmittingProposal] = useState<boolean>(false);
 
-  const [activeFeedTab, setActiveFeedTab] = useState<'best_matches' | 'most_recent' | 'remote_only' | 'saved_jobs' | 'direct_bookings'>('best_matches');
+  const [activeFeedTab, setActiveFeedTab] = useState<'best_matches' | 'most_recent' | 'remote_only' | 'saved_jobs' | 'direct_bookings' | 'applied_jobs'>('best_matches');
+  const [appliedJobIds, setAppliedJobIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`fixam_applied_jobs_${user?.id}`) || '[]');
+    } catch {
+      return [];
+    }
+  });
   const [isAlertVisible, setIsAlertVisible] = useState(true);
   const [isAvailable, setIsAvailable] = useState(() => user?.providerProfile?.isAvailable ?? user?.isOnline ?? true);
 
@@ -303,9 +315,10 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
   const hasEnoughCoins = boostCoins === 0 || currentWalletBalance >= boostCoins;
 
   const openProposalModal = (job: JobLead) => {
+    const isAlreadyApplied = job.hasApplied || appliedJobIds.includes(job.id);
     setSelectedJob(null);
     setProposalModalJob(job);
-    setBoostCoins(0);
+    setBoostCoins(isAlreadyApplied ? Math.max(1, (job.myBoostCoins || 0) + 1) : 0);
     setCoverLetter('');
     setProposedBudget(String(job.budget || ''));
     setProposalAttachments([]);
@@ -393,8 +406,13 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
         setWalletBalance((prev) => Math.max(0, (prev || 0) - totalProposalCoins));
       }
 
-      // Remove job from feed list
-      setJobs((current) => current.filter((item) => item.id !== proposalModalJob.id));
+      // Keep job in feed list and mark as applied
+      setJobs((current) => current.map((item) => item.id === proposalModalJob.id ? { ...item, hasApplied: true, myBoostCoins: boostCoins } : item));
+      setAppliedJobIds((prev) => {
+        const next = Array.from(new Set([...prev, proposalModalJob.id]));
+        try { localStorage.setItem(`fixam_applied_jobs_${user?.id}`, JSON.stringify(next)); } catch {}
+        return next;
+      });
 
       const successMsg = response.data?.message || (boostCoins > 0 ? `🚀 Boosted Proposal Sent Successfully! (${boostCoins} boost coins used)` : '🎉 Proposal Sent Successfully (FREE)!');
       alert(successMsg);
@@ -419,6 +437,10 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
     }
   };
 
+  const appliedJobsCount = useMemo(() => {
+    return jobs.filter(j => j.hasApplied || appliedJobIds.includes(j.id)).length;
+  }, [jobs, appliedJobIds]);
+
   // Filtered jobs according to active feed tab
   const displayedJobs = useMemo(() => {
     let list = jobs.filter(j => !dislikedJobIds.includes(j.id));
@@ -426,11 +448,13 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
       list = list.filter(j => j.isRemote);
     } else if (activeFeedTab === 'saved_jobs') {
       list = list.filter(j => savedJobIds.includes(j.id));
+    } else if (activeFeedTab === 'applied_jobs') {
+      list = list.filter(j => j.hasApplied || appliedJobIds.includes(j.id));
     } else if (activeFeedTab === 'most_recent') {
       list = [...list].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }
     return list;
-  }, [jobs, activeFeedTab, savedJobIds, dislikedJobIds]);
+  }, [jobs, activeFeedTab, savedJobIds, dislikedJobIds, appliedJobIds]);
 
   // Paginated job subset
   const totalPages = Math.ceil(displayedJobs.length / itemsPerPage) || 1;
@@ -557,6 +581,12 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
                   onClick={() => setActiveFeedTab('saved_jobs')}
                 >
                   {i18n.language === 'fr' ? 'Missions enregistrées' : 'Saved jobs'} {savedJobIds.length > 0 && `(${savedJobIds.length})`}
+                </button>
+                <button
+                  className={`feed-tab-btn ${activeFeedTab === 'applied_jobs' ? 'active' : ''}`}
+                  onClick={() => setActiveFeedTab('applied_jobs')}
+                >
+                  {i18n.language === 'fr' ? 'Missions postulées' : 'Applied jobs'} {appliedJobsCount > 0 && `(${appliedJobsCount})`}
                 </button>
               </div>
 
@@ -728,9 +758,16 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
                     >
                       {/* Topbar badge & quick action icons */}
                       <div className="upwork-card-topbar">
-                        <span className="upwork-meta-pill">
-                          Posted {formatTimeAgo(job.createdAt)} • Proposals: {getProposalRange(job)}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span className="upwork-meta-pill">
+                            Posted {formatTimeAgo(job.createdAt)} • Proposals: {getProposalRange(job)}
+                          </span>
+                          {(job.hasApplied || appliedJobIds.includes(job.id)) && (
+                            <span className="upwork-meta-pill" style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', fontWeight: 800 }}>
+                              ✓ {i18n.language === 'fr' ? 'Postulé' : 'Applied'} {(job.myBoostCoins || 0) > 0 ? `(🚀 +${job.myBoostCoins} Coins)` : ''}
+                            </span>
+                          )}
+                        </div>
 
                         <div className="card-quick-actions" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -787,10 +824,52 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
                         <span>Only providers located in {job.country || job.location || 'Cameroon'} may apply.</span>
                       </div>
 
-                      {/* Job Description Excerpt */}
+                      {/* Job Description Excerpt (Truncated to half with view more) */}
                       <p className="upwork-card-description">
-                        {job.description || 'We are seeking a qualified provider for this task...'}
-                        <span className="more-link" onClick={() => setSelectedJob(job)}> more</span>
+                        {(() => {
+                          const fullDesc = job.description || 'We are seeking a qualified provider for this task...';
+                          const isExpanded = !!expandedJobIds[job.id];
+                          const cutoff = Math.min(130, Math.max(60, Math.floor(fullDesc.length / 2)));
+                          const isLong = fullDesc.length > cutoff;
+
+                          if (isExpanded) {
+                            return (
+                              <>
+                                {fullDesc}
+                                <button
+                                  type="button"
+                                  className="more-link"
+                                  style={{ background: 'none', border: 'none', padding: 0, marginLeft: '6px', color: '#14B8A6', cursor: 'pointer', fontWeight: 700 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedJobIds(prev => ({ ...prev, [job.id]: false }));
+                                  }}
+                                >
+                                  {i18n.language === 'fr' ? ' Moins' : ' less'}
+                                </button>
+                              </>
+                            );
+                          }
+
+                          return (
+                            <>
+                              {isLong ? `${fullDesc.slice(0, cutoff)}...` : fullDesc}
+                              {isLong && (
+                                <button
+                                  type="button"
+                                  className="more-link"
+                                  style={{ background: 'none', border: 'none', padding: 0, marginLeft: '6px', color: '#14B8A6', cursor: 'pointer', fontWeight: 700 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedJobIds(prev => ({ ...prev, [job.id]: true }));
+                                  }}
+                                >
+                                  {i18n.language === 'fr' ? ' Voir plus' : ' more'}
+                                </button>
+                              )}
+                            </>
+                          );
+                        })()}
                       </p>
 
                       {/* Skill Pills */}
@@ -828,12 +907,15 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
 
                         <button 
                           className="upwork-submit-proposal-btn"
+                          style={(job.hasApplied || appliedJobIds.includes(job.id)) ? { background: '#F1F5F9', color: '#0F766E', border: '1px solid #99F6E4', fontWeight: 700 } : undefined}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedJob(job);
                           }}
                         >
-                          View & Submit Proposal
+                          {(job.hasApplied || appliedJobIds.includes(job.id))
+                            ? (i18n.language === 'fr' ? '✓ Postulé' : '✓ Applied')
+                            : (i18n.language === 'fr' ? 'Voir & Postuler' : 'View & Submit Proposal')}
                         </button>
                       </div>
                     </article>
@@ -1079,7 +1161,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
           {/* COINS & WALLET CARD */}
           <div className="upwork-sidebar-card">
             <div className="sidebar-card-header">
-              <h4>{i18n.language === 'fr' ? 'Pièces' : 'Coins'}: {walletBalance !== null ? walletBalance : 0} XAF</h4>
+              <h4>{i18n.language === 'fr' ? 'Pièces' : 'Coins'}: {walletBalance !== null ? walletBalance : 0} {i18n.language === 'fr' ? 'Pièces' : 'Coins'}</h4>
               <span className="chevron">^</span>
             </div>
             <button
@@ -1349,16 +1431,43 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
 
               {/* RIGHT SIDEBAR COLUMN */}
               <div className="upwork-right-column">
-                <div className="upwork-notice-box">
-                  <span className="notice-icon">⚡</span>
-                  <p>Submitting a proposal for this task uses <strong>1 Fixam Coin</strong> from your wallet.</p>
-                </div>
+                {(selectedJob.hasApplied || appliedJobIds.includes(selectedJob.id)) ? (
+                  <button
+                    className="btn-upwork-primary"
+                    disabled
+                    style={{ background: '#F0FDF4', color: '#166534', border: '1px solid #BBF7D0', cursor: 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 800 }}
+                  >
+                    <span>✓</span>
+                    <span>{i18n.language === 'fr' ? 'Candidature envoyée (Postulé)' : 'Applied'}</span>
+                  </button>
+                ) : (
+                  <>
+                    <div className="upwork-notice-box">
+                      <span className="notice-icon">⚡</span>
+                      <p>Submitting a proposal for this task uses <strong>1 Fixam Coin</strong> from your wallet.</p>
+                    </div>
+
+                    <button
+                      className="btn-upwork-primary"
+                      onClick={() => openProposalModal(selectedJob)}
+                    >
+                      {i18n.language === 'fr' ? 'Soumettre une proposition' : 'Submit Proposal'}
+                    </button>
+                  </>
+                )}
 
                 <button
-                  className="btn-upwork-primary"
-                  onClick={() => openProposalModal(selectedJob)}
+                  className="btn-upwork-secondary"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/#job-${selectedJob.id}`;
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(shareUrl);
+                      alert(i18n.language === 'fr' ? 'Lien de la mission copié dans le presse-papiers !' : 'Job link copied to clipboard!');
+                    }
+                  }}
                 >
-                  Submit Proposal
+                  🔗 {i18n.language === 'fr' ? 'Partager cette mission' : 'Share Job'}
                 </button>
 
                 <button
@@ -1380,7 +1489,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
 
                 <div className="upwork-connects-info">
                   <p>Proposal cost: <strong>1 Fixam Coin</strong></p>
-                  <p>Available Balance: <strong>{walletBalance !== null ? walletBalance : 0} XAF</strong></p>
+                  <p>Available Balance: <strong>{walletBalance !== null ? walletBalance : 0} {i18n.language === 'fr' ? 'Pièces' : 'Coins'}</strong></p>
                 </div>
 
                 <div className="upwork-divider" />
@@ -1415,7 +1524,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
           <div className="upwork-filter-modal-card animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px', width: '92%' }}>
             
             <div className="modal-header">
-              <h2>Submit Proposal</h2>
+              <h2>{(proposalModalJob.hasApplied || appliedJobIds.includes(proposalModalJob.id)) ? 'Boost Proposal' : 'Submit Proposal'}</h2>
               <button className="modal-close-btn" onClick={() => setProposalModalJob(null)}>✕</button>
             </div>
             
@@ -1482,7 +1591,7 @@ export default function ProviderDashboard({ setActiveTab, onRoleChange, setActiv
                     <span>Insufficient Fixam Coins</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
-                    You need <strong>{totalProposalCoins} Fixam Coins</strong> for this proposal (Your balance: {currentWalletBalance} XAF).
+                    You need <strong>{totalProposalCoins} Fixam Coins</strong> for this proposal (Your balance: {currentWalletBalance} {i18n.language === 'fr' ? 'Pièces' : 'Coins'}).
                   </p>
                   <button 
                     type="button"

@@ -24,20 +24,22 @@ import TealSafeAreaView from '../../components/Common/TealSafeAreaView';
 import api from '../../services/api';
 import { getCurrencyForUser } from '../../constants/countries';
 import { translateApiError } from '../../utils/eligibilityMessages';
+import { optimizeImageForUpload } from '../../utils/imageOptimizer';
 
 const JobProposalScreen = ({ route, navigation }) => {
   const { colors, isDarkMode } = useTheme();
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, uploadFile } = useAuth();
   const { walletBalance, markJobApplied } = useAppContext();
 
   const { task = {} } = route.params || {};
   const taskId = task.id || route.params?.taskId || route.params?.jobId;
+  const isBoostOnly = Boolean(route.params?.isBoostOnly);
 
   const defaultBudget = String(task.budgetMax || task.budget || task.budgetMin || '');
   const [proposedBudget, setProposedBudget] = useState(defaultBudget);
   const [coverLetter, setCoverLetter] = useState('');
-  const [boostCoins, setBoostCoins] = useState('');
+  const [boostCoins, setBoostCoins] = useState(isBoostOnly ? '1' : '');
   const [attachments, setAttachments] = useState([]); // [{ url, name, type, size }]
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -46,29 +48,63 @@ const JobProposalScreen = ({ route, navigation }) => {
   const currencyStr = getCurrencyForUser(task.country || user?.country || 'Cameroon');
   const boostAmount = Math.max(0, parseInt(boostCoins, 10) || 0);
 
-  // Upload file helper
+  // Upload file helper (both PDF and images)
   const handleUploadFile = async (fileUri, fileName, mimeType) => {
     try {
       setUploadingMedia(true);
+
+      let uriToUpload = fileUri;
+      const isImage = mimeType?.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fileName || '');
+      if (isImage) {
+        try {
+          const opt = await optimizeImageForUpload(fileUri, { maxWidth: 1280, quality: 0.75 });
+          if (opt?.uri) uriToUpload = opt.uri;
+        } catch (optErr) {
+          if (__DEV__) console.warn('[JobProposal] Image optimization skipped:', optErr?.message);
+        }
+      }
+
+      const cleanFileName = fileName || (isImage ? `proposal_${Date.now()}.jpg` : `document_${Date.now()}.pdf`);
+      const cleanMimeType = mimeType || (cleanFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+
       const formData = new FormData();
       formData.append('file', {
-        uri: Platform.OS === 'ios' ? fileUri.replace('file://', '') : fileUri,
-        name: fileName || `proposal_file_${Date.now()}`,
-        type: mimeType || 'application/octet-stream',
+        uri: Platform.OS === 'ios' ? uriToUpload.replace('file://', '') : uriToUpload,
+        name: cleanFileName,
+        type: cleanMimeType,
       });
 
-      const res = await api.post('/uploads/proposal', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let resData;
+      if (uploadFile) {
+        try {
+          resData = await uploadFile(formData, '/upload/proposal', { timeout: 60000 });
+        } catch (upErr) {
+          resData = await uploadFile(formData, '/uploads/proposal', { timeout: 60000 });
+        }
+      } else {
+        try {
+          const res = await api.post('/upload/proposal', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000,
+          });
+          resData = res.data;
+        } catch (apiErr) {
+          const res = await api.post('/uploads/proposal', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 60000,
+          });
+          resData = res.data;
+        }
+      }
 
-      const uploadedUrl = res.data?.url || res.data?.data?.url;
+      const uploadedUrl = resData?.url || resData?.data?.url;
       if (uploadedUrl) {
         setAttachments(prev => [
           ...prev,
           {
             url: uploadedUrl,
-            name: fileName || 'Attachment',
-            type: mimeType || 'image/jpeg',
+            name: cleanFileName,
+            type: cleanMimeType,
           }
         ]);
       }
@@ -86,7 +122,7 @@ const JobProposalScreen = ({ route, navigation }) => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.8,
       });
 
@@ -127,11 +163,21 @@ const JobProposalScreen = ({ route, navigation }) => {
       return;
     }
 
+    if (isBoostOnly && boostAmount < 1) {
+      Alert.alert(t('jobs.boostRequired', 'Boost Coins Required'), t('jobs.boostRequiredBody', 'Please enter at least 1 coin to boost your proposal.'));
+      return;
+    }
+
     if (boostAmount > 0 && (walletBalance || 0) < boostAmount) {
       Alert.alert(
         t('jobs.insufficientCoins'),
         t('jobs.insufficientBoostCoins', `You need ${boostAmount} coins in your wallet to boost this proposal.`)
       );
+      return;
+    }
+
+    if (!taskId) {
+      Alert.alert(t('common.error'), t('jobs.notFound', 'Task not found. Please go back and try again.'));
       return;
     }
 
@@ -162,6 +208,7 @@ const JobProposalScreen = ({ route, navigation }) => {
         }
       ]);
     } catch (error) {
+      if (__DEV__) console.error('[handleSubmitProposal Error]:', error?.response?.data || error?.message);
       const message = translateApiError(error, t, 'jobs.couldNotApply');
       Alert.alert(t('jobs.couldNotApply'), message);
     } finally {
@@ -178,14 +225,14 @@ const JobProposalScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
-            {t('jobs.submitProposal', 'Submit Proposal')}
+            {isBoostOnly ? t('jobs.boostProposal', 'Boost Proposal 🚀') : t('jobs.submitProposal', 'Submit Proposal')}
           </Text>
           <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>
             {task.title || 'Task Proposal'}
           </Text>
         </View>
-        <View style={styles.freeBadge}>
-          <Text style={styles.freeBadgeText}>FREE</Text>
+        <View style={[styles.freeBadge, isBoostOnly && { backgroundColor: '#F59E0B' }]}>
+          <Text style={styles.freeBadgeText}>{isBoostOnly ? 'BOOST' : 'FREE'}</Text>
         </View>
       </View>
 
@@ -342,9 +389,11 @@ const JobProposalScreen = ({ route, navigation }) => {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <MaterialCommunityIcons name="send" size={20} color="#FFF" />
               <Text style={styles.submitBtnText}>
-                {boostAmount > 0 
-                  ? t('jobs.submitBoostedProposal', `Submit Boosted Proposal (${boostAmount} Coins)`)
-                  : t('jobs.submitFreeProposal', 'Submit Proposal (FREE)')}
+                {isBoostOnly
+                  ? t('jobs.boostProposalAction', `Boost Proposal (${boostAmount || 1} Coins) 🚀`)
+                  : boostAmount > 0 
+                    ? t('jobs.submitBoostedProposal', `Submit Boosted Proposal (${boostAmount} Coins)`)
+                    : t('jobs.submitFreeProposal', 'Submit Proposal (FREE)')}
               </Text>
             </View>
           )}

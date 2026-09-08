@@ -17,6 +17,8 @@ const BANNED_PERMISSIONS = [
   'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
   'android.permission.READ_EXTERNAL_STORAGE',
   'android.permission.WRITE_EXTERNAL_STORAGE',
+  'android.permission.MANAGE_EXTERNAL_STORAGE',
+  'android.permission.ACCESS_MEDIA_LOCATION',
 ];
 
 function withStripMediaPermissions(config) {

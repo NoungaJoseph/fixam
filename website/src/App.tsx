@@ -28,6 +28,8 @@ import ProviderProfileDetail from './pages/Client/ProviderProfileDetail'
 import ProjectDetail from './pages/Client/ProjectDetail'
 import BookingDetail from './pages/Client/BookingDetail'
 import TaskDetails from './pages/Client/TaskDetails'
+import BrowseProjects from './pages/Client/BrowseProjects'
+import PostJob from './pages/Client/PostJob'
 
 // Provider Subpages
 import MyJobs from './pages/Provider/MyJobs'
@@ -43,6 +45,7 @@ import BoostProfile from './pages/Provider/BoostProfile'
 import UpworkSidebar from './components/UpworkSidebar';
 import SearchModal from './components/SearchModal';
 import TransactionHistory from './pages/Shared/TransactionHistory';
+import ErrorBoundary from './components/ErrorBoundary';
 
 
 // Public landing pages
@@ -238,8 +241,11 @@ function MaintenanceScreen({ message }: { message: string }) {
 const TAB_SLUG_MAP: Record<string, string> = {
   'dashboard': 'Dashboard',
   'find-services': 'Find Services',
+  'browse-projects': 'Browse Projects',
   'my-bookings': 'My Bookings',
   'my-tasks': 'My Tasks',
+  'post-a-job': 'Post a Job',
+  'create-task': 'Post a Job',
   'saved-providers': 'Saved Providers',
   'stats': 'Stats',
   'wallet-and-coins': 'Wallet & Coins',
@@ -908,7 +914,7 @@ const handleGlobalLanguageChange = (langCode: string) => {
 
 function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page; onNavigate: (page: Page) => void; onSearch: (query: string) => void; setSelectedPathway: (pathway: string) => void }) {
   const { t, i18n } = useTranslation();
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'services' | 'guide' | 'pathways' | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('Home Services');
@@ -1008,7 +1014,11 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
             >
               <Icon name="menu" />
             </button>
-            <button className="brand brand-button" onClick={() => handleNavigate('home')} aria-label="Go to homepage">
+            <button
+              className="brand brand-button"
+              onClick={() => handleNavigate(isLoggedIn ? 'dashboard' : 'home')}
+              aria-label={isLoggedIn ? "Go to dashboard" : "Go to homepage"}
+            >
               <img src={asset('fixam-white-bg.png')} alt="Fixam Logo" style={{ height: '32px', transform: 'scale(5)', transformOrigin: 'center center' }} />
             </button>
           </div>
@@ -1105,7 +1115,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 
         <div className="header-lower-row" style={{ justifyContent: 'center', position: 'relative' }}>
           <nav className="desktop-nav">
-            <button className={`nav-link-new ${page === 'home' ? 'active' : ''}`} onClick={() => handleNavigate('home')}>{t('nav.home') || 'HOME'}</button>
+            <button className={`nav-link-new ${page === 'home' ? 'active' : ''}`} onClick={() => handleNavigate(isLoggedIn ? 'dashboard' : 'home')}>{t('nav.home') || 'HOME'}</button>
             <span className="nav-divider">|</span>
 
             {/* Explore Services Dropdown */}
@@ -1241,6 +1251,20 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
               {i18n.language === 'fr' ? 'Services' : 'Services'}
             </button>
             <span className="nav-divider">|</span>
+            <button 
+              className={`nav-link-new`} 
+              onClick={() => {
+                if (isLoggedIn) {
+                  handleNavigate('dashboard');
+                  window.location.hash = 'tab-browse-projects';
+                } else {
+                  handleNavigate('services');
+                }
+              }}
+            >
+              {i18n.language === 'fr' ? 'Projets' : 'Browse Projects'}
+            </button>
+            <span className="nav-divider">|</span>
             <button className={`nav-link-new ${page === 'insights' ? 'active' : ''}`} onClick={() => handleNavigate('insights')}>
               {i18n.language === 'fr' ? 'Ressources' : 'Insights'}
             </button>
@@ -1251,7 +1275,7 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
         <nav className={`main-nav-mobile ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
 
           <div className="mobile-menu-header">
-            <button className="brand brand-button" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('home'); }} aria-label="Go to homepage">
+            <button className="brand brand-button" onClick={() => { setIsMobileMenuOpen(false); handleNavigate(isLoggedIn ? 'dashboard' : 'home'); }} aria-label={isLoggedIn ? "Go to dashboard" : "Go to homepage"}>
               <img src={asset('fixam-white-bg.png')} alt="Fixam Logo" style={{ height: '28px', transform: 'scale(5)', transformOrigin: 'left center' }} />
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1331,6 +1355,18 @@ function Header({ page, onNavigate, onSearch, setSelectedPathway }: { page: Page
 
             <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('career_pathways'); }}>
               {i18n.language === 'fr' ? 'Parcours Professionnels' : 'Career Pathways'}
+            </button>
+
+            <button className="mobile-nav-accordion-btn" onClick={() => {
+              setIsMobileMenuOpen(false);
+              if (isLoggedIn) {
+                handleNavigate('dashboard');
+                window.location.hash = 'tab-browse-projects';
+              } else {
+                handleNavigate('services');
+              }
+            }}>
+              {i18n.language === 'fr' ? 'Parcourir les projets' : 'Browse Projects'}
             </button>
 
             <button className="mobile-nav-accordion-btn" onClick={() => { setIsMobileMenuOpen(false); handleNavigate('guide'); }}>
@@ -1414,7 +1450,12 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   const handleSetSelectedBooking = (val: any) => {
     setSelectedBooking(val);
     if (val === null) {
-      setActiveTab(previousTab || 'My Bookings');
+      setActiveTab(prev => {
+        if (prev && prev !== 'Booking Details' && prev !== 'Task Details') {
+          return prev;
+        }
+        return previousTab || (userRole === 'pro' ? 'My Jobs' : 'My Bookings');
+      });
     }
   };
 
@@ -1713,11 +1754,13 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
   if (userRole === 'client') {
     const clientNavItems = [
       { name: 'Dashboard', label: i18n.language === 'fr' ? 'Tableau de bord' : 'Dashboard', icon: 'home' as IconName },
+      { name: 'Post a Job', label: i18n.language === 'fr' ? 'Publier une mission' : 'Post a Job', icon: 'wrench' as IconName },
+      { name: 'My Jobs', label: i18n.language === 'fr' ? 'Mes missions' : 'My Jobs', icon: 'briefcase' as IconName },
       { name: 'Find Services', label: i18n.language === 'fr' ? 'Trouver un service' : 'Find Services', icon: 'search' as IconName },
       { name: 'My Bookings', label: i18n.language === 'fr' ? 'Mes réservations' : 'My Bookings', icon: 'calendar' as IconName },
       { name: 'Saved Providers', label: i18n.language === 'fr' ? 'Prestataires enregistrés' : 'Saved Providers', icon: 'heart' as IconName },
       { name: 'Messages', label: i18n.language === 'fr' ? 'Messages' : 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
-      { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
+      { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} ${i18n.language === 'fr' ? 'Pièces' : 'Coins'}` },
       { name: 'Refer & Earn', label: i18n.language === 'fr' ? 'Parrainer & Gagner' : 'Refer & Earn', icon: 'star' as IconName },
       { name: 'Settings', label: i18n.language === 'fr' ? 'Paramètres' : 'Settings', icon: 'settings' as IconName },
       { name: 'Support', label: i18n.language === 'fr' ? 'Support' : 'Support', icon: 'message' as IconName }
@@ -1757,7 +1800,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
             await logout();
             onNavigate('home');
           }}
-          onNavigateHome={() => onNavigate('home')}
+          onNavigateHome={() => setActiveTab('Dashboard')}
         />
 
         {/* Main Dashboard Area */}
@@ -1863,6 +1906,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 setActiveTab={setActiveTab}
                 setSelectedTask={handleSetSelectedTask}
                 setActiveChatUser={setActiveChatUser}
+                setSelectedProvider={setSelectedProvider}
               />
             ) : selectedBooking ? (
               <BookingDetail
@@ -1902,7 +1946,14 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     setSelectedBooking={handleSetSelectedBooking}
                   />
                 )}
-                {activeTab === 'My Tasks' && (
+                {(activeTab === 'Post a Job' || activeTab === 'Create Task') && (
+                  <PostJob
+                    setActiveTab={setActiveTab}
+                    setClientTasks={setClientTasks}
+                    clientTasks={clientTasks}
+                  />
+                )}
+                {(activeTab === 'My Tasks' || activeTab === 'My Jobs') && (
                   <MyTasks
                     clientTasks={clientTasks}
                     setClientTasks={setClientTasks}
@@ -1911,10 +1962,12 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     clientBookings={clientBookings}
                     setSelectedBooking={handleSetSelectedBooking}
                     setSelectedTask={handleSetSelectedTask}
+                    setSelectedProvider={setSelectedProvider}
+                    setActiveChatUser={setActiveChatUser}
                   />
                 )}
                 {/* Prevent blank screen if user reloads on detail tabs */}
-                {activeTab === 'Task Details' && (
+                {(activeTab === 'Task Details' || activeTab === 'Job Details') && (
                   <MyTasks
                     clientTasks={clientTasks}
                     setClientTasks={setClientTasks}
@@ -1923,6 +1976,8 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     clientBookings={clientBookings}
                     setSelectedBooking={handleSetSelectedBooking}
                     setSelectedTask={handleSetSelectedTask}
+                    setSelectedProvider={setSelectedProvider}
+                    setActiveChatUser={setActiveChatUser}
                   />
                 )}
                 {activeTab === 'Booking Details' && (
@@ -1958,14 +2013,22 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     clientTasks={clientTasks}
                   />
                 )}
-                {activeTab === 'Notifications' && <Notifications setActiveTab={setActiveTab} setSelectedBooking={handleSetSelectedBooking} />}
-                {activeTab === 'Messages' && (
-                  <Messages
-                    chatMessages={chatMessages}
-                    setChatMessages={setChatMessages}
-                    activeChatUser={activeChatUser}
-                    setActiveChatUser={setActiveChatUser}
+                {activeTab === 'Notifications' && (
+                  <Notifications
+                    setActiveTab={setActiveTab}
+                    setSelectedBooking={handleSetSelectedBooking}
+                    setSelectedTask={handleSetSelectedTask}
                   />
+                )}
+                {activeTab === 'Messages' && (
+                  <ErrorBoundary fallbackMessage="Unable to load chat messages">
+                    <Messages
+                      chatMessages={chatMessages}
+                      setChatMessages={setChatMessages}
+                      activeChatUser={activeChatUser}
+                      setActiveChatUser={setActiveChatUser}
+                    />
+                  </ErrorBoundary>
                 )}
                 {activeTab === 'Reviews' && <Reviews />}
                 {activeTab === 'Refer & Earn' && <Referrals />}
@@ -1998,6 +2061,16 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                     setActiveChatUser={setActiveChatUser}
                     displayedPros={displayedPros}
                     initialSearch={searchVal}
+                  />
+                )}
+                {activeTab === 'Browse Projects' && (
+                  <BrowseProjects
+                    displayedPros={displayedPros}
+                    setActiveTab={setActiveTab}
+                    setSelectedProject={setSelectedProject}
+                    setSelectedProvider={setSelectedProvider}
+                    favoriteProjectIds={favoriteProjectIds}
+                    toggleFavoriteProject={toggleFavoriteProject}
                   />
                 )}
                 {activeTab === 'Transaction History' && <TransactionHistory />}
@@ -2040,7 +2113,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
     { name: 'Messages', label: i18n.language === 'fr' ? 'Messages' : 'Messages', icon: 'chat' as IconName, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { name: 'Notifications', label: i18n.language === 'fr' ? 'Notifications' : 'Notifications', icon: 'bell' as IconName, badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined },
     { name: 'My Stats', label: i18n.language === 'fr' ? 'Mes statistiques' : 'My Stats', icon: 'chart' as IconName },
-    { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} XAF` },
+    { name: 'Wallet', label: i18n.language === 'fr' ? 'Portefeuille' : 'Wallet', icon: 'wallet' as IconName, walletBadge: `${walletBalance.toLocaleString()} ${i18n.language === 'fr' ? 'Pièces' : 'Coins'}` },
     { name: 'Reviews', label: i18n.language === 'fr' ? 'Avis clients' : 'Reviews', icon: 'star' as IconName },
     { name: 'My Profile', label: i18n.language === 'fr' ? 'Mon profil' : 'My Profile', icon: 'user' as IconName },
     { name: 'Settings', label: i18n.language === 'fr' ? 'Paramètres' : 'Settings', icon: 'wrench' as IconName },
@@ -2094,7 +2167,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
           await logout();
           onNavigate('home');
         }}
-        onNavigateHome={() => onNavigate('home')}
+        onNavigateHome={() => setActiveTab('Dashboard')}
       />
 
       {/* Main Dashboard Area */}
@@ -2203,7 +2276,7 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                 />
               )}
 
-              {activeTab === 'My Jobs' && (
+              {(activeTab === 'My Jobs' || activeTab === 'Booking Details' || activeTab === 'My Bookings') && (
                 <MyJobs
                   setActiveTab={setActiveTab}
                   setActiveChatUser={setActiveChatUser}
@@ -2223,15 +2296,23 @@ function Dashboard({ onNavigate, livePros, userRole, onRoleChange }: { onNavigat
                   setActiveChatUser={setActiveChatUser}
                 />
               )}
-              {activeTab === 'Notifications' && <Notifications setActiveTab={setActiveTab} setSelectedBooking={handleSetSelectedBooking} />}
+              {activeTab === 'Notifications' && (
+                <Notifications
+                  setActiveTab={setActiveTab}
+                  setSelectedBooking={handleSetSelectedBooking}
+                  setSelectedTask={handleSetSelectedTask}
+                />
+              )}
               {activeTab === 'Boost Profile' && <BoostProfile />}
               {activeTab === 'Messages' && (
-                <Messages
-                  chatMessages={chatMessages}
-                  setChatMessages={setChatMessages}
-                  activeChatUser={activeChatUser}
-                  setActiveChatUser={setActiveChatUser}
-                />
+                <ErrorBoundary fallbackMessage="Unable to load chat messages">
+                  <Messages
+                    chatMessages={chatMessages}
+                    setChatMessages={setChatMessages}
+                    activeChatUser={activeChatUser}
+                    setActiveChatUser={setActiveChatUser}
+                  />
+                </ErrorBoundary>
               )}
             </>
           )}

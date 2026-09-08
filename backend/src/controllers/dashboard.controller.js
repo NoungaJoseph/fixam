@@ -89,23 +89,18 @@ const getDashboardData = async (req, res, next) => {
           clientId: { not: userId }, // Exclude own tasks
           status: 'PENDING',
           approvalStatus: 'APPROVED',
-          assignments: {
-            none: {
-              OR: [
-                { provider: { userId } },
-                { status: 'ACCEPTED' } // Exclude accepted tasks
-              ]
-            }
-          },
           OR: [
             { isRemote: true },
             {
               isRemote: false,
               country: userCountry
-            }
+            },
+            { isRemote: false, country: null },
+            { isRemote: false, country: '' }
           ]
         },
         include: {
+          _count: { select: { assignments: true } },
           client: { 
             select: { 
               id: true, 
@@ -121,8 +116,13 @@ const getDashboardData = async (req, res, next) => {
       });
     } else {
       jobsQuery = prisma.job.findMany({
-        where: { clientId: userId },
+        where: {
+          clientId: userId,
+          approvalStatus: { not: 'REJECTED' },
+          status: { not: 'CANCELLED' }
+        },
         include: {
+          _count: { select: { assignments: true } },
           client: { select: { id: true, fullName: true, avatar: true } },
           assignments: { include: { provider: { include: { user: { select: { id: true, fullName: true, avatar: true } } } } } },
           reviews: true
@@ -363,10 +363,24 @@ const getDashboardData = async (req, res, next) => {
           clientVerified: job.client?.providerProfile?.verification === 'VERIFIED',
           clientSpending: userSpending.get(job.clientId) || 0,
           clientSpendingTier: getSpendingTier(userSpending.get(job.clientId) || 0),
-          clientReviewCount: userReviews.get(job.clientId) || 0,
         }));
       }
     }
+
+    finalJobs = finalJobs.map(job => {
+      const myAssignment = job.assignments?.find(a => a.provider?.userId === userId) || null;
+      const hasApplied = Boolean(myAssignment);
+      const myBoostCoins = myAssignment?.boostCoins || 0;
+      return {
+        ...job,
+        hasApplied,
+        hasBoosted: myBoostCoins > 0,
+        myAssignment,
+        myBoostCoins,
+        applicationCount: job._count?.assignments ?? (Array.isArray(job.assignments) ? job.assignments.length : 0),
+        proposalsCount: job._count?.assignments ?? (Array.isArray(job.assignments) ? job.assignments.length : 0),
+      };
+    });
 
     res.status(200).json({
       success: true,

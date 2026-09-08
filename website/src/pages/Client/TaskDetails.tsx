@@ -9,9 +9,10 @@ interface TaskDetailsProps {
   setActiveTab: (tab: string) => void;
   setSelectedTask?: (task: any) => void;
   setActiveChatUser?: (user: any) => void;
+  setSelectedProvider?: (pro: any) => void;
 }
 
-export default function TaskDetails({ task, setActiveTab, setSelectedTask, setActiveChatUser }: TaskDetailsProps) {
+export default function TaskDetails({ task, setActiveTab, setSelectedTask, setActiveChatUser, setSelectedProvider }: TaskDetailsProps) {
   const { i18n } = useTranslation();
   const isFr = i18n.language === 'fr';
 
@@ -80,14 +81,24 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
     }
   };
 
-  const getStatusBadge = (st: string) => {
-    if (st === 'COMPLETED') return { bg: '#DCFCE7', text: '#166534', label: isFr ? 'Terminé' : 'Completed' };
-    if (st === 'IN_PROGRESS' || st === 'ASSIGNED') return { bg: '#DBEAFE', text: '#1E40AF', label: isFr ? 'En cours' : 'In Progress' };
-    if (st === 'CANCELLED' || st === 'REJECTED') return { bg: '#FEE2E2', text: '#991B1B', label: isFr ? 'Annulé' : 'Cancelled' };
+  const isRejected = taskData.approvalStatus === 'REJECTED' || status === 'REJECTED';
+  const isPendingApproval = taskData.approvalStatus === 'PENDING_APPROVAL';
+  const isLive = (taskData.approvalStatus === 'APPROVED' || !taskData.approvalStatus) && (status === 'PENDING' || status === 'OPEN');
+  const isAssigned = status === 'ASSIGNED' || status === 'IN_PROGRESS';
+  const isCompleted = status === 'COMPLETED';
+  const isCancelled = status === 'CANCELLED';
+
+  const getStatusBadge = () => {
+    if (isRejected) return { bg: '#FEE2E2', text: '#991B1B', label: isFr ? 'Rejetée' : 'Rejected' };
+    if (isLive) return { bg: '#DCFCE7', text: '#166534', label: isFr ? 'En ligne (Live)' : 'Live' };
+    if (isPendingApproval) return { bg: '#FEF3C7', text: '#D97706', label: isFr ? 'En attente d\'approbation' : 'Pending Approval' };
+    if (isCompleted) return { bg: '#DCFCE7', text: '#166534', label: isFr ? 'Terminé' : 'Completed' };
+    if (isAssigned) return { bg: '#DBEAFE', text: '#1E40AF', label: isFr ? 'En cours' : 'In Progress' };
+    if (isCancelled) return { bg: '#F1F5F9', text: '#64748B', label: isFr ? 'Annulé' : 'Cancelled' };
     return { bg: '#FEF9C3', text: '#854D0E', label: isFr ? 'En attente d\'offres' : 'Pending Proposals' };
   };
 
-  const statusBadge = getStatusBadge(status);
+  const statusBadge = getStatusBadge();
   const scheduledStr = formatScheduledDate();
   const durationStr = getDurationLabel();
   const rawBudget = taskData.budget || taskData.budgetMax || taskData.budgetMin || 0;
@@ -111,6 +122,18 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
       alert(err.response?.data?.message || (isFr ? 'Échec de l\'attribution.' : 'Failed to hire provider.'));
     } finally {
       setHiringAssignmentId(null);
+    }
+  };
+
+  const handleEndTask = async () => {
+    if (!confirm(isFr ? 'Voulez-vous clôturer cette mission ? Elle ne sera plus visible sur le tableau des prestataires.' : 'Are you sure you want to end this live task? It will stop showing on the provider dashboard.')) return;
+    try {
+      await api.patch(`/jobs/${taskId}/status`, { status: 'CANCELLED' });
+      alert(isFr ? 'Mission terminée et retirée du tableau des prestataires.' : 'Task ended and removed from provider dashboard.');
+      if (setSelectedTask) setSelectedTask(null);
+      setActiveTab('My Tasks');
+    } catch (err: any) {
+      alert(err.response?.data?.message || (isFr ? 'Échec de la clôture.' : 'Failed to end task.'));
     }
   };
 
@@ -177,6 +200,15 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
               <span>📍 {taskData.location || (taskData.isRemote ? (isFr ? 'En ligne' : 'Remote') : 'On-Site / Cameroon')}</span>
             </div>
 
+            {isRejected && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 my-3 text-xs text-rose-800">
+                <strong className="block text-sm text-rose-900 font-bold mb-1">
+                  ❌ {isFr ? 'Mission rejetée par l\'administration' : 'Task Rejected by Administrator'}
+                </strong>
+                <p>{taskData.rejectionReason || (isFr ? 'Cette tâche a été rejetée. Veuillez vérifier les informations ou contacter le support.' : 'This task was rejected by the platform administrators.')}</p>
+              </div>
+            )}
+
             <div className="upwork-divider my-4 border-t border-slate-100" />
 
             {/* Price & Duration Metrics Grid */}
@@ -201,9 +233,9 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                 <span className="metric-icon text-2xl">👥</span>
                 <div>
                   <strong className="block text-slate-800 text-sm font-extrabold">
-                    {taskData.providersNeeded || 1} {isFr ? 'Personne(s)' : 'Specialist(s)'}
+                    {taskData.providersNeeded || 1}
                   </strong>
-                  <small className="text-slate-500 text-xs">{isFr ? 'Effectif requis' : 'Workforce Needed'}</small>
+                  <small className="text-slate-500 text-xs">{isFr ? 'Prestataires nécessaires' : 'Provider need'}</small>
                 </div>
               </div>
             </div>
@@ -221,7 +253,7 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                 {isFr ? 'Description de la mission' : 'Task Description'}
               </h3>
               <p className="upwork-text-block text-sm text-slate-700 leading-relaxed whitespace-pre-wrap bg-slate-50/70 p-4 rounded-xl border border-slate-100">
-                {taskData.description || (isFr ? 'Aucune description fournie.' : 'No description provided.')}
+                {(taskData.description || '').replace(/\[(?:Workforce Required|Effectif requis)[^\]]*\]/gi, '').trim() || (isFr ? 'Aucune description fournie.' : 'No description provided.')}
               </p>
             </div>
 
@@ -279,7 +311,7 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
             <div className="upwork-section">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-bold text-slate-900">
-                  {isFr ? 'Propositions reçues' : 'Proposals & Offers'} ({proposals.length})
+                  {isFr ? 'Propositions reçues' : 'Proposals & Offers'} ({proposals.length || taskData.applicationCount || 0})
                 </h3>
               </div>
 
@@ -305,22 +337,53 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                     const propPrice = prop.proposedBudget || prop.budget || prop.bidAmount;
                     const isAccepted = prop.status === 'ACCEPTED' || prop.status === 'HIRED';
 
+                    const openProviderProfile = () => {
+                      if (!setSelectedProvider) return;
+                      const pro = prop.provider || {};
+                      const proUser = pro.user || prop.user || {};
+                      const providerData = {
+                        id: pro.id || prop.providerId,
+                        userId: proUser.id || pro.userId || prop.providerId,
+                        name: pName,
+                        avatar: pAvatar,
+                        image: pAvatar,
+                        role: pro.skills?.[0] || pro.role || 'Service Provider',
+                        skills: pro.skills || [],
+                        bio: pro.bio,
+                        rate: pro.rate || propPrice,
+                        rating: pro.rating || '5.0',
+                        isVerified: pro.verification === 'VERIFIED',
+                        originalData: {
+                          ...pro,
+                          user: proUser,
+                          id: pro.id || prop.providerId,
+                          userId: proUser.id || pro.userId
+                        }
+                      };
+                      setSelectedProvider(providerData);
+                      setActiveTab('Provider Profile');
+                    };
+
                     return (
                       <div 
                         key={propId} 
                         className={`p-4 rounded-xl border transition ${isAccepted ? 'bg-emerald-50/50 border-emerald-300' : 'bg-white border-slate-200 hover:border-teal-300 shadow-sm'}`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                          <div 
+                            className={`flex items-center gap-3 ${setSelectedProvider ? 'cursor-pointer group' : ''}`}
+                            onClick={openProviderProfile}
+                            title={setSelectedProvider ? (isFr ? 'Voir le profil' : 'View Profile') : undefined}
+                          >
                             <img 
                               src={pAvatar} 
                               alt={pName} 
-                              className="w-12 h-12 rounded-full object-cover border border-teal-100"
+                              className="w-12 h-12 rounded-full object-cover border border-teal-100 group-hover:ring-2 ring-teal-400 transition"
                               onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_AVATAR; }} 
                             />
                             <div>
                               <div className="flex items-center gap-2">
-                                <h4 className="font-bold text-slate-900 text-sm">{pName}</h4>
+                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-teal-600 transition">{pName}</h4>
                                 {isAccepted && (
                                   <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded uppercase">
                                     {isFr ? 'Engagé' : 'Hired'}
@@ -335,7 +398,7 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 sm:self-center">
+                          <div className="flex items-center gap-3 sm:self-center flex-wrap">
                             {propPrice && (
                               <div className="text-right">
                                 <span className="block text-sm font-extrabold text-teal-600">
@@ -347,7 +410,18 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                               </div>
                             )}
 
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center flex-wrap">
+                              {setSelectedProvider && (
+                                <button
+                                  type="button"
+                                  className="px-3 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                  onClick={openProviderProfile}
+                                >
+                                  <Icon name="user" />
+                                  <span>{isFr ? 'Voir le profil' : 'View Profile'}</span>
+                                </button>
+                              )}
+
                               {setActiveChatUser && (
                                 <button
                                   type="button"
@@ -445,7 +519,25 @@ export default function TaskDetails({ task, setActiveTab, setSelectedTask, setAc
                 </button>
               )}
 
-              {status !== 'COMPLETED' && status !== 'CANCELLED' && (
+              {isLive && (
+                <button 
+                  className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
+                  onClick={handleEndTask}
+                >
+                  ✕ {isFr ? 'Terminer la mission' : 'End Task'}
+                </button>
+              )}
+
+              {isPendingApproval && (
+                <button 
+                  className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
+                  onClick={handleCancelTask}
+                >
+                  ✕ {isFr ? 'Annuler la mission' : 'Cancel Task'}
+                </button>
+              )}
+
+              {isAssigned && (
                 <button 
                   className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
                   onClick={handleCancelTask}

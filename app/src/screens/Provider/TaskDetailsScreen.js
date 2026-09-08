@@ -58,7 +58,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [jobDetails, setJobDetails] = useState(task);
   const [fetching, setFetching] = useState(true);
-  const [applicationCount, setApplicationCount] = useState(task.assignments?.length || task.proposals || 0);
+  const [applicationCount, setApplicationCount] = useState(task.applicationCount ?? task._count?.assignments ?? task.assignments?.length ?? task.proposals ?? 0);
   const [submitting, setSubmitting] = useState(false);
   const [applied, setApplied] = useState(false);
   const coinCost = 1;
@@ -72,7 +72,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     setShowConfirm(false);
     setBoostCoins('');
     setCoverLetter('');
-    setApplicationCount(task.assignments?.length || task.proposals || 0);
+    setApplicationCount(task.applicationCount ?? task._count?.assignments ?? task.assignments?.length ?? task.proposals ?? 0);
     setActiveDispute(task.disputes?.[0] || null);
   }, [currentTaskId]);
 
@@ -103,7 +103,9 @@ const TaskDetailsScreen = ({ route, navigation }) => {
   const taskCategory = displayTask.category || task.category;
   const taskServiceType = displayTask.serviceType || task.serviceType;
   const taskMaterialsProvider = displayTask.materialsProvider || task.materialsProvider;
-  const taskDescription = displayTask.notes || displayTask.description || task.notes || task.description;
+  const rawDescription = displayTask.notes || displayTask.description || task.notes || task.description || '';
+  const taskDescription = rawDescription.replace(/\[(?:Workforce Required|Effectif requis)[^\]]*\]/gi, '').trim();
+  const providersNeeded = Number(displayTask.providersNeeded || task.providersNeeded || 1);
 
   const photos = displayTask.photos?.length ? displayTask.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : (task.photos?.length ? task.photos.map((photo) => (typeof photo === 'string' ? { uri: getMediaUrl(photo) } : photo)) : []);
   const fallbackIcon = CATEGORY_ICONS[String(taskCategory || '').toUpperCase()] || 'briefcase-outline';
@@ -130,7 +132,8 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     (task.assignedProviderId && (task.assignedProviderId === user?.providerProfile?.id || task.assignedProviderId === user?.id)) ||
     (jobDetails?.assignedProviderId && (jobDetails.assignedProviderId === user?.providerProfile?.id || jobDetails.assignedProviderId === user?.id))
   );
-  const canMessageClient = (isBooking && ['ACCEPTED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase())) || (assignmentStatus === 'ACCEPTED' && ['ASSIGNED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase()));
+  const isMultiProvider = (Number(displayTask.providersNeeded || task.providersNeeded) || 1) > 1;
+  const canMessageClient = isMultiProvider || (isBooking && ['ACCEPTED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase())) || (assignmentStatus === 'ACCEPTED' && ['ASSIGNED', 'IN_PROGRESS'].includes(String(displayTask.status || task.status || '').toUpperCase()));
   const [activeDispute, setActiveDispute] = useState(task.disputes?.[0] || null);
 
   React.useEffect(() => {
@@ -164,7 +167,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         if (res.data?.success && active) {
           setJobDetails(res.data.data);
           if (!isBooking) {
-            setApplicationCount(res.data.data.assignments?.length || 0);
+            setApplicationCount(res.data.data.applicationCount ?? res.data.data._count?.assignments ?? res.data.data.assignments?.length ?? 0);
           }
         }
       } catch (err) {
@@ -179,7 +182,11 @@ const TaskDetailsScreen = ({ route, navigation }) => {
 
   const handleAccept = () => {
     if (hasApplied) {
-      Alert.alert(t('jobs.alreadyApplied'), t('jobs.alreadyAppliedBody'));
+      if (isBooking) {
+        Alert.alert(t('jobs.alreadyApplied'), t('jobs.alreadyAppliedBody'));
+        return;
+      }
+      navigation.navigate('JobProposal', { task: displayTask, taskId: currentTaskId, isBoostOnly: true });
       return;
     }
     if (user?.isBlocked) {
@@ -245,6 +252,26 @@ const TaskDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  const openApplicantChat = async (targetUser) => {
+    const targetUserId = targetUser?.id || targetUser?.userId;
+    if (!targetUserId) return;
+    try {
+      const res = await api.post('/chat/conversations', { participantId: targetUserId });
+      const conversation = res.data.data;
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        receiverId: targetUserId,
+        userName: targetUser.fullName || targetUser.name || 'Co-Applicant',
+        avatar: targetUser.avatar ? getMediaUrl(targetUser.avatar) : null,
+        otherParticipant: conversation.participants?.[0] || { id: targetUserId, role: 'PROVIDER' },
+        isSupportConversation: conversation.isSystem,
+        task,
+      });
+    } catch (error) {
+      Alert.alert(t('common.error'), translateApiError(error, t, 'messages.sendFailed'));
+    }
+  };
+
   const handleShare = async () => {
     try {
       const shareUrl = `https://usefixam.com/job/${task.id}`;
@@ -291,9 +318,6 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             ) : null}
           </View>
           <Text style={[styles.jobTitle, { color: colors.text }]}>{task.title || t('jobs.taskDetails')}</Text>
-          {task.description ? (
-            <Text style={[styles.jobSummary, { color: colors.textSecondary }]}>{task.description}</Text>
-          ) : null}
           <View style={styles.heroBottom}>
             <View style={styles.locationLine}>
               <MaterialCommunityIcons name="map-marker-outline" size={22} color="#0D9488" />
@@ -321,12 +345,6 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             </View>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]}>{t('jobs.taskOwner')}</Text>
           </View>
-          {canMessageClient && (
-            <TouchableOpacity style={styles.clientAction} onPress={openClientChat}>
-              <MaterialCommunityIcons name="message-text-outline" size={23} color={colors.text} />
-              <Text style={[styles.clientActionText, { color: colors.text }]}>{t('tabs.messages')}</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={styles.overviewCard}>
@@ -335,6 +353,9 @@ const TaskDetailsScreen = ({ route, navigation }) => {
             {task.id ? <Fact icon="clipboard-text-outline" label={isBooking ? t('jobs.bookingId', 'Booking ID') : t('jobs.jobId')} value={`#${isBooking ? 'BKG' : 'JOB'}-${String(task.id).slice(-7)}`} colors={colors} /> : null}
             {postedOn ? <Fact icon="calendar-month-outline" label={t('jobs.posted')} value={postedOn} colors={colors} /> : null}
             {preferredDate ? <Fact icon="clock-outline" label={isBooking ? t('jobs.scheduled', 'Scheduled') : t('jobs.preferred')} value={preferredDate} colors={colors} /> : null}
+            {providersNeeded > 1 ? (
+              <Fact icon="account-group-outline" label={t('jobs.providerNeed', 'Provider need')} value={String(providersNeeded)} colors={colors} />
+            ) : null}
             {!isBooking ? (
               <Fact icon="star-cog-outline" label={t('jobs.proposals')} value={t('jobs.receivedCount', { count: applicationCount })} colors={colors} />
             ) : null}
@@ -408,10 +429,21 @@ const TaskDetailsScreen = ({ route, navigation }) => {
                           )}
                         </View>
 
-                        {/* Bid Coins */}
-                        <View style={[styles.bidBadge, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
-                          <MaterialCommunityIcons name="rocket-launch" size={14} color="#0D9488" style={{ marginRight: 4 }} />
-                          <Text style={[styles.bidText, { color: colors.text }]}>{bidAmount} {t('payments.coins', 'Coins')}</Text>
+                        {/* Bid Coins & Multi-Provider Message Action */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={[styles.bidBadge, { backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }]}>
+                            <MaterialCommunityIcons name="rocket-launch" size={14} color="#0D9488" style={{ marginRight: 4 }} />
+                            <Text style={[styles.bidText, { color: colors.text }]}>{bidAmount} {t('payments.coins', 'Coins')}</Text>
+                          </View>
+
+                          {isMultiProvider && !isOwn && assignment.provider?.user && (
+                            <TouchableOpacity
+                              style={{ padding: 6, borderRadius: 8, backgroundColor: colors.accent + '20' }}
+                              onPress={() => openApplicantChat(assignment.provider.user)}
+                            >
+                              <MaterialCommunityIcons name="message-text-outline" size={16} color={colors.accent} />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
                     );
@@ -510,6 +542,7 @@ const TaskDetailsScreen = ({ route, navigation }) => {
           <View style={styles.detailList}>
             {taskCategory ? <DetailLine label={t('jobs.category')} value={translateService(taskCategory)} colors={colors} /> : null}
             {taskServiceType ? <DetailLine label={t('jobs.serviceType')} value={translateService(taskServiceType)} colors={colors} /> : null}
+            <DetailLine label={t('jobs.providerNeed', 'Provider need')} value={String(providersNeeded)} colors={colors} />
             {taskBookingDate ? <DetailLine label={t('jobs.scheduledDate', 'Scheduled Date')} value={new Date(taskBookingDate).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')} colors={colors} /> : null}
             {taskBookingTime ? <DetailLine label={t('jobs.scheduledTime', 'Time / Hours')} value={taskBookingTime} colors={colors} /> : null}
             {taskDuration ? <DetailLine label={t('jobs.duration', 'Duration')} value={taskDuration} colors={colors} /> : null}
@@ -521,20 +554,29 @@ const TaskDetailsScreen = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
+      {/* If already applied, show informative banner */}
+      {hasApplied && !isBooking && (
+        <View style={{ marginHorizontal: 20, padding: 10, backgroundColor: '#F0FDF4', borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0', flexDirection: 'row', alignItems: 'center', gap: 8, bottom: Math.max(insets.bottom, 12) + 88, position: 'absolute', left: 0, right: 0 }}>
+          <MaterialCommunityIcons name="check-circle" size={18} color="#16A34A" />
+          <Text style={{ flex: 1, fontSize: 12, color: '#15803D', fontWeight: '700', lineHeight: 16 }}>
+            {t('jobs.appliedStatusNotice', 'You have already applied for this job.')}
+          </Text>
+        </View>
+      )}
+
       <View style={[styles.footer, { bottom: Math.max(insets.bottom, 12) + 25 }]}>
-        {canMessageClient && (
-          <TouchableOpacity style={styles.footerIcon} onPress={openClientChat}>
-            <MaterialCommunityIcons name="message-text-outline" size={24} color={colors.text} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={[styles.proposalBtn, (hasApplied || submitting) && styles.proposalBtnDisabled]} onPress={handleAccept} disabled={hasApplied || submitting}>
+        <TouchableOpacity 
+          style={[styles.proposalBtn, (submitting || hasApplied) && styles.proposalBtnDisabled]} 
+          onPress={handleAccept} 
+          disabled={submitting || hasApplied}
+        >
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <Text style={styles.proposalTitle}>
               {isBooking 
                 ? (hasApplied ? t('jobs.bookingAccepted', 'Booking Accepted') : t('jobs.acceptBookingCoins', 'Accept Booking (1 Coin)')) 
-                : (hasApplied ? t('jobs.alreadyApplied', 'Proposal Submitted') : t('jobs.sendProposalFree', 'Send Proposal (FREE)'))}
+                : (hasApplied ? t('jobs.applied', 'Applied') : t('jobs.sendProposalFree', 'Send Proposal (FREE)'))}
             </Text>
           )}
         </TouchableOpacity>
@@ -611,7 +653,7 @@ const styles = StyleSheet.create({
   overviewCard: { paddingHorizontal: 2, paddingTop: 8, marginBottom: 16 },
   sectionTitle: { color: '#071936', fontSize: 18, fontWeight: '900', marginTop: 10, marginBottom: 16 },
   inlineFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  factItem: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  factItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
   factLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   factValue: { fontSize: 13, fontWeight: '800', marginTop: 2 },
   longText: { color: '#334155', fontSize: 16, lineHeight: 25, fontWeight: '600' },

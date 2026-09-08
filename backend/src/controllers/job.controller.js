@@ -4,12 +4,7 @@ const { calculateProviderStats } = require('../utils/providerStats');
 const agreementService = require('../services/agreement.service');
 
 const calculateJobCoinCost = (providersCount) => {
-  const count = parseInt(providersCount) || 1;
-  if (count === 1) return 1;
-  if (count === 2) return 2;
-  if (count >= 3 && count <= 6) return 3;
-  if (count >= 7 && count <= 9) return 4;
-  return 5; // 10 and above
+  return 0; // Job creation is currently free for clients
 };
 
 const normalizeBudgetRange = (data) => {
@@ -71,8 +66,12 @@ const addTimingMetadata = (job) => {
     }
   }
 
+  const applicationCount = job._count?.assignments ?? (Array.isArray(job.assignments) ? job.assignments.length : 0);
+
   return {
     ...job,
+    applicationCount,
+    proposalsCount: applicationCount,
     estimatedDurationDays: estimatedDays,
     expectedCompletionAt,
     isPastExpectedCompletion: Boolean(expectedCompletionAt && new Date(expectedCompletionAt) < new Date() && status === 'IN_PROGRESS'),
@@ -100,41 +99,34 @@ const createJob = async (req, res, next) => {
       });
     }
 
-    // 3. Check client wallet balance (ensure wallet exists)
+    // 3. Client job creation is 100% free
     const providersNeeded = validatedData.providersNeeded || 1;
-    const coinCost = calculateJobCoinCost(providersNeeded);
+    const coinCost = 0; // Free for clients
     let clientWallet = clientUser?.wallet;
     if (!clientWallet) {
       clientWallet = await prisma.wallet.create({
-        data: { userId: clientUser.id, balance: 1 }
+        data: { userId: clientUser.id, balance: 0 }
       });
     }
 
-    if (clientWallet.balance < coinCost) {
-      return res.status(400).json({
-        success: false,
-        message: `You do not have enough coins to post this task. Cost is ${coinCost} coins. Please top up.`
-      });
-    }
-
-    // 4. Deduct coins and create job in a transaction
+    // 4. Create job in a transaction
     const job = await prisma.$transaction(async (tx) => {
-      // Decrement wallet balance
-      await tx.wallet.update({
-        where: { id: clientWallet.id },
-        data: { balance: { decrement: coinCost } }
-      });
+      if (coinCost > 0) {
+        await tx.wallet.update({
+          where: { id: clientWallet.id },
+          data: { balance: { decrement: coinCost } }
+        });
 
-      // Record deduction transaction
-      await tx.transaction.create({
-        data: {
-          walletId: clientWallet.id,
-          amount: -coinCost,
-          type: 'DEDUCTION',
-          status: 'SUCCESS',
-          description: `Posted task: ${validatedData.title}`
-        }
-      });
+        await tx.transaction.create({
+          data: {
+            walletId: clientWallet.id,
+            amount: -coinCost,
+            type: 'DEDUCTION',
+            status: 'SUCCESS',
+            description: `Posted job: ${validatedData.title}`
+          }
+        });
+      }
 
       const finalCategory = (validatedData.category && validatedData.category.toLowerCase() !== 'general' && validatedData.category.toLowerCase() !== 'general service')
         ? validatedData.category
@@ -220,18 +212,30 @@ const getClientJobs = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
+    const clientJobsWhere = {
+      clientId: req.user.id,
+      approvalStatus: { not: 'REJECTED' },
+      status: { not: 'CANCELLED' }
+    };
+
     // Fast ETag check
-    const [latestJob, total] = await Promise.all([
+    const [latestJob, latestAssignment, total] = await Promise.all([
       prisma.job.findFirst({
-        where: { clientId: req.user.id },
+        where: clientJobsWhere,
         orderBy: { updatedAt: 'desc' },
         select: { updatedAt: true }
       }),
-      prisma.job.count({ where: { clientId: req.user.id } })
+      prisma.jobAssignment.findFirst({
+        where: { job: clientJobsWhere },
+        orderBy: { assignedAt: 'desc' },
+        select: { assignedAt: true }
+      }),
+      prisma.job.count({ where: clientJobsWhere })
     ]);
 
-    const lastUpdated = latestJob ? latestJob.updatedAt.getTime() : 0;
-    const etag = `W/"${lastUpdated}-${total}-${page}-${limit}"`;
+    const lastJobUpdated = latestJob ? latestJob.updatedAt.getTime() : 0;
+    const lastAssigned = latestAssignment ? latestAssignment.assignedAt.getTime() : 0;
+    const etag = `W/"${lastJobUpdated}-${lastAssigned}-${total}-${page}-${limit}"`;
 
     if (req.headers['if-none-match'] === etag) {
       return res.status(304).end();
@@ -239,7 +243,7 @@ const getClientJobs = async (req, res, next) => {
     res.setHeader('ETag', etag);
 
     const items = await prisma.job.findMany({
-      where: { clientId: req.user.id },
+      where: clientJobsWhere,
       include: {
         _count: { select: { assignments: true } },
         assignments: {
@@ -309,9 +313,12 @@ const getJobById = async (req, res, next) => {
       return new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime();
     });
 
+    const isMultiProvider = (job.providersNeeded || 1) > 1;
+    const isApplicantOrAssigned = job.assignments.some((a) => a.provider?.userId === req.user.id);
+
     const filteredAssignments = sortedAssignments.map((assignment, index) => {
       const isOwn = assignment.provider?.userId === req.user.id;
-      if (isClient || isAdmin || isOwn) {
+      if (isClient || isAdmin || isOwn || (isMultiProvider && isApplicantOrAssigned)) {
         return {
           ...assignment,
           isAnonymous: false
@@ -339,6 +346,8 @@ const getJobById = async (req, res, next) => {
       data: {
         ...addTimingMetadata(job),
         assignments: filteredAssignments,
+        applicationCount: sortedAssignments.length,
+        proposalsCount: sortedAssignments.length,
         client: {
           ...job.client,
           isVerified: job.client?.providerProfile?.verification === 'VERIFIED',
@@ -353,7 +362,7 @@ const getJobById = async (req, res, next) => {
 
 const getAvailableJobsForProvider = async (req, res, next) => {
   try {
-    const { page = 1, limit = 10, search = '', location = '', sortBy = 'newest', budgetMin, budgetMax, jobType = '' } = req.query;
+    const { page = 1, limit = 10, search = '', location = '', sortBy = 'newest', budgetMin, budgetMax, jobType = '', tab = '', filter = '', appliedOnly = '' } = req.query;
     const skip = (page - 1) * limit;
 
     // Build where clause for filtering
@@ -361,15 +370,15 @@ const getAvailableJobsForProvider = async (req, res, next) => {
       clientId: { not: req.user.id }, // Exclude own tasks
       status: 'PENDING',
       approvalStatus: 'APPROVED',  // Only show approved jobs
-      assignments: {
-        none: {
-          OR: [
-            { provider: { userId: req.user.id } },
-            { status: 'ACCEPTED' } // Exclude accepted tasks
-          ]
-        }
-      }
     };
+
+    if (tab === 'applied' || filter === 'applied' || appliedOnly === 'true') {
+      whereClause.assignments = {
+        some: {
+          provider: { userId: req.user.id }
+        }
+      };
+    }
 
     // Filter by provider's country and location for local jobs, or show remote jobs from any country
     const providerCountry = req.user.country || 'Cameroon';
@@ -434,6 +443,7 @@ const getAvailableJobsForProvider = async (req, res, next) => {
     const jobs = await prisma.job.findMany({
       where: whereClause,
       include: {
+        _count: { select: { assignments: true } },
         client: {
           select: {
             id: true, fullName: true, avatar: true,
@@ -512,13 +522,22 @@ const getAvailableJobsForProvider = async (req, res, next) => {
     });
     const userReviews = new Map(reviewCounts.map(r => [r.targetUserId, r._count.id]));
 
-    const enrichedJobs = jobs.map(job => addTimingMetadata({
-      ...job,
-      clientVerified: job.client?.providerProfile?.verification === 'VERIFIED',
-      clientSpending: userSpending.get(job.clientId) || 0,
-      clientSpendingTier: getSpendingTier(userSpending.get(job.clientId) || 0),
-      clientReviewCount: userReviews.get(job.clientId) || 0,
-    }));
+    const enrichedJobs = jobs.map(job => {
+      const myAssignment = job.assignments?.find(a => a.provider?.userId === req.user.id || a.providerId === req.user.providerProfile?.id) || null;
+      const hasApplied = Boolean(myAssignment);
+      const myBoostCoins = myAssignment?.boostCoins || 0;
+      return addTimingMetadata({
+        ...job,
+        hasApplied,
+        hasBoosted: myBoostCoins > 0,
+        myAssignment,
+        myBoostCoins,
+        clientVerified: job.client?.providerProfile?.verification === 'VERIFIED',
+        clientSpending: userSpending.get(job.clientId) || 0,
+        clientSpendingTier: getSpendingTier(userSpending.get(job.clientId) || 0),
+        clientReviewCount: userReviews.get(job.clientId) || 0,
+      });
+    });
 
     res.status(200).json({
       success: true,
@@ -537,6 +556,7 @@ const getAvailableJobsForProvider = async (req, res, next) => {
 
 const applyForJob = async (req, res, next) => {
   try {
+    const jobId = req.params.jobId || req.params.id;
     const providerId = req.user.providerProfile?.id;
     if (!providerId) {
       return res.status(400).json({ success: false, message: 'Provider profile required.' });
@@ -667,6 +687,11 @@ const applyForJob = async (req, res, next) => {
     });
 
     const applicationCount = await prisma.jobAssignment.count({ where: { jobId } });
+
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { updatedAt: new Date() }
+    }).catch(() => {});
 
     const notification = await prisma.notification.create({
       data: {

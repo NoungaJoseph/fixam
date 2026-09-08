@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import SafeAreaView from '../../components/Common/TealSafeAreaView';
-import { StyleSheet, View, Text, TouchableOpacity, StatusBar, Alert, Image, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, StatusBar, Alert, Image, ScrollView, Platform, ActivityIndicator, Linking } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import * as ImagePicker from 'expo-image-picker';
@@ -19,38 +19,96 @@ const SelfieScreen = ({ navigation, route }) => {
   const [uploadStatusText, setUploadStatusText] = useState('');
   const params = route.params || {};
 
-  const takeSelfie = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('verification.permissionRequired'), t('verification.cameraAccessSelfie'));
-      return;
-    }
-
+  const processSelfieUri = async (rawUri) => {
     try {
-      const result = await ImagePicker.launchCameraAsync({
-        cameraType: ImagePicker.CameraType.front,
-        quality: 0.65,
-        allowsEditing: false,
-      });
+      const optimized = await optimizeImageForUpload(rawUri, { maxWidth: 1080, quality: 0.65 });
+      setSelfieImage(optimized?.uri || rawUri);
+    } catch (optErr) {
+      if (__DEV__) console.warn('[SelfieScreen] Image optimization failed, using original:', optErr);
+      setSelfieImage(rawUri);
+    }
+  };
+
+  const captureLiveSelfie = async () => {
+    try {
+      const { status, canAskAgain } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            t('verification.permissionRequired', 'Camera Permission Required'),
+            t('verification.cameraAccessSelfieSettings', 'Camera permission is required to take a live selfie for identity verification. Please enable it in Settings.'),
+            [
+              { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+              { text: t('settings.openSettings', 'Open Settings'), onPress: () => Linking.openSettings() }
+            ]
+          );
+        } else {
+          Alert.alert(
+            t('verification.permissionRequired', 'Permission Required'),
+            t('verification.cameraAccessSelfie', 'Camera access is required to take a live selfie.')
+          );
+        }
+        return;
+      }
+
+      let result;
+      try {
+        // Try front camera first for live selfie
+        result = await ImagePicker.launchCameraAsync({
+          cameraType: 'front',
+          quality: 0.65,
+          allowsEditing: false,
+        });
+      } catch (frontErr) {
+        if (__DEV__) console.warn('[SelfieScreen] Front camera failed, falling back to default camera:', frontErr?.message);
+        result = await ImagePicker.launchCameraAsync({
+          quality: 0.65,
+          allowsEditing: false,
+        });
+      }
 
       if (!result.canceled && result.assets?.[0]?.uri) {
-        const optimized = await optimizeImageForUpload(result.assets[0].uri, { maxWidth: 1080, quality: 0.65 });
-        setSelfieImage(optimized.uri);
+        await processSelfieUri(result.assets[0].uri);
       }
     } catch (error) {
-      Alert.alert(t('verification.error'), t('verification.camError'));
+      if (__DEV__) console.log('[SelfieScreen] Live camera capture error:', error?.message);
+      if (error?.message?.includes('rejected permissions') || error?.message?.includes('User rejected')) {
+        Alert.alert(
+          t('verification.permissionRequired', 'Camera Permission Needed'),
+          t('verification.cameraAccessSelfieSettings', 'Camera permission was denied. Please enable camera access in your device Settings to take a live selfie.'),
+          [
+            { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+            { text: t('settings.openSettings', 'Open Settings'), onPress: () => Linking.openSettings() }
+          ]
+        );
+      } else {
+        Alert.alert(
+          t('verification.error', 'Error'),
+          t('verification.camError', 'Could not access camera to take live selfie. Please verify camera permissions in Settings.')
+        );
+      }
     }
+  };
+
+  const takeSelfie = () => {
+    captureLiveSelfie();
   };
 
   const uploadOne = async (uri, label, retries = 2) => {
     // Compress on-device before uploading over network
-    const optimized = await optimizeImageForUpload(uri, { maxWidth: 1200, quality: 0.65 });
-    const finalUri = optimized.uri;
+    let finalUri = uri;
+    try {
+      const optimized = await optimizeImageForUpload(uri, { maxWidth: 1200, quality: 0.65 });
+      if (optimized?.uri) finalUri = optimized.uri;
+    } catch (e) {
+      finalUri = uri;
+    }
+
     const filename = `${label}-${finalUri.split('/').pop() || Date.now()}.jpg`;
     
     const formData = new FormData();
     formData.append('file', {
-      uri: finalUri,
+      uri: Platform.OS === 'ios' ? finalUri.replace('file://', '') : finalUri,
       name: filename,
       type: 'image/jpeg',
     });
